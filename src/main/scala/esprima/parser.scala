@@ -6,6 +6,9 @@ parser.js
 package esprima
 
 import Parser._
+import esprima.Scanner.{Position, RawToken}
+
+import scala.collection.mutable.ArrayBuffer
 object Parser {
   val ArrowParameterPlaceHolder = "ArrowParameterPlaceHolder"
 }
@@ -54,13 +57,13 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     var / = 11
     var % = 11
   }
-  var lookahead = new {
-    var `type` = 2
-    var value = ""
-    var lineNumber = scanner.lineNumber
-    var lineStart = 0
-    var start = 0
-    var end = 0
+  var lookahead = new RawToken {
+    override def `type` = 2
+    override def value = ""
+    override def lineNumber = scanner.lineNumber
+    override def lineStart = 0
+    override def start = 0
+    override def end = 0
   }
   var hasLineTerminator: Boolean = false
   var context = new {
@@ -78,7 +81,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     var labelSet = new {}
     var strict = false
   }
-  var tokens = Array.empty[Any]
+  var tokens = ArrayBuffer.empty[Any]
   var startMarker = new {
     var index = 0
     var line = scanner.lineNumber
@@ -119,7 +122,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.errorHandler.tolerateError(index, line, column, msg)
   }
   
-  def unexpectedTokenError(token: Any, message: Any) = {
+  def unexpectedTokenError(token: RawToken, message: Any) = {
     var msg = message || Messages.UnexpectedToken
     var value: String = _
     if (token) {
@@ -152,11 +155,11 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     }
   }
   
-  def throwUnexpectedToken(token: Any, message: Any) = {
+  def throwUnexpectedToken(token: RawToken, message: Any) = {
     throw this.unexpectedTokenError(token, message)
   }
   
-  def tolerateUnexpectedToken(token: Any, message: Any) = {
+  def tolerateUnexpectedToken(token: RawToken, message: Any) = {
     this.errorHandler.tolerate(this.unexpectedTokenError(token, message))
   }
   
@@ -195,11 +198,11 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     }
   }
   
-  def getTokenRaw(token: Any) = {
+  def getTokenRaw(token: RawToken) = {
     this.scanner.source.slice(token.start, token.end)
   }
   
-  def convertToken(token: Any) = {
+  def convertToken(token: RawToken) = {
     object t {
       var `type` = TokenName(token.`type`)
       var value = this.getTokenRaw(token)
@@ -313,15 +316,15 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     }
     if (this.delegate) {
       object metadata {
-        var start = new {
-          var line = marker.line
-          var column = marker.column
+        var start = new Position {
+          override def line = marker.line
+          override def column = marker.column
           var offset = marker.index
         }
-        var end = new {
+        var end = new Position {
           override def line = self.lastMarker.line
-          var column = this.lastMarker.column
-          var offset = this.lastMarker.index
+          override def column = self.lastMarker.column
+          override def offset = self.lastMarker.index
         }
       }
       this.delegate(node, metadata)
