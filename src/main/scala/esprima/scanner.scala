@@ -470,7 +470,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     id
   }
   
-  def octalToDecimal(ch: String) = {
+  def octalToDecimal(ch: String): (Int, Int) = {
     // \0 is not octal escape sequence
     var octal = ch != "0"
     var code = octalValue(ch(0))
@@ -491,10 +491,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         }))
       }
     }
-    new {
-      var code = code
-      var octal = octal
-    }
+    code -> octal
   }
   
   def scanIdentifier() = {
@@ -684,22 +681,22 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (Character.isIdentifierStart(this.source.charCodeAt(this.index)) || Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
       this.throwUnexpectedToken()
     }
-    new {
-      var `type` = 6
-      var value = parseInt(num, 8)
-      var octal = octal
-      var lineNumber = this.lineNumber
-      var lineStart = this.lineStart
-      var start = start
-      var end = this.index
+    new RawToken {
+      override def `type` = 6
+      override def value = parseInt(num, 8)
+      override def octal = octal
+      override def lineNumber = self.lineNumber
+      override def lineStart = self.lineStart
+      override def start = start
+      override def end = self.index
     }
   }
   
-  def isImplicitOctalLiteral() = {
+  def isImplicitOctalLiteral(): Boolean = {
     // Implicit octal, unless there is a non-octal digit.
     // (Annex B.1.1 on Numeric Literals)
     for (i <- this.index + 1 until this.length) {
-      val ch = this.source(i)
+      val ch: String = this.source(i)
       if (ch == "8" || ch == "9") {
         return false
       }
@@ -710,9 +707,9 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     true
   }
   
-  def scanNumericLiteral() = {
+  def scanNumericLiteral(): RawToken = {
     val start = this.index
-    var ch = this.source(start)
+    var ch: String = this.source(start)
     assert(Character.isDecimalDigit(ch.charCodeAt(0)) || ch == ".", "Numeric literal must start with a decimal digit or a decimal point")
     var num = ""
     if (ch != ".") {
@@ -797,17 +794,17 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (Character.isIdentifierStart(this.source.charCodeAt(this.index))) {
       this.throwUnexpectedToken()
     }
-    new {
-      var `type` = 6
-      var value = parseFloat(num)
-      var lineNumber = this.lineNumber
-      var lineStart = this.lineStart
-      var start = start
-      var end = this.index
+    new RawToken {
+      override def `type` = 6
+      override def value = parseFloat(num)
+      override def lineNumber = self.lineNumber
+      override def lineStart = self.lineStart
+      override def start = start
+      override def end = self.index
     }
   }
   
-  def scanStringLiteral() = {
+  def scanStringLiteral(): RawToken = {
     val start = this.index
     var quote: String = this.source(start)
     assert(quote == "\'" || quote == "\"", "String literal must starts with a quote")
@@ -866,8 +863,8 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
             case _ =>
               if (ch && Character.isOctalDigit(ch.charCodeAt(0))) {
                 val octToDec = this.octalToDecimal(ch)
-                octal = octToDec.octal || octal
-                str += String.fromCharCode(octToDec.code)
+                octal = octToDec._2 || octal
+                str += fromCharCode(octToDec._1)
               } else {
                 str += ch
               }
@@ -889,18 +886,18 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.index = start
       this.throwUnexpectedToken()
     }
-    new {
-      var `type` = 8
-      var value = str
-      var octal = octal
-      var lineNumber = this.lineNumber
-      var lineStart = this.lineStart
-      var start = start
-      var end = this.index
+    new RawToken {
+      override def `type` = 8
+      override def value = str
+      override def octal = octal
+      override def lineNumber = self.lineNumber
+      override def lineStart = self.lineStart
+      override def start = start
+      override def end = self.index
     }
   }
   
-  def scanTemplate() = {
+  def scanTemplate(): RawToken = {
     var cooked = ""
     var terminated = false
     val start = this.index
@@ -1005,16 +1002,16 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (!head) {
       this.curlyStack.pop()
     }
-    new {
-      var `type` = 10
-      var value = this.source.slice(start + 1, this.index - rawOffset)
-      var cooked = cooked
-      var head = head
-      var tail = tail
-      var lineNumber = this.lineNumber
-      var lineStart = this.lineStart
-      var start = start
-      var end = this.index
+    new RawToken {
+      override def `type` = 10
+      override def value = self.source.slice(start + 1, self.index - rawOffset)
+      override def cooked = cooked
+      override def head = head
+      override def tail = tail
+      override def lineNumber = this.lineNumber
+      override def lineStart = this.lineStart
+      override def start = start
+      override def end = self.index
     }
   }
   
@@ -1166,11 +1163,11 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
       override def start = start
-      override def end = this.index
+      override def end = self.index
     }
   }
   
-  def lex() = {
+  def lex(): RawToken = {
     if (this.eof()) {
       return new RawToken {
         override def `type` = 2

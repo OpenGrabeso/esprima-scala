@@ -33,4 +33,7 @@ trait StringOps {
     def charCodeAt(i: Int): CharValue = CharValue(s(i))
     def substr(from: Int, count: Int): String = s.substring(from, from + count)
   }
+
+  def parseInt(str: String, base: Int): Int = java.lang.Integer.parseInt(str, base)
+  def parseFloat(str: String): Double = java.lang.Double.parseDouble(str)
 }
