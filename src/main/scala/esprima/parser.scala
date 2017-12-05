@@ -4,18 +4,11 @@ parser.js
 */
 
 package esprima
-"use strict"
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
-val assert_1 = require("./assert")
-val error_handler_1 = require("./error-handler")
-val messages_1 = require("./messages")
-val Node = require("./nodes")
-val scanner_1 = require("./scanner")
-val syntax_1 = require("./syntax")
-val token_1 = require("./token")
-val ArrowParameterPlaceHolder = "ArrowParameterPlaceHolder"
+
+import Parser._
+object Parser {
+  val ArrowParameterPlaceHolder = "ArrowParameterPlaceHolder"
+}
 
 class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   var config = new {
@@ -29,9 +22,9 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   if (config.loc && options.source && options.source != null) {
     config.source = String(options.source)
   }
-  var errorHandler: ErrorHandler = new error_handler_1.ErrorHandler()
+  var errorHandler: ErrorHandler = new .ErrorHandler()
   errorHandler.tolerant = config.tolerant
-  var scanner: Scanner = new scanner_1.Scanner(code, this.errorHandler)
+  var scanner: Scanner = new Scanner(code, this.errorHandler)
   scanner.trackComment = config.comment
   var operatorPrecedence = new {
     var ) = 0
@@ -106,7 +99,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   : Any) = {
     val args = Array.prototype.slice.call(arguments, 1)
     val msg = messageFormat.replace("/%(\d)/g".r, (whole, idx) => {
-      assert_1.assert(idx < args.length, "Message reference must be in range")
+      assert(idx < args.length, "Message reference must be in range")
       args(idx)
     }
     )
@@ -120,7 +113,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   : Any) = {
     val args = Array.prototype.slice.call(arguments, 1)
     val msg = messageFormat.replace("/%(\d)/g".r, (whole, idx) => {
-      assert_1.assert(idx < args.length, "Message reference must be in range")
+      assert(idx < args.length, "Message reference must be in range")
       args(idx)
     }
     )
@@ -131,16 +124,16 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   }
   
   def unexpectedTokenError(token: Any, message: Any) = {
-    var msg = message || messages_1.Messages.UnexpectedToken
+    var msg = message || Messages.UnexpectedToken
     var value: String = _
     if (token) {
       if (!message) {
-        msg = if (token.`type` == 2) messages_1.Messages.UnexpectedEOS else if (token.`type` == 3) messages_1.Messages.UnexpectedIdentifier else if (token.`type` == 6) messages_1.Messages.UnexpectedNumber else if (token.`type` == 8) messages_1.Messages.UnexpectedString else if (token.`type` == 10) messages_1.Messages.UnexpectedTemplate else messages_1.Messages.UnexpectedToken
+        msg = if (token.`type` == 2) Messages.UnexpectedEOS else if (token.`type` == 3) Messages.UnexpectedIdentifier else if (token.`type` == 6) Messages.UnexpectedNumber else if (token.`type` == 8) Messages.UnexpectedString else if (token.`type` == 10) Messages.UnexpectedTemplate else Messages.UnexpectedToken
         if (token.`type` == 4) {
           if (this.scanner.isFutureReservedWord(token.value)) {
-            msg = messages_1.Messages.UnexpectedReserved
+            msg = Messages.UnexpectedReserved
           } else if (this.context.strict && this.scanner.isStrictModeReservedWord(token.value)) {
-            msg = messages_1.Messages.StrictReservedWord
+            msg = Messages.StrictReservedWord
           }
         }
       }
@@ -212,7 +205,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   
   def convertToken(token: Any) = {
     object t {
-      var `type` = token_1.TokenName(token.`type`)
+      var `type` = TokenName(token.`type`)
       var value = this.getTokenRaw(token)
     }
     if (this.config.range) {
@@ -356,7 +349,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         this.nextToken()
         this.tolerateUnexpectedToken(token)
       } else {
-        this.tolerateUnexpectedToken(token, messages_1.Messages.UnexpectedToken)
+        this.tolerateUnexpectedToken(token, Messages.UnexpectedToken)
       }
     } else {
       this.expect(",")
@@ -447,7 +440,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         expr = if (this.matchAsyncFunction()) this.parseFunctionExpression() else this.finalize(node, new Node.Identifier(this.nextToken().value))
       case 6 | 8 =>
         if (this.context.strict && this.lookahead.octal) {
-          this.tolerateUnexpectedToken(this.lookahead, messages_1.Messages.StrictOctalLiteral)
+          this.tolerateUnexpectedToken(this.lookahead, Messages.StrictOctalLiteral)
         }
         this.context.isAssignmentTarget = false
         this.context.isBindingElement = false
@@ -597,7 +590,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     token.`type` match {
       case 8 | 6 =>
         if (this.context.strict && token.octal) {
-          this.tolerateUnexpectedToken(token, messages_1.Messages.StrictOctalLiteral)
+          this.tolerateUnexpectedToken(token, Messages.StrictOctalLiteral)
         }
         val raw = this.getTokenRaw(token)
         key = this.finalize(node, new Node.Literal(token.value, raw))
@@ -617,7 +610,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   }
   
   def isPropertyKey(key: Any, value: String) = {
-    key.`type` == syntax_1.Syntax.Identifier && key.name == value || key.`type` == syntax_1.Syntax.Literal && key.value == value
+    key.`type` == Syntax.Identifier && key.name == value || key.`type` == Syntax.Literal && key.value == value
   }
   
   def parseObjectProperty(hasProto: Any) = {
@@ -668,7 +661,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       if (this.`match`(":") && !isAsync) {
         if (!computed && this.isPropertyKey(key, "__proto__")) {
           if (hasProto.value) {
-            this.tolerateError(messages_1.Messages.DuplicateProtoProperty)
+            this.tolerateError(Messages.DuplicateProtoProperty)
           }
           hasProto.value = true
         }
@@ -714,7 +707,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   }
   
   def parseTemplateHead() = {
-    assert_1.assert(this.lookahead.head, "Template literal must start with a template head")
+    assert(this.lookahead.head, "Template literal must start with a template head")
     val node = this.createNode()
     val token = this.nextToken()
     val raw = token.value
@@ -755,24 +748,24 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   
   def reinterpretExpressionAsPattern(expr: Any) = {
     expr.`type` match {
-      case syntax_1.Syntax.Identifier | syntax_1.Syntax.MemberExpression | syntax_1.Syntax.RestElement | syntax_1.Syntax.AssignmentPattern =>
-      case syntax_1.Syntax.SpreadElement =>
-        expr.`type` = syntax_1.Syntax.RestElement
+      case Syntax.Identifier | Syntax.MemberExpression | Syntax.RestElement | Syntax.AssignmentPattern =>
+      case Syntax.SpreadElement =>
+        expr.`type` = Syntax.RestElement
         this.reinterpretExpressionAsPattern(expr.argument)
-      case syntax_1.Syntax.ArrayExpression =>
-        expr.`type` = syntax_1.Syntax.ArrayPattern
+      case Syntax.ArrayExpression =>
+        expr.`type` = Syntax.ArrayPattern
         for (i <- expr.elements) {
           if (i != null) {
             this.reinterpretExpressionAsPattern(i)
           }
         }
-      case syntax_1.Syntax.ObjectExpression =>
-        expr.`type` = syntax_1.Syntax.ObjectPattern
+      case Syntax.ObjectExpression =>
+        expr.`type` = Syntax.ObjectPattern
         for (property <- expr.properties) {
-          this.reinterpretExpressionAsPattern(if (property.`type` == syntax_1.Syntax.SpreadElement) property else property.value)
+          this.reinterpretExpressionAsPattern(if (property.`type` == Syntax.SpreadElement) property else property.value)
         }
-      case syntax_1.Syntax.AssignmentExpression =>
-        expr.`type` = syntax_1.Syntax.AssignmentPattern
+      case Syntax.AssignmentExpression =>
+        expr.`type` = Syntax.AssignmentPattern
         delete expr.operator
         this.reinterpretExpressionAsPattern(expr.left)
       case _ =>
@@ -863,7 +856,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         if (!arrow) {
           this.expect(")")
           if (this.`match`("=>")) {
-            if (expr.`type` == syntax_1.Syntax.Identifier && expr.name == "yield") {
+            if (expr.`type` == Syntax.Identifier && expr.name == "yield") {
               arrow = true
               expr = new {
                 var `type` = ArrowParameterPlaceHolder
@@ -875,14 +868,14 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
               if (!this.context.isBindingElement) {
                 this.throwUnexpectedToken(this.lookahead)
               }
-              if (expr.`type` == syntax_1.Syntax.SequenceExpression) {
+              if (expr.`type` == Syntax.SequenceExpression) {
                 for (i <- expr.expressions) {
                   this.reinterpretExpressionAsPattern(i)
                 }
               } else {
                 this.reinterpretExpressionAsPattern(expr)
               }
-              val parameters = if (expr.`type` == syntax_1.Syntax.SequenceExpression) expr.expressions else Array(expr)
+              val parameters = if (expr.`type` == Syntax.SequenceExpression) expr.expressions else Array(expr)
               expr = new {
                 var `type` = ArrowParameterPlaceHolder
                 var params = parameters
@@ -933,7 +926,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   def parseNewExpression() = {
     val node = this.createNode()
     val id = this.parseIdentifierName()
-    assert_1.assert(id.name == "new", "New expression must start with `new`")
+    assert(id.name == "new", "New expression must start with `new`")
     var expr: Any = _
     if (this.`match`(".")) {
       this.nextToken()
@@ -1027,8 +1020,8 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         this.context.isBindingElement = false
         this.context.isAssignmentTarget = false
         val args = if (asyncArrow) this.parseAsyncArguments() else this.parseArguments()
-        if (expr.`type` == syntax_1.Syntax.Import && args.length != 1) {
-          this.tolerateError(messages_1.Messages.BadImportCallArity)
+        if (expr.`type` == Syntax.Import && args.length != 1) {
+          this.tolerateError(Messages.BadImportCallArity)
         }
         expr = this.finalize(this.startNode(startToken), new Node.CallExpression(expr, args))
         if (asyncArrow && this.`match`("=>")) {
@@ -1069,7 +1062,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   }
   
   def parseLeftHandSideExpression() = {
-    assert_1.assert(this.context.allowIn, "callee of new expression always allow in keyword.")
+    assert(this.context.allowIn, "callee of new expression always allow in keyword.")
     val node = this.startNode(this.lookahead)
     var expr = if (this.matchKeyword("super") && this.context.inFunctionBody) this.parseSuper() else this.inheritCoverGrammar(if (this.matchKeyword("new")) this.parseNewExpression else this.parsePrimaryExpression)
     while (true) {
@@ -1103,11 +1096,11 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       val node = this.startNode(startToken)
       val token = this.nextToken()
       expr = this.inheritCoverGrammar(this.parseUnaryExpression)
-      if (this.context.strict && expr.`type` == syntax_1.Syntax.Identifier && this.scanner.isRestrictedWord(expr.name)) {
-        this.tolerateError(messages_1.Messages.StrictLHSPrefix)
+      if (this.context.strict && expr.`type` == Syntax.Identifier && this.scanner.isRestrictedWord(expr.name)) {
+        this.tolerateError(Messages.StrictLHSPrefix)
       }
       if (!this.context.isAssignmentTarget) {
-        this.tolerateError(messages_1.Messages.InvalidLHSInAssignment)
+        this.tolerateError(Messages.InvalidLHSInAssignment)
       }
       val prefix = true
       expr = this.finalize(node, new Node.UpdateExpression(token.value, expr, prefix))
@@ -1117,11 +1110,11 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       expr = this.inheritCoverGrammar(this.parseLeftHandSideExpressionAllowCall)
       if (!this.hasLineTerminator && this.lookahead.`type` == 7) {
         if (this.`match`("++") || this.`match`("--")) {
-          if (this.context.strict && expr.`type` == syntax_1.Syntax.Identifier && this.scanner.isRestrictedWord(expr.name)) {
-            this.tolerateError(messages_1.Messages.StrictLHSPostfix)
+          if (this.context.strict && expr.`type` == Syntax.Identifier && this.scanner.isRestrictedWord(expr.name)) {
+            this.tolerateError(Messages.StrictLHSPostfix)
           }
           if (!this.context.isAssignmentTarget) {
-            this.tolerateError(messages_1.Messages.InvalidLHSInAssignment)
+            this.tolerateError(Messages.InvalidLHSInAssignment)
           }
           this.context.isAssignmentTarget = false
           this.context.isBindingElement = false
@@ -1148,8 +1141,8 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       val token = this.nextToken()
       expr = this.inheritCoverGrammar(this.parseUnaryExpression)
       expr = this.finalize(node, new Node.UnaryExpression(token.value, expr))
-      if (this.context.strict && expr.operator == "delete" && expr.argument.`type` == syntax_1.Syntax.Identifier) {
-        this.tolerateError(messages_1.Messages.StrictDelete)
+      if (this.context.strict && expr.operator == "delete" && expr.argument.`type` == Syntax.Identifier) {
+        this.tolerateError(Messages.StrictDelete)
       }
       this.context.isAssignmentTarget = false
       this.context.isBindingElement = false
@@ -1164,7 +1157,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   def parseExponentiationExpression() = {
     val startToken = this.lookahead
     var expr = this.inheritCoverGrammar(this.parseUnaryExpression)
-    if (expr.`type` != syntax_1.Syntax.UnaryExpression && this.`match`("**")) {
+    if (expr.`type` != Syntax.UnaryExpression && this.`match`("**")) {
       this.nextToken()
       this.context.isAssignmentTarget = false
       this.context.isBindingElement = false
@@ -1260,21 +1253,21 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   
   def checkPatternParam(options: Any, param: Any) = {
     param.`type` match {
-      case syntax_1.Syntax.Identifier =>
+      case Syntax.Identifier =>
         this.validateParam(options, param, param.name)
-      case syntax_1.Syntax.RestElement =>
+      case Syntax.RestElement =>
         this.checkPatternParam(options, param.argument)
-      case syntax_1.Syntax.AssignmentPattern =>
+      case Syntax.AssignmentPattern =>
         this.checkPatternParam(options, param.left)
-      case syntax_1.Syntax.ArrayPattern =>
+      case Syntax.ArrayPattern =>
         for (i <- param.elements) {
           if (i != null) {
             this.checkPatternParam(options, i)
           }
         }
-      case syntax_1.Syntax.ObjectPattern =>
+      case Syntax.ObjectPattern =>
         for (property <- param.properties) {
-          this.checkPatternParam(options, if (property.`type` == syntax_1.Syntax.RestElement) property else property.value)
+          this.checkPatternParam(options, if (property.`type` == Syntax.RestElement) property else property.value)
         }
       case _ =>
     }
@@ -1285,7 +1278,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     var params = Array(expr)
     var asyncArrow = false
     expr.`type` match {
-      case syntax_1.Syntax.Identifier =>
+      case Syntax.Identifier =>
       case ArrowParameterPlaceHolder =>
         params = expr.params
         asyncArrow = expr.async
@@ -1298,17 +1291,17 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     }
     for (i <- params.indices) {
       val param = params(i)
-      if (param.`type` == syntax_1.Syntax.AssignmentPattern) {
-        if (param.right.`type` == syntax_1.Syntax.YieldExpression) {
+      if (param.`type` == Syntax.AssignmentPattern) {
+        if (param.right.`type` == Syntax.YieldExpression) {
           if (param.right.argument) {
             this.throwUnexpectedToken(this.lookahead)
           }
-          param.right.`type` = syntax_1.Syntax.Identifier
+          param.right.`type` = Syntax.Identifier
           param.right.name = "yield"
           delete param.right.argument
           delete param.right.delegate
         }
-      } else if (asyncArrow && param.`type` == syntax_1.Syntax.Identifier && param.name == "await") {
+      } else if (asyncArrow && param.`type` == Syntax.Identifier && param.name == "await") {
         this.throwUnexpectedToken(this.lookahead)
       }
       this.checkPatternParam(options, param)
@@ -1316,12 +1309,12 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     }
     if (this.context.strict || !this.context.allowYield) {
       for (param <- params) {
-        if (param.`type` == syntax_1.Syntax.YieldExpression) {
+        if (param.`type` == Syntax.YieldExpression) {
           this.throwUnexpectedToken(this.lookahead)
         }
       }
     }
-    if (options.message == messages_1.Messages.StrictParamDupe) {
+    if (options.message == Messages.StrictParamDupe) {
       val token = if (this.context.strict) options.stricted else options.firstRestricted
       this.throwUnexpectedToken(token, options.message)
     }
@@ -1382,7 +1375,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
           } else {
             body = this.isolateCoverGrammar(this.parseAssignmentExpression)
           }
-          val expression = body.`type` != syntax_1.Syntax.BlockStatement
+          val expression = body.`type` != Syntax.BlockStatement
           if (this.context.strict && list.firstRestricted) {
             this.throwUnexpectedToken(list.firstRestricted, list.message)
           }
@@ -1398,15 +1391,15 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       } else {
         if (this.matchAssign()) {
           if (!this.context.isAssignmentTarget) {
-            this.tolerateError(messages_1.Messages.InvalidLHSInAssignment)
+            this.tolerateError(Messages.InvalidLHSInAssignment)
           }
-          if (this.context.strict && expr.`type` == syntax_1.Syntax.Identifier) {
+          if (this.context.strict && expr.`type` == Syntax.Identifier) {
             val id = expr
             if (this.scanner.isRestrictedWord(id.name)) {
-              this.tolerateUnexpectedToken(token, messages_1.Messages.StrictLHSAssignment)
+              this.tolerateUnexpectedToken(token, Messages.StrictLHSAssignment)
             }
             if (this.scanner.isStrictModeReservedWord(id.name)) {
-              this.tolerateUnexpectedToken(token, messages_1.Messages.StrictReservedWord)
+              this.tolerateUnexpectedToken(token, Messages.StrictReservedWord)
             }
           }
           if (!this.`match`("=")) {
@@ -1452,7 +1445,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       this.lookahead.value match {
         case "export" =>
           if (!this.context.isModule) {
-            this.tolerateUnexpectedToken(this.lookahead, messages_1.Messages.IllegalExportDeclaration)
+            this.tolerateUnexpectedToken(this.lookahead, Messages.IllegalExportDeclaration)
           }
           statement = this.parseExportDeclaration()
         case "import" =>
@@ -1460,7 +1453,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
             statement = this.parseExpressionStatement()
           } else {
             if (!this.context.isModule) {
-              this.tolerateUnexpectedToken(this.lookahead, messages_1.Messages.IllegalImportDeclaration)
+              this.tolerateUnexpectedToken(this.lookahead, Messages.IllegalImportDeclaration)
             }
             statement = this.parseImportDeclaration()
           }
@@ -1503,9 +1496,9 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     val node = this.createNode()
     val params = Array.empty[Any]
     val id = this.parsePattern(params, kind)
-    if (this.context.strict && id.`type` == syntax_1.Syntax.Identifier) {
+    if (this.context.strict && id.`type` == Syntax.Identifier) {
       if (this.scanner.isRestrictedWord(id.name)) {
-        this.tolerateError(messages_1.Messages.StrictVarName)
+        this.tolerateError(Messages.StrictVarName)
       }
     }
     var init = null
@@ -1515,10 +1508,10 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
           this.nextToken()
           init = this.isolateCoverGrammar(this.parseAssignmentExpression)
         } else {
-          this.throwError(messages_1.Messages.DeclarationMissingInitializer, "const")
+          this.throwError(Messages.DeclarationMissingInitializer, "const")
         }
       }
-    } else if (!options.inFor && id.`type` != syntax_1.Syntax.Identifier || this.`match`("=")) {
+    } else if (!options.inFor && id.`type` != Syntax.Identifier || this.`match`("=")) {
       this.expect("=")
       init = this.isolateCoverGrammar(this.parseAssignmentExpression)
     }
@@ -1545,7 +1538,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   def parseLexicalDeclaration(options: Any) = {
     val node = this.createNode()
     val kind = this.nextToken().value
-    assert_1.assert(kind == "let" || kind == "const", "Lexical declaration must be either let or const")
+    assert(kind == "let" || kind == "const", "Lexical declaration must be either let or const")
     val declarations = this.parseBindingList(kind, options)
     this.consumeSemicolon()
     this.finalize(node, new Node.VariableDeclaration(declarations, kind))
@@ -1621,10 +1614,10 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.expect("...")
     val arg = this.parsePattern(params)
     if (this.`match`("=")) {
-      this.throwError(messages_1.Messages.DefaultRestProperty)
+      this.throwError(Messages.DefaultRestProperty)
     }
     if (!this.`match`("}")) {
-      this.throwError(messages_1.Messages.PropertyAfterRestProperty)
+      this.throwError(Messages.PropertyAfterRestProperty)
     }
     this.finalize(node, new Node.RestElement(arg))
   }
@@ -1651,7 +1644,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       pattern = this.parseObjectPattern(params, kind)
     } else {
       if (this.matchKeyword("let") && (kind == "const" || kind == "let")) {
-        this.tolerateUnexpectedToken(this.lookahead, messages_1.Messages.LetInLexicalBinding)
+        this.tolerateUnexpectedToken(this.lookahead, Messages.LetInLexicalBinding)
       }
       params.push(this.lookahead)
       pattern = this.parseVariableIdentifier(kind)
@@ -1678,13 +1671,13 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     val token = this.nextToken()
     if (token.`type` == 4 && token.value == "yield") {
       if (this.context.strict) {
-        this.tolerateUnexpectedToken(token, messages_1.Messages.StrictReservedWord)
+        this.tolerateUnexpectedToken(token, Messages.StrictReservedWord)
       } else if (!this.context.allowYield) {
         this.throwUnexpectedToken(token)
       }
     } else if (token.`type` != 3) {
       if (this.context.strict && token.`type` == 4 && this.scanner.isStrictModeReservedWord(token.value)) {
-        this.tolerateUnexpectedToken(token, messages_1.Messages.StrictReservedWord)
+        this.tolerateUnexpectedToken(token, Messages.StrictReservedWord)
       } else {
         if (this.context.strict || token.value != "let" || kind != "var") {
           this.throwUnexpectedToken(token)
@@ -1700,16 +1693,16 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     val node = this.createNode()
     val params = Array.empty[Any]
     val id = this.parsePattern(params, "var")
-    if (this.context.strict && id.`type` == syntax_1.Syntax.Identifier) {
+    if (this.context.strict && id.`type` == Syntax.Identifier) {
       if (this.scanner.isRestrictedWord(id.name)) {
-        this.tolerateError(messages_1.Messages.StrictVarName)
+        this.tolerateError(Messages.StrictVarName)
       }
     }
     var init = null
     if (this.`match`("=")) {
       this.nextToken()
       init = this.isolateCoverGrammar(this.parseAssignmentExpression)
-    } else if (id.`type` != syntax_1.Syntax.Identifier && !options.inFor) {
+    } else if (id.`type` != Syntax.Identifier && !options.inFor) {
       this.expect("=")
     }
     this.finalize(node, new Node.VariableDeclarator(id, init))
@@ -1753,7 +1746,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   
   def parseIfClause() = {
     if (this.context.strict && this.matchKeyword("function")) {
-      this.tolerateError(messages_1.Messages.StrictFunction)
+      this.tolerateError(Messages.StrictFunction)
     }
     this.parseStatement()
   }
@@ -1843,8 +1836,8 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         this.context.allowIn = previousAllowIn
         if (declarations.length == 1 && this.matchKeyword("in")) {
           val decl = declarations(0)
-          if (decl.init && (decl.id.`type` == syntax_1.Syntax.ArrayPattern || decl.id.`type` == syntax_1.Syntax.ObjectPattern || this.context.strict)) {
-            this.tolerateError(messages_1.Messages.ForInOfLoopInitializer, "for-in")
+          if (decl.init && (decl.id.`type` == Syntax.ArrayPattern || decl.id.`type` == Syntax.ObjectPattern || this.context.strict)) {
+            this.tolerateError(Messages.ForInOfLoopInitializer, "for-in")
           }
           init = this.finalize(init, new Node.VariableDeclaration(declarations, "var"))
           this.nextToken()
@@ -1903,8 +1896,8 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         init = this.inheritCoverGrammar(this.parseAssignmentExpression)
         this.context.allowIn = previousAllowIn
         if (this.matchKeyword("in")) {
-          if (!this.context.isAssignmentTarget || init.`type` == syntax_1.Syntax.AssignmentExpression) {
-            this.tolerateError(messages_1.Messages.InvalidLHSInForIn)
+          if (!this.context.isAssignmentTarget || init.`type` == Syntax.AssignmentExpression) {
+            this.tolerateError(Messages.InvalidLHSInForIn)
           }
           this.nextToken()
           this.reinterpretExpressionAsPattern(init)
@@ -1912,8 +1905,8 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
           right = this.parseExpression()
           init = null
         } else if (this.matchContextualKeyword("of")) {
-          if (!this.context.isAssignmentTarget || init.`type` == syntax_1.Syntax.AssignmentExpression) {
-            this.tolerateError(messages_1.Messages.InvalidLHSInForLoop)
+          if (!this.context.isAssignmentTarget || init.`type` == Syntax.AssignmentExpression) {
+            this.tolerateError(Messages.InvalidLHSInForLoop)
           }
           this.nextToken()
           this.reinterpretExpressionAsPattern(init)
@@ -1966,12 +1959,12 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       label = id
       val key = "$" + id.name
       if (!Object.prototype.hasOwnProperty.call(this.context.labelSet, key)) {
-        this.throwError(messages_1.Messages.UnknownLabel, id.name)
+        this.throwError(Messages.UnknownLabel, id.name)
       }
     }
     this.consumeSemicolon()
     if (label == null && !this.context.inIteration) {
-      this.throwError(messages_1.Messages.IllegalContinue)
+      this.throwError(Messages.IllegalContinue)
     }
     this.finalize(node, new Node.ContinueStatement(label))
   }
@@ -1984,20 +1977,20 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       val id = this.parseVariableIdentifier()
       val key = "$" + id.name
       if (!Object.prototype.hasOwnProperty.call(this.context.labelSet, key)) {
-        this.throwError(messages_1.Messages.UnknownLabel, id.name)
+        this.throwError(Messages.UnknownLabel, id.name)
       }
       label = id
     }
     this.consumeSemicolon()
     if (label == null && !this.context.inIteration && !this.context.inSwitch) {
-      this.throwError(messages_1.Messages.IllegalBreak)
+      this.throwError(Messages.IllegalBreak)
     }
     this.finalize(node, new Node.BreakStatement(label))
   }
   
   def parseReturnStatement() = {
     if (!this.context.inFunctionBody) {
-      this.tolerateError(messages_1.Messages.IllegalReturn)
+      this.tolerateError(Messages.IllegalReturn)
     }
     val node = this.createNode()
     this.expectKeyword("return")
@@ -2009,7 +2002,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   
   def parseWithStatement() = {
     if (this.context.strict) {
-      this.tolerateError(messages_1.Messages.StrictModeWith)
+      this.tolerateError(Messages.StrictModeWith)
     }
     val node = this.createNode()
     var body = _
@@ -2065,7 +2058,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       val clause = this.parseSwitchCase()
       if (clause.test == null) {
         if (defaultFound) {
-          this.throwError(messages_1.Messages.MultipleDefaultsInSwitch)
+          this.throwError(Messages.MultipleDefaultsInSwitch)
         }
         defaultFound = true
       }
@@ -2080,12 +2073,12 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     val node = this.createNode()
     val expr = this.parseExpression()
     var statement: Any = _
-    if (expr.`type` == syntax_1.Syntax.Identifier && this.`match`(":")) {
+    if (expr.`type` == Syntax.Identifier && this.`match`(":")) {
       this.nextToken()
       val id = expr
       val key = "$" + id.name
       if (Object.prototype.hasOwnProperty.call(this.context.labelSet, key)) {
-        this.throwError(messages_1.Messages.Redeclaration, "Label", id.name)
+        this.throwError(Messages.Redeclaration, "Label", id.name)
       }
       this.context.labelSet(key) = true
       var body = _
@@ -2096,9 +2089,9 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         val token = this.lookahead
         val declaration = this.parseFunctionDeclaration()
         if (this.context.strict) {
-          this.tolerateUnexpectedToken(token, messages_1.Messages.StrictFunction)
+          this.tolerateUnexpectedToken(token, Messages.StrictFunction)
         } else if (declaration.generator) {
-          this.tolerateUnexpectedToken(token, messages_1.Messages.GeneratorInLegacyContext)
+          this.tolerateUnexpectedToken(token, Messages.GeneratorInLegacyContext)
         }
         body = declaration
       } else {
@@ -2117,7 +2110,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     val node = this.createNode()
     this.expectKeyword("throw")
     if (this.hasLineTerminator) {
-      this.throwError(messages_1.Messages.NewlineAfterThrow)
+      this.throwError(Messages.NewlineAfterThrow)
     }
     val argument = this.parseExpression()
     this.consumeSemicolon()
@@ -2137,13 +2130,13 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     for (i <- params) {
       val key = "$" + i.value
       if (Object.prototype.hasOwnProperty.call(paramMap, key)) {
-        this.tolerateError(messages_1.Messages.DuplicateBinding, i.value)
+        this.tolerateError(Messages.DuplicateBinding, i.value)
       }
       paramMap(key) = true
     }
-    if (this.context.strict && param.`type` == syntax_1.Syntax.Identifier) {
+    if (this.context.strict && param.`type` == Syntax.Identifier) {
       if (this.scanner.isRestrictedWord(param.name)) {
-        this.tolerateError(messages_1.Messages.StrictCatchVariable)
+        this.tolerateError(Messages.StrictCatchVariable)
       }
     }
     this.expect(")")
@@ -2163,7 +2156,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     val handler = if (this.matchKeyword("catch")) this.parseCatchClause() else null
     val finalizer = if (this.matchKeyword("finally")) this.parseFinallyClause() else null
     if (!handler && !finalizer) {
-      this.throwError(messages_1.Messages.NoCatchOrFinally)
+      this.throwError(Messages.NoCatchOrFinally)
     }
     this.finalize(node, new Node.TryStatement(block, handler, finalizer))
   }
@@ -2263,22 +2256,22 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     if (this.context.strict) {
       if (this.scanner.isRestrictedWord(name)) {
         options.stricted = param
-        options.message = messages_1.Messages.StrictParamName
+        options.message = Messages.StrictParamName
       }
       if (Object.prototype.hasOwnProperty.call(options.paramSet, key)) {
         options.stricted = param
-        options.message = messages_1.Messages.StrictParamDupe
+        options.message = Messages.StrictParamDupe
       }
     } else if (!options.firstRestricted) {
       if (this.scanner.isRestrictedWord(name)) {
         options.firstRestricted = param
-        options.message = messages_1.Messages.StrictParamName
+        options.message = Messages.StrictParamName
       } else if (this.scanner.isStrictModeReservedWord(name)) {
         options.firstRestricted = param
-        options.message = messages_1.Messages.StrictReservedWord
+        options.message = Messages.StrictReservedWord
       } else if (Object.prototype.hasOwnProperty.call(options.paramSet, key)) {
         options.stricted = param
-        options.message = messages_1.Messages.StrictParamDupe
+        options.message = Messages.StrictParamDupe
       }
     }
     /*istanbul ignore next */
@@ -2299,10 +2292,10 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.expect("...")
     val arg = this.parsePattern(params)
     if (this.`match`("=")) {
-      this.throwError(messages_1.Messages.DefaultRestParameter)
+      this.throwError(Messages.DefaultRestParameter)
     }
     if (!this.`match`(")")) {
-      this.throwError(messages_1.Messages.ParameterAfterRestParameter)
+      this.throwError(Messages.ParameterAfterRestParameter)
     }
     this.finalize(node, new Node.RestElement(arg))
   }
@@ -2378,15 +2371,15 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       id = this.parseVariableIdentifier()
       if (this.context.strict) {
         if (this.scanner.isRestrictedWord(token.value)) {
-          this.tolerateUnexpectedToken(token, messages_1.Messages.StrictFunctionName)
+          this.tolerateUnexpectedToken(token, Messages.StrictFunctionName)
         }
       } else {
         if (this.scanner.isRestrictedWord(token.value)) {
           firstRestricted = token
-          message = messages_1.Messages.StrictFunctionName
+          message = Messages.StrictFunctionName
         } else if (this.scanner.isStrictModeReservedWord(token.value)) {
           firstRestricted = token
-          message = messages_1.Messages.StrictReservedWord
+          message = Messages.StrictReservedWord
         }
       }
     }
@@ -2441,15 +2434,15 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       id = if (!this.context.strict && !isGenerator && this.matchKeyword("yield")) this.parseIdentifierName() else this.parseVariableIdentifier()
       if (this.context.strict) {
         if (this.scanner.isRestrictedWord(token.value)) {
-          this.tolerateUnexpectedToken(token, messages_1.Messages.StrictFunctionName)
+          this.tolerateUnexpectedToken(token, Messages.StrictFunctionName)
         }
       } else {
         if (this.scanner.isRestrictedWord(token.value)) {
           firstRestricted = token
-          message = messages_1.Messages.StrictFunctionName
+          message = Messages.StrictFunctionName
         } else if (this.scanner.isStrictModeReservedWord(token.value)) {
           firstRestricted = token
-          message = messages_1.Messages.StrictReservedWord
+          message = Messages.StrictReservedWord
         }
       }
     }
@@ -2481,7 +2474,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     val token = this.lookahead
     val node = this.createNode()
     val expr = this.parseExpression()
-    val directive = if (expr.`type` == syntax_1.Syntax.Literal) this.getTokenRaw(token).slice(1, -1) else null
+    val directive = if (expr.`type` == Syntax.Literal) this.getTokenRaw(token).slice(1, -1) else null
     this.consumeSemicolon()
     this.finalize(node, if (directive) new Node.Directive(expr, directive) else new Node.ExpressionStatement(expr))
   }
@@ -2503,10 +2496,10 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       if (directive == "use strict") {
         this.context.strict = true
         if (firstRestricted) {
-          this.tolerateUnexpectedToken(firstRestricted, messages_1.Messages.StrictOctalLiteral)
+          this.tolerateUnexpectedToken(firstRestricted, Messages.StrictOctalLiteral)
         }
         if (!this.context.allowStrictDirective) {
-          this.tolerateUnexpectedToken(token, messages_1.Messages.IllegalLanguageModeDirective)
+          this.tolerateUnexpectedToken(token, Messages.IllegalLanguageModeDirective)
         }
       } else {
         if (!firstRestricted && token.octal) {
@@ -2535,7 +2528,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.context.allowYield = !isGenerator
     val formalParameters = this.parseFormalParameters()
     if (formalParameters.params.length > 0) {
-      this.tolerateError(messages_1.Messages.BadGetterArity)
+      this.tolerateError(Messages.BadGetterArity)
     }
     val method = this.parsePropertyMethod(formalParameters)
     this.context.allowYield = previousAllowYield
@@ -2549,9 +2542,9 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.context.allowYield = !isGenerator
     val formalParameters = this.parseFormalParameters()
     if (formalParameters.params.length != 1) {
-      this.tolerateError(messages_1.Messages.BadSetterArity)
+      this.tolerateError(Messages.BadSetterArity)
     } else if (formalParameters.params(0).isInstanceOf[Node.RestElement]) {
-      this.tolerateError(messages_1.Messages.BadSetterRestParameter)
+      this.tolerateError(Messages.BadSetterRestParameter)
     }
     val method = this.parsePropertyMethod(formalParameters)
     this.context.allowYield = previousAllowYield
@@ -2639,7 +2632,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
             if (token.value == "get" || token.value == "set") {
               this.tolerateUnexpectedToken(token)
             } else if (token.value == "constructor") {
-              this.tolerateUnexpectedToken(token, messages_1.Messages.ConstructorIsAsync)
+              this.tolerateUnexpectedToken(token, Messages.ConstructorIsAsync)
             }
           }
         }
@@ -2679,14 +2672,14 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     }
     if (!computed) {
       if (isStatic && this.isPropertyKey(key, "prototype")) {
-        this.throwUnexpectedToken(token, messages_1.Messages.StaticPrototype)
+        this.throwUnexpectedToken(token, Messages.StaticPrototype)
       }
       if (!isStatic && this.isPropertyKey(key, "constructor")) {
         if (kind != "method" || !method || value && value.generator) {
-          this.throwUnexpectedToken(token, messages_1.Messages.ConstructorSpecialMethod)
+          this.throwUnexpectedToken(token, Messages.ConstructorSpecialMethod)
         }
         if (hasConstructor.value) {
-          this.throwUnexpectedToken(token, messages_1.Messages.DuplicateConstructor)
+          this.throwUnexpectedToken(token, Messages.DuplicateConstructor)
         } else {
           hasConstructor.value = true
         }
@@ -2775,7 +2768,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   def parseModuleSpecifier() = {
     val node = this.createNode()
     if (this.lookahead.`type` != 8) {
-      this.throwError(messages_1.Messages.InvalidModuleSpecifier)
+      this.throwError(Messages.InvalidModuleSpecifier)
     }
     val token = this.nextToken()
     val raw = this.getTokenRaw(token)
@@ -2829,7 +2822,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     val node = this.createNode()
     this.expect("*")
     if (!this.matchContextualKeyword("as")) {
-      this.throwError(messages_1.Messages.NoAsAfterImportNamespace)
+      this.throwError(Messages.NoAsAfterImportNamespace)
     }
     this.nextToken()
     val local = this.parseIdentifierName()
@@ -2838,7 +2831,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   
   def parseImportDeclaration() = {
     if (this.context.inFunctionBody) {
-      this.throwError(messages_1.Messages.IllegalImportDeclaration)
+      this.throwError(Messages.IllegalImportDeclaration)
     }
     val node = this.createNode()
     this.expectKeyword("import")
@@ -2873,7 +2866,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         this.throwUnexpectedToken(this.nextToken())
       }
       if (!this.matchContextualKeyword("from")) {
-        val message = if (this.lookahead.value) messages_1.Messages.UnexpectedToken else messages_1.Messages.MissingFromClause
+        val message = if (this.lookahead.value) Messages.UnexpectedToken else Messages.MissingFromClause
         this.throwError(message, this.lookahead.value)
       }
       this.nextToken()
@@ -2896,7 +2889,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   
   def parseExportDeclaration() = {
     if (this.context.inFunctionBody) {
-      this.throwError(messages_1.Messages.IllegalExportDeclaration)
+      this.throwError(Messages.IllegalExportDeclaration)
     }
     val node = this.createNode()
     this.expectKeyword("export")
@@ -2921,7 +2914,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         exportDeclaration = this.finalize(node, new Node.ExportDefaultDeclaration(declaration))
       } else {
         if (this.matchContextualKeyword("from")) {
-          this.throwError(messages_1.Messages.UnexpectedToken, this.lookahead.value)
+          this.throwError(Messages.UnexpectedToken, this.lookahead.value)
         }
         // export default {};
         // export default [];
@@ -2934,7 +2927,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       // export * from 'foo';
       this.nextToken()
       if (!this.matchContextualKeyword("from")) {
-        val message = if (this.lookahead.value) messages_1.Messages.UnexpectedToken else messages_1.Messages.MissingFromClause
+        val message = if (this.lookahead.value) Messages.UnexpectedToken else Messages.MissingFromClause
         this.throwError(message, this.lookahead.value)
       }
       this.nextToken()
@@ -2979,7 +2972,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         this.consumeSemicolon()
       } else if (isExportFromIdentifier) {
         // export {default}; // missing fromClause
-        val message = if (this.lookahead.value) messages_1.Messages.UnexpectedToken else messages_1.Messages.MissingFromClause
+        val message = if (this.lookahead.value) Messages.UnexpectedToken else Messages.MissingFromClause
         this.throwError(message, this.lookahead.value)
       } else {
         // export {foo};
@@ -2992,4 +2985,4 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   
 }
 
-exports.Parser = Parser
+

@@ -4,30 +4,27 @@ scanner.js
 */
 
 package esprima
-"use strict"
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
-val assert_1 = require("./assert")
-val character_1 = require("./character")
-val messages_1 = require("./messages")
 
-def hexValue(ch: String) = {
-  "0123456789abcdef".indexOf(ch.toLowerCase())
+import Scanner._
+object Scanner {
+  def hexValue(ch: String) = {
+    "0123456789abcdef".indexOf(ch.toLowerCase())
+  }
+
+  def octalValue(ch: String) = {
+    "01234567".indexOf(ch)
+  }
 }
 
-def octalValue(ch: String) = {
-  "01234567".indexOf(ch)
-}
-
-class Scanner(code: Array[String], var errorHandler: Any) {
+class Scanner(code: String, var errorHandler: ErrorHandler) {
+  self =>
   var source = code
   var trackComment: Boolean = false
   var isModule: Boolean = false
-  var length: Double = code.length
-  var index: Double = 0
-  var lineNumber: Double = if (code.length > 0) 1 else 0
-  var lineStart: Double = 0
+  var length: Int = code.length
+  var index: Int = 0
+  var lineNumber: Int = if (code.length > 0) 1 else 0
+  var lineStart: Int = 0
   var curlyStack = Array.empty[String]
   def saveState() = {
     new {
@@ -47,15 +44,15 @@ class Scanner(code: Array[String], var errorHandler: Any) {
     this.index >= this.length
   }
   
-  def throwUnexpectedToken(message: Any = messages_1.Messages.UnexpectedTokenIllegal) = {
+  def throwUnexpectedToken(message: Any = Messages.UnexpectedTokenIllegal) = {
     this.errorHandler.throwError(this.index, this.lineNumber, this.index - this.lineStart + 1, message)
   }
   
-  def tolerateUnexpectedToken(message: Any = messages_1.Messages.UnexpectedTokenIllegal) = {
+  def tolerateUnexpectedToken(message: Any = Messages.UnexpectedTokenIllegal) = {
     this.errorHandler.tolerateError(this.index, this.lineNumber, this.index - this.lineStart + 1, message)
   }
   
-  def skipSingleLineComment(offset: Double) = {
+  def skipSingleLineComment(offset: Int) = {
     var comments = Array.empty[Any]
     var start: Double = _
     var loc = new {}
@@ -73,7 +70,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
     while (!this.eof()) {
       val ch = this.source.charCodeAt(this.index)
       this.index += 1
-      if (character_1.Character.isLineTerminator(ch)) {
+      if (Character.isLineTerminator(ch)) {
         if (this.trackComment) {
           loc.end = new {
             var line = this.lineNumber
@@ -120,15 +117,15 @@ class Scanner(code: Array[String], var errorHandler: Any) {
       start = this.index - 2
       loc = new {
         var start = new {
-          var line = this.lineNumber
-          var column = this.index - this.lineStart - 2
+          var line = self.lineNumber
+          var column = self.index - self.lineStart - 2
         }
         var end = new {}
       }
     }
     while (!this.eof()) {
       val ch = this.source.charCodeAt(this.index)
-      if (character_1.Character.isLineTerminator(ch)) {
+      if (Character.isLineTerminator(ch)) {
         if (ch == 0x0D && this.source.charCodeAt(this.index + 1) == 0x0A) {
           this.index += 1
         }
@@ -141,13 +138,13 @@ class Scanner(code: Array[String], var errorHandler: Any) {
           this.index += 2
           if (this.trackComment) {
             loc.end = new {
-              var line = this.lineNumber
-              var column = this.index - this.lineStart
+              var line = self.lineNumber
+              var column = self.index - self.lineStart
             }
             object entry {
               var multiLine = true
-              var slice = Array(start + 2, this.index - 2)
-              var range = Array(start, this.index)
+              var slice = Array(start + 2, self.index - 2)
+              var range = Array(start, self.index)
               var loc = loc
             }
             comments.push(entry)
@@ -162,13 +159,13 @@ class Scanner(code: Array[String], var errorHandler: Any) {
     // Ran off the end of the file - the whole thing is a comment
     if (this.trackComment) {
       loc.end = new {
-        var line = this.lineNumber
-        var column = this.index - this.lineStart
+        var line = self.lineNumber
+        var column = self.index - self.lineStart
       }
       object entry {
         var multiLine = true
-        var slice = Array(start + 2, this.index)
-        var range = Array(start, this.index)
+        var slice = Array(start + 2, self.index)
+        var range = Array(start, self.index)
         var loc = loc
       }
       comments.push(entry)
@@ -185,9 +182,9 @@ class Scanner(code: Array[String], var errorHandler: Any) {
     var start = this.index == 0
     while (!this.eof()) {
       var ch = this.source.charCodeAt(this.index)
-      if (character_1.Character.isWhiteSpace(ch)) {
+      if (Character.isWhiteSpace(ch)) {
         this.index += 1
-      } else if (character_1.Character.isLineTerminator(ch)) {
+      } else if (Character.isLineTerminator(ch)) {
         this.index += 1
         if (ch == 0x0D && this.source.charCodeAt(this.index) == 0x0A) {
           this.index += 1
@@ -304,7 +301,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
     val len = if (prefix == "u") 4 else 2
     var code = 0
     for (i <- 0 until len) {
-      if (!this.eof() && character_1.Character.isHexDigit(this.source.charCodeAt(this.index))) {
+      if (!this.eof() && Character.isHexDigit(this.source.charCodeAt(this.index))) {
         code = code * 16 + hexValue(this.source({
           val temp = this.index
           this.index += 1
@@ -330,7 +327,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
         this.index += 1
         temp
       })
-      if (!character_1.Character.isHexDigit(ch.charCodeAt(0))) {
+      if (!Character.isHexDigit(ch.charCodeAt(0))) {
         /* Unsupported: Break */ break;
       }
       code = code * 16 + hexValue(ch)
@@ -338,7 +335,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
     if (code > 0x10FFFF || ch != "}") {
       this.throwUnexpectedToken()
     }
-    character_1.Character.fromCodePoint(code)
+    Character.fromCodePoint(code)
   }
   
   def getIdentifier() = {
@@ -358,7 +355,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
         this.index = start
         return this.getComplexIdentifier()
       }
-      if (character_1.Character.isIdentifierPart(ch)) {
+      if (Character.isIdentifierPart(ch)) {
         this.index += 1
       } else {
         /* Unsupported: Break */ break;
@@ -369,7 +366,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
   
   def getComplexIdentifier() = {
     var cp = this.codePointAt(this.index)
-    var id = character_1.Character.fromCodePoint(cp)
+    var id = Character.fromCodePoint(cp)
     this.index += id.length
     // '\u' (U+005C, U+0075) denotes an escaped character.
     var ch: String = _
@@ -383,7 +380,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
         ch = this.scanUnicodeCodePointEscape()
       } else {
         ch = this.scanHexEscape("u")
-        if (ch == null || ch == "\\" || !character_1.Character.isIdentifierStart(ch.charCodeAt(0))) {
+        if (ch == null || ch == "\\" || !Character.isIdentifierStart(ch.charCodeAt(0))) {
           this.throwUnexpectedToken()
         }
       }
@@ -391,10 +388,10 @@ class Scanner(code: Array[String], var errorHandler: Any) {
     }
     while (!this.eof()) {
       cp = this.codePointAt(this.index)
-      if (!character_1.Character.isIdentifierPart(cp)) {
+      if (!Character.isIdentifierPart(cp)) {
         /* Unsupported: Break */ break;
       }
-      ch = character_1.Character.fromCodePoint(cp)
+      ch = Character.fromCodePoint(cp)
       id += ch
       this.index += ch.length
       // '\u' (U+005C, U+0075) denotes an escaped character.
@@ -409,7 +406,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
           ch = this.scanUnicodeCodePointEscape()
         } else {
           ch = this.scanHexEscape("u")
-          if (ch == null || ch == "\\" || !character_1.Character.isIdentifierPart(ch.charCodeAt(0))) {
+          if (ch == null || ch == "\\" || !Character.isIdentifierPart(ch.charCodeAt(0))) {
             this.throwUnexpectedToken()
           }
         }
@@ -423,7 +420,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
     // \0 is not octal escape sequence
     var octal = ch != "0"
     var code = octalValue(ch)
-    if (!this.eof() && character_1.Character.isOctalDigit(this.source.charCodeAt(this.index))) {
+    if (!this.eof() && Character.isOctalDigit(this.source.charCodeAt(this.index))) {
       octal = true
       code = code * 8 + octalValue(this.source({
         val temp = this.index
@@ -432,7 +429,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
       }))
       // 3 digits are only allowed when string starts
       // with 0, 1, 2, 3
-      if ("0123".indexOf(ch) >= 0 && !this.eof() && character_1.Character.isOctalDigit(this.source.charCodeAt(this.index))) {
+      if ("0123".indexOf(ch) >= 0 && !this.eof() && Character.isOctalDigit(this.source.charCodeAt(this.index))) {
         code = code * 8 + octalValue(this.source({
           val temp = this.index
           this.index += 1
@@ -467,7 +464,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
     if (`type` != 3 && start + id.length != this.index) {
       val restore = this.index
       this.index = start
-      this.tolerateUnexpectedToken(messages_1.Messages.InvalidEscapedReservedWord)
+      this.tolerateUnexpectedToken(Messages.InvalidEscapedReservedWord)
       this.index = restore
     }
     new {
@@ -543,7 +540,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
   def scanHexLiteral(start: Double) = {
     var num = ""
     while (!this.eof()) {
-      if (!character_1.Character.isHexDigit(this.source.charCodeAt(this.index))) {
+      if (!Character.isHexDigit(this.source.charCodeAt(this.index))) {
         /* Unsupported: Break */ break;
       }
       num += this.source({
@@ -555,7 +552,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
     if (num.length == 0) {
       this.throwUnexpectedToken()
     }
-    if (character_1.Character.isIdentifierStart(this.source.charCodeAt(this.index))) {
+    if (Character.isIdentifierStart(this.source.charCodeAt(this.index))) {
       this.throwUnexpectedToken()
     }
     new {
@@ -589,7 +586,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
     if (!this.eof()) {
       ch = this.source.charCodeAt(this.index)
       /*istanbul ignore else */
-      if (character_1.Character.isIdentifierStart(ch) || character_1.Character.isDecimalDigit(ch)) {
+      if (Character.isIdentifierStart(ch) || Character.isDecimalDigit(ch)) {
         this.throwUnexpectedToken()
       }
     }
@@ -606,7 +603,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
   def scanOctalLiteral(prefix: String, start: Double) = {
     var num = ""
     var octal = false
-    if (character_1.Character.isOctalDigit(prefix.charCodeAt(0))) {
+    if (Character.isOctalDigit(prefix.charCodeAt(0))) {
       octal = true
       num = "0" + this.source({
         val temp = this.index
@@ -617,7 +614,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
       this.index += 1
     }
     while (!this.eof()) {
-      if (!character_1.Character.isOctalDigit(this.source.charCodeAt(this.index))) {
+      if (!Character.isOctalDigit(this.source.charCodeAt(this.index))) {
         /* Unsupported: Break */ break;
       }
       num += this.source({
@@ -630,7 +627,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
       // only 0o or 0O
       this.throwUnexpectedToken()
     }
-    if (character_1.Character.isIdentifierStart(this.source.charCodeAt(this.index)) || character_1.Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
+    if (Character.isIdentifierStart(this.source.charCodeAt(this.index)) || Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
       this.throwUnexpectedToken()
     }
     new {
@@ -652,7 +649,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
       if (ch == "8" || ch == "9") {
         return false
       }
-      if (!character_1.Character.isOctalDigit(ch.charCodeAt(0))) {
+      if (!Character.isOctalDigit(ch.charCodeAt(0))) {
         return true
       }
     }
@@ -662,7 +659,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
   def scanNumericLiteral() = {
     val start = this.index
     var ch = this.source(start)
-    assert_1.assert(character_1.Character.isDecimalDigit(ch.charCodeAt(0)) || ch == ".", "Numeric literal must start with a decimal digit or a decimal point")
+    assert(Character.isDecimalDigit(ch.charCodeAt(0)) || ch == ".", "Numeric literal must start with a decimal digit or a decimal point")
     var num = ""
     if (ch != ".") {
       num = this.source({
@@ -687,13 +684,13 @@ class Scanner(code: Array[String], var errorHandler: Any) {
         if (ch == "o" || ch == "O") {
           return this.scanOctalLiteral(ch, start)
         }
-        if (ch && character_1.Character.isOctalDigit(ch.charCodeAt(0))) {
+        if (ch && Character.isOctalDigit(ch.charCodeAt(0))) {
           if (this.isImplicitOctalLiteral()) {
             return this.scanOctalLiteral(ch, start)
           }
         }
       }
-      while (character_1.Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
+      while (Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
         num += this.source({
           val temp = this.index
           this.index += 1
@@ -708,7 +705,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
         this.index += 1
         temp
       })
-      while (character_1.Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
+      while (Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
         num += this.source({
           val temp = this.index
           this.index += 1
@@ -731,8 +728,8 @@ class Scanner(code: Array[String], var errorHandler: Any) {
           temp
         })
       }
-      if (character_1.Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
-        while (character_1.Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
+      if (Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
+        while (Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
           num += this.source({
             val temp = this.index
             this.index += 1
@@ -743,7 +740,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
         this.throwUnexpectedToken()
       }
     }
-    if (character_1.Character.isIdentifierStart(this.source.charCodeAt(this.index))) {
+    if (Character.isIdentifierStart(this.source.charCodeAt(this.index))) {
       this.throwUnexpectedToken()
     }
     new {
@@ -759,7 +756,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
   def scanStringLiteral() = {
     val start = this.index
     var quote = this.source(start)
-    assert_1.assert(quote == "\'" || quote == "\"", "String literal must starts with a quote")
+    assert(quote == "\'" || quote == "\"", "String literal must starts with a quote")
     this.index += 1
     var octal = false
     var str = ""
@@ -778,7 +775,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
           this.index += 1
           temp
         })
-        if (!ch || !character_1.Character.isLineTerminator(ch.charCodeAt(0))) {
+        if (!ch || !Character.isLineTerminator(ch.charCodeAt(0))) {
           ch match {
             case "u" =>
               if (this.source(this.index) == "{") {
@@ -794,7 +791,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
             case "x" =>
               val unescaped = this.scanHexEscape(ch)
               if (unescaped == null) {
-                this.throwUnexpectedToken(messages_1.Messages.InvalidHexEscapeSequence)
+                this.throwUnexpectedToken(Messages.InvalidHexEscapeSequence)
               }
               str += unescaped
             case "n" =>
@@ -813,7 +810,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
               str += ch
               this.tolerateUnexpectedToken()
             case _ =>
-              if (ch && character_1.Character.isOctalDigit(ch.charCodeAt(0))) {
+              if (ch && Character.isOctalDigit(ch.charCodeAt(0))) {
                 val octToDec = this.octalToDecimal(ch)
                 octal = octToDec.octal || octal
                 str += String.fromCharCode(octToDec.code)
@@ -828,7 +825,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
           }
           this.lineStart = this.index
         }
-      } else if (character_1.Character.isLineTerminator(ch.charCodeAt(0))) {
+      } else if (Character.isLineTerminator(ch.charCodeAt(0))) {
         /* Unsupported: Break */ break;
       } else {
         str += ch
@@ -882,7 +879,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
           this.index += 1
           temp
         })
-        if (!character_1.Character.isLineTerminator(ch.charCodeAt(0))) {
+        if (!Character.isLineTerminator(ch.charCodeAt(0))) {
           ch match {
             case "n" =>
               cooked += "\n"
@@ -907,7 +904,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
             case "x" =>
               val unescaped = this.scanHexEscape(ch)
               if (unescaped == null) {
-                this.throwUnexpectedToken(messages_1.Messages.InvalidHexEscapeSequence)
+                this.throwUnexpectedToken(Messages.InvalidHexEscapeSequence)
               }
               cooked += unescaped
             case "b" =>
@@ -918,14 +915,14 @@ class Scanner(code: Array[String], var errorHandler: Any) {
               cooked += "\013"
             case _ =>
               if (ch == "0") {
-                if (character_1.Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
+                if (Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
                   // Illegal: \01 \02 and so on
-                  this.throwUnexpectedToken(messages_1.Messages.TemplateOctalLiteral)
+                  this.throwUnexpectedToken(Messages.TemplateOctalLiteral)
                 }
                 cooked += "\00"
-              } else if (character_1.Character.isOctalDigit(ch.charCodeAt(0))) {
+              } else if (Character.isOctalDigit(ch.charCodeAt(0))) {
                 // Illegal: \1 \2
-                this.throwUnexpectedToken(messages_1.Messages.TemplateOctalLiteral)
+                this.throwUnexpectedToken(Messages.TemplateOctalLiteral)
               } else {
                 cooked += ch
               }
@@ -937,7 +934,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
           }
           this.lineStart = this.index
         }
-      } else if (character_1.Character.isLineTerminator(ch.charCodeAt(0))) {
+      } else if (Character.isLineTerminator(ch.charCodeAt(0))) {
         this.lineNumber += 1
         if (ch == "\r" && this.source(this.index) == "\n") {
           this.index += 1
@@ -981,7 +978,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
       tmp = tmp.replace("/\\u\{([0-9a-fA-F]+)\}|\\u([a-fA-F0-9]{4})/g".r, ($0, $1, $2) => {
         val codePoint = parseInt($1 || $2, 16)
         if (codePoint > 0x10FFFF) {
-          self.throwUnexpectedToken(messages_1.Messages.InvalidRegExp)
+          self.throwUnexpectedToken(Messages.InvalidRegExp)
         }
         if (codePoint <= 0xFFFF) {
           return String.fromCharCode(codePoint)
@@ -995,7 +992,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
       RegExp(tmp)
     } catch {
       case e =>
-        this.throwUnexpectedToken(messages_1.Messages.InvalidRegExp)
+        this.throwUnexpectedToken(Messages.InvalidRegExp)
     }
     // Return a regular expression object for this pattern-flag pair, or
     // `null` in case the current environment doesn't support the flags it
@@ -1011,7 +1008,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
   
   def scanRegExpBody() = {
     var ch = this.source(this.index)
-    assert_1.assert(ch == "/", "Regular expression literal must start with a slash")
+    assert(ch == "/", "Regular expression literal must start with a slash")
     var str = this.source({
       val temp = this.index
       this.index += 1
@@ -1033,12 +1030,12 @@ class Scanner(code: Array[String], var errorHandler: Any) {
           temp
         })
         // https://tc39.github.io/ecma262/#sec-literals-regular-expression-literals
-        if (character_1.Character.isLineTerminator(ch.charCodeAt(0))) {
-          this.throwUnexpectedToken(messages_1.Messages.UnterminatedRegExp)
+        if (Character.isLineTerminator(ch.charCodeAt(0))) {
+          this.throwUnexpectedToken(Messages.UnterminatedRegExp)
         }
         str += ch
-      } else if (character_1.Character.isLineTerminator(ch.charCodeAt(0))) {
-        this.throwUnexpectedToken(messages_1.Messages.UnterminatedRegExp)
+      } else if (Character.isLineTerminator(ch.charCodeAt(0))) {
+        this.throwUnexpectedToken(Messages.UnterminatedRegExp)
       } else if (classMarker) {
         if (ch == "]") {
           classMarker = false
@@ -1053,7 +1050,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
       }
     }
     if (!terminated) {
-      this.throwUnexpectedToken(messages_1.Messages.UnterminatedRegExp)
+      this.throwUnexpectedToken(Messages.UnterminatedRegExp)
     }
     // Exclude leading and trailing slash.
     str.substr(1, str.length - 2)
@@ -1064,7 +1061,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
     var flags = ""
     while (!this.eof()) {
       var ch = this.source(this.index)
-      if (!character_1.Character.isIdentifierPart(ch.charCodeAt(0))) {
+      if (!Character.isIdentifierPart(ch.charCodeAt(0))) {
         /* Unsupported: Break */ break;
       }
       this.index += 1
@@ -1131,7 +1128,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
       }
     }
     val cp = this.source.charCodeAt(this.index)
-    if (character_1.Character.isIdentifierStart(cp)) {
+    if (Character.isIdentifierStart(cp)) {
       return this.scanIdentifier()
     }
     // Very common: ( and ) and ;
@@ -1145,12 +1142,12 @@ class Scanner(code: Array[String], var errorHandler: Any) {
     // Dot (.) U+002E can also start a floating-point number, hence the need
     // to check the next character.
     if (cp == 0x2E) {
-      if (character_1.Character.isDecimalDigit(this.source.charCodeAt(this.index + 1))) {
+      if (Character.isDecimalDigit(this.source.charCodeAt(this.index + 1))) {
         return this.scanNumericLiteral()
       }
       return this.scanPunctuator()
     }
-    if (character_1.Character.isDecimalDigit(cp)) {
+    if (Character.isDecimalDigit(cp)) {
       return this.scanNumericLiteral()
     }
     // Template literals start with ` (U+0060) for template head
@@ -1160,7 +1157,7 @@ class Scanner(code: Array[String], var errorHandler: Any) {
     }
     // Possible identifier start in a surrogate pair.
     if (cp >= 0xD800 && cp < 0xDFFF) {
-      if (character_1.Character.isIdentifierStart(this.codePointAt(this.index))) {
+      if (Character.isIdentifierStart(this.codePointAt(this.index))) {
         return this.scanIdentifier()
       }
     }
@@ -1169,4 +1166,4 @@ class Scanner(code: Array[String], var errorHandler: Any) {
   
 }
 
-exports.Scanner = Scanner
+

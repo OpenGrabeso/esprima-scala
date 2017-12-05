@@ -4,10 +4,6 @@ comment-handler.js
 */
 
 package esprima
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
-val syntax_1 = require("./syntax")
 
 class CommentHandler() {
   var attach: Boolean = false
@@ -18,7 +14,7 @@ class CommentHandler() {
   def insertInnerComments(node: Any, metadata: Any) = {
     //  innnerComments for properties empty block
     //  `function a() {/** comments **\/}`
-    if (node.`type` == syntax_1.Syntax.BlockStatement && node.body.length == 0) {
+    if (node.`type` == Syntax.BlockStatement && node.body.length == 0) {
       val innerComments = Array.empty[Unit]
       for (i <- this.leading.length - 1 to 0 by -1) {
         val entry = this.leading(i)
@@ -94,7 +90,7 @@ class CommentHandler() {
   }
   
   def visitNode(node: Any, metadata: Any) = {
-    if (node.`type` == syntax_1.Syntax.Program && node.body.length > 0) {
+    if (node.`type` == Syntax.Program && node.body.length > 0) {
       return
     }
     this.insertInnerComments(node, metadata)
@@ -155,4 +151,3 @@ class CommentHandler() {
   
 }
 
-exports.CommentHandler = CommentHandler

@@ -4,11 +4,6 @@ error-handler.js
 */
 
 package esprima
-"use strict"
-/*tslint:disable:max-classes-per-file */
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
 
 class ErrorHandler() {
   var errors = Array.empty[Error]
@@ -17,7 +12,7 @@ class ErrorHandler() {
     this.errors.push(error)
   }
   
-  def tolerate(error: Error) = {
+  def tolerate(error: Throwable) = {
     if (this.tolerant) {
       this.recordError(error)
     } else {
@@ -66,5 +61,3 @@ class ErrorHandler() {
   }
   
 }
-
-exports.ErrorHandler = ErrorHandler

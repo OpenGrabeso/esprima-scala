@@ -4,11 +4,8 @@ syntax.js
 */
 
 package esprima
-"use strict"
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
-exports.Syntax = new {
+
+object Syntax {
   var AssignmentExpression = "AssignmentExpression"
   var AssignmentPattern = "AssignmentPattern"
   var ArrayExpression = "ArrayExpression"

@@ -4,18 +4,11 @@ tokenizer.js
 */
 
 package esprima
-"use strict"
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
-val error_handler_1 = require("./error-handler")
-val scanner_1 = require("./scanner")
-val token_1 = require("./token")
 
 class Reader() {
-  var paren: Double = _
+  var paren: Int = -1
   var values = Array.empty[String]
-  var curly: Double = paren = -1
+  var curly: Int = paren
   def beforeFunctionExpression(t: String) = {
     Array("(", "{", "[", "in", "typeof", "instanceof", "new", "return", "case", "delete", "throw", "void", // assignment operators
     "=", "+=", "-=", "*=", "**=", "/=", "%=", "<<=", ">>=", ">>>=", "&=", "|=", "^=", ",", // binary/unary operators
@@ -64,13 +57,13 @@ class Reader() {
   
 }
 
-class Tokenizer(code: Any, config: ErrorHandler) {
-  var errorHandler: ErrorHandler = new error_handler_1.ErrorHandler()
-  errorHandler.tolerant = if (config) config.tolerant.getClass == "boolean" && config.tolerant else false
-  var scanner: Scanner = new scanner_1.Scanner(code, this.errorHandler)
-  scanner.trackComment = if (config) config.comment.getClass == "boolean" && config.comment else false
-  var trackRange: Boolean = if (config) config.range.getClass == "boolean" && config.range else false
-  var trackLoc: Boolean = if (config) config.loc.getClass == "boolean" && config.loc else false
+class Tokenizer(code: String, config: Any) {
+  var errorHandler: ErrorHandler = new ErrorHandler()
+  errorHandler.tolerant = config.tolerant
+  var scanner: Scanner = new Scanner(code, this.errorHandler)
+  scanner.trackComment = config.comment
+  var trackRange: Boolean = config.range
+  var trackLoc: Boolean = config.loc
   var buffer = Array.empty[Any]
   var reader: Reader = new Reader()
   def errors() = {
@@ -123,7 +116,7 @@ class Tokenizer(code: Any, config: ErrorHandler) {
         }
         this.reader.push(token)
         object entry {
-          var `type` = token_1.TokenName(token.`type`)
+          var `type` = TokenName(token.`type`)
           var value = this.scanner.source.slice(token.start, token.end)
         }
         if (this.trackRange) {
@@ -151,5 +144,3 @@ class Tokenizer(code: Any, config: ErrorHandler) {
   }
   
 }
-
-exports.Tokenizer = Tokenizer
