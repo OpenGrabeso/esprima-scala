@@ -30,17 +30,18 @@ object Scanner {
   trait Position {
     def line: Int
     def column: Int
+    def offset: Int = ???
   }
 
   trait SourceLocation {
     var start: Position
     var end: Position
-    def source: String = _
+    var source: String = _
   }
 
   trait Comment {
-    def multiLine: Boolean
-    def slice: Array[Int]
+    def multiLine: Boolean = ???
+    def slice: Array[Int] = ???
     def range: (Int, Int)
     def loc: SourceLocation
   }
@@ -80,15 +81,15 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
   var lineNumber: Int = if (code.length > 0) 1 else 0
   var lineStart: Int = 0
   var curlyStack = ArrayBuffer.empty[String]
-  def saveState() = {
-    new RawToken {
+  def saveState(): ScannerState = {
+    new ScannerState {
       var index = this.index
-      override var lineNumber = this.lineNumber
-      override var lineStart = this.lineStart
+      var lineNumber = this.lineNumber
+      var lineStart = this.lineStart
     }
   }
   
-  def restoreState(state: Scanner) = {
+  def restoreState(state: ScannerState) = {
     this.index = state.index
     this.lineNumber = state.lineNumber
     this.lineStart = state.lineStart
