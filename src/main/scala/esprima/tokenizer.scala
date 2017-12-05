@@ -94,7 +94,7 @@ class Tokenizer(code: String, config: Any) {
         if (this.trackLoc) {
           loc = new {
             var start = new {
-              var line = this.scanner.lineNumber
+              override def line = self.scanner.lineNumber
               var column = this.scanner.index - this.scanner.lineStart
             }
             var end = new {}
@@ -124,7 +124,7 @@ class Tokenizer(code: String, config: Any) {
         }
         if (this.trackLoc) {
           loc.end = new {
-            var line = this.scanner.lineNumber
+            override def line = self.scanner.lineNumber
             var column = this.scanner.index - this.scanner.lineStart
           }
           entry.loc = loc

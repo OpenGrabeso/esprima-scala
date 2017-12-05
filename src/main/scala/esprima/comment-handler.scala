@@ -89,7 +89,7 @@ class CommentHandler() {
     leadingComments
   }
   
-  def visitNode(node: Any, metadata: Any) = {
+  def visitNode(node: Node, metadata: Any) = {
     if (node.`type` == Syntax.Program && node.body.length > 0) {
       return
     }
@@ -108,7 +108,7 @@ class CommentHandler() {
     })
   }
   
-  def visitComment(node: Any, metadata: Any) = {
+  def visitComment(node: Node, metadata: Any) = {
     val `type` = if (node.`type`(0) == "L") "Line" else "Block"
     object comment {
       var `type` = `type`

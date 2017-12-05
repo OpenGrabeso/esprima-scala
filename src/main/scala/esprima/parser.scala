@@ -27,11 +27,11 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   var scanner: Scanner = new Scanner(code, this.errorHandler)
   scanner.trackComment = config.comment
   var operatorPrecedence = new {
-    var ) = 0
-    var ; = 0
-    var , = 0
-    var = = 0
-    var ] = 0
+    var `)` = 0
+    var `;` = 0
+    var `,` = 0
+    var `=` = 0
+    var `]` = 0
     var || = 1
     var && = 2
     var | = 3
@@ -95,9 +95,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     var line = scanner.lineNumber
     var column = scanner.index - scanner.lineStart
   }
-  def throwError(messageFormat: Any, /* Unsupported: Expansion */ ...
-  : Any) = {
-    val args = Array.prototype.slice.call(arguments, 1)
+  def throwError(messageFormat: Any, args: String*) = {
     val msg = messageFormat.replace("/%(\d)/g".r, (whole, idx) => {
       assert(idx < args.length, "Message reference must be in range")
       args(idx)
@@ -109,9 +107,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     throw this.errorHandler.createError(index, line, column, msg)
   }
   
-  def tolerateError(messageFormat: Any, /* Unsupported: Expansion */ ...
-  : Any) = {
-    val args = Array.prototype.slice.call(arguments, 1)
+  def tolerateError(messageFormat: Any, args: String*) = {
     val msg = messageFormat.replace("/%(\d)/g".r, (whole, idx) => {
       assert(idx < args.length, "Message reference must be in range")
       args(idx)
@@ -214,11 +210,11 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     if (this.config.loc) {
       t.loc = new {
         var start = new {
-          var line = this.startMarker.line
+          override def line = self.startMarker.line
           var column = this.startMarker.column
         }
         var end = new {
-          var line = this.scanner.lineNumber
+          override def line = self.scanner.lineNumber
           var column = this.scanner.index - this.scanner.lineStart
         }
       }
@@ -277,7 +273,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   def createNode() = {
     new {
       var index = this.startMarker.index
-      var line = this.startMarker.line
+      override def line = self.startMarker.line
       var column = this.startMarker.column
     }
   }
@@ -307,7 +303,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
           var column = marker.column
         }
         var end = new {
-          var line = this.lastMarker.line
+          override def line = self.lastMarker.line
           var column = this.lastMarker.column
         }
       }
@@ -323,7 +319,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
           var offset = marker.index
         }
         var end = new {
-          var line = this.lastMarker.line
+          override def line = self.lastMarker.line
           var column = this.lastMarker.column
           var offset = this.lastMarker.index
         }

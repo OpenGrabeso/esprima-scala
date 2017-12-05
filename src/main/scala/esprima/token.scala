@@ -22,3 +22,17 @@ object TokenName {
   def apply(i: Int) = a.apply(i)
 }
 
+object Token extends Enumeration {
+  type Token = Value
+
+  val BooleanLiteral,
+  EOF,
+  Identifier,
+  Keyword,
+  NullLiteral,
+  NumericLiteral,
+  Punctuator,
+  StringLiteral,
+  RegularExpression,
+  Template = Value
+}

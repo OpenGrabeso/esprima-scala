@@ -30,8 +30,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-def parse(code: Any, options: Script, delegate: (Unit, Unit) => Any) = {
-  var commentHandler = null
+def parse(code: Any, options: AnyRef, delegate: (Unit, Unit) => Any) = {
+  var commentHandler: CommentHandler = null
   val proxyDelegate = (node, metadata) => {
     if (delegate) {
       delegate(node, metadata)
@@ -40,7 +40,7 @@ def parse(code: Any, options: Script, delegate: (Unit, Unit) => Any) = {
       commentHandler.visit(node, metadata)
     }
   }
-  var parserDelegate = if (delegate.getClass == "function") proxyDelegate else null
+  var parserDelegate = if (delegate != null) proxyDelegate else null
   var collectComment = false
   if (options) {
     collectComment = options.comment.getClass == "boolean" && options.comment
@@ -52,10 +52,8 @@ def parse(code: Any, options: Script, delegate: (Unit, Unit) => Any) = {
       parserDelegate = proxyDelegate
     }
   }
-  var isModule = false
-  if (options && options.sourceType.getClass == "string") {
-    isModule = options.sourceType == "module"
-  }
+  var isModule = options.sourceType == "module"
+
   var parser = new Parser(code, options, parserDelegate)
   val program = if (isModule) parser.parseModule() else parser.parseScript()
   val ast = program
@@ -77,13 +75,13 @@ def parseModule(code: Any, options: Any, delegate: (Unit, Unit) => Any) = {
   parse(code, parsingOptions, delegate)
 }
 
-def parseScript(code: Any, options: Any, delegate: (Unit, Unit) => Any) = {
+def parseScript(code: String, options: Any, delegate: (Unit, Unit) => Any) = {
   val parsingOptions = options || new {}
   parsingOptions.sourceType = "script"
   parse(code, parsingOptions, delegate)
 }
 
-def tokenize(code: Any, options: Any, delegate: (Unit) => Any) = {
+def tokenize(code: String, options: Any, delegate: (Unit) => Any) = {
   val tokenizer = new Tokenizer(code, options)
   val tokens = Array.empty[Unit]
   try {

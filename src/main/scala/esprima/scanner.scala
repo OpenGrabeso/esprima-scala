@@ -4,18 +4,72 @@ scanner.js
 */
 
 package esprima
-
+import port.RegExp
+import Token._
 import Scanner._
+
+import scala.collection.mutable.ArrayBuffer
+
 object Scanner {
-  def hexValue(ch: String) = {
-    "0123456789abcdef".indexOf(ch.toLowerCase())
+  def hexValue(ch: Int): Int = {
+    "0123456789abcdef".indexOf(ch)
   }
 
-  def octalValue(ch: String) = {
+  def octalValue(ch: Int): Int = {
     "01234567".indexOf(ch)
   }
+
+  def hexValue(ch: String): Int = {
+    "0123456789abcdef".indexOf(ch)
+  }
+
+  def octalValue(ch: String): Int = {
+    "01234567".indexOf(ch)
+  }
+
+  trait Position {
+    def line: Int
+    def column: Int
+  }
+
+  trait SourceLocation {
+    var start: Position
+    var end: Position
+    def source: String = _
+  }
+
+  trait Comment {
+    def multiLine: Boolean
+    def slice: Array[Int]
+    def range: (Int, Int)
+    def loc: SourceLocation
+  }
+
+  trait RawToken {
+    def `type`: Int = _
+    def value: Any  = _// String | Int
+    def pattern: String = _ // UndefOr
+    def flags: String = _ // UndefOr
+    def regex: RegExp = _ // UndefOr
+    def octal: Boolean = _ // UndefOr
+    def cooked: String = _ // UndefOr
+    def head: Boolean = _ // UndefOr
+    def tail: Boolean = _ // UndefOr
+    def lineNumber: Int = _
+    def lineStart: Int = _
+    def start: Int = _
+    def end: Int = _
+  }
+
+  trait ScannerState {
+    def index: Int
+    def lineNumber: Int
+    def lineStart: Int
+  }
+
 }
 
+//noinspection ComparingUnrelatedTypes,RemoveRedundantReturn
 class Scanner(code: String, var errorHandler: ErrorHandler) {
   self =>
   var source = code
@@ -25,12 +79,12 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
   var index: Int = 0
   var lineNumber: Int = if (code.length > 0) 1 else 0
   var lineStart: Int = 0
-  var curlyStack = Array.empty[String]
+  var curlyStack = ArrayBuffer.empty[String]
   def saveState() = {
-    new {
+    new RawToken {
       var index = this.index
-      var lineNumber = this.lineNumber
-      var lineStart = this.lineStart
+      override var lineNumber = this.lineNumber
+      override var lineStart = this.lineStart
     }
   }
   
@@ -52,17 +106,17 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     this.errorHandler.tolerateError(this.index, this.lineNumber, this.index - this.lineStart + 1, message)
   }
   
-  def skipSingleLineComment(offset: Int) = {
-    var comments = Array.empty[Any]
-    var start: Double = _
-    var loc = new {}
+  def skipSingleLineComment(offset: Int): Array[Comment] = {
+    var comments: ArrayBuffer[Comment] = null
+    var start: Int = -1
+    var loc: SourceLocation = null
     if (this.trackComment) {
-      comments = Array()
+      comments = ArrayBuffer()
       start = this.index - offset
-      loc = new {
-        var start = new {
-          var line = this.lineNumber
-          var column = this.index - this.lineStart - offset
+      loc = new SourceLocation {
+        var start = new RawToken {
+          var line = self.lineNumber
+          var column = self.index - self.lineStart - offset
         }
         var end = new {}
       }
@@ -72,14 +126,14 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.index += 1
       if (Character.isLineTerminator(ch)) {
         if (this.trackComment) {
-          loc.end = new {
-            var line = this.lineNumber
-            var column = this.index - this.lineStart - 1
+          loc.end = new Position {
+            override def line = self.lineNumber
+            override def column = self.index - self.lineStart - 1
           }
-          object entry {
+          object entry extends Comment {
             var multiLine = false
-            var slice = Array(start + offset, this.index - 1)
-            var range = Array(start, this.index - 1)
+            var slice = Array(start + offset, self.index - 1)
+            var range = Array(start, self.index - 1)
             var loc = loc
           }
           comments.push(entry)
@@ -93,14 +147,14 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       }
     }
     if (this.trackComment) {
-      loc.end = new {
-        var line = this.lineNumber
-        var column = this.index - this.lineStart
+      loc.end = new Position {
+        override def line = self.lineNumber
+        override def column = self.index - self.lineStart
       }
-      object entry {
+      object entry extends Comment {
         var multiLine = false
-        var slice = Array(start + offset, this.index)
-        var range = Array(start, this.index)
+        var slice = Array(start + offset, self.index)
+        var range = Array(start, self.index)
         var loc = loc
       }
       comments.push(entry)
@@ -108,17 +162,17 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     comments
   }
   
-  def skipMultiLineComment() = {
-    var comments = Array.empty[Any]
-    var start: Double = _
-    var loc = new {}
+  def skipMultiLineComment(): Array[Comment] = {
+    var comments: ArrayBuffer[Comment] = null
+    var start: Int = -1
+    var loc: SourceLocation = null
     if (this.trackComment) {
-      comments = Array()
+      comments = ArrayBuffer()
       start = this.index - 2
-      loc = new {
-        var start = new {
-          var line = self.lineNumber
-          var column = self.index - self.lineStart - 2
+      loc = new SourceLocation {
+        var start = new Position {
+          override def line = self.lineNumber
+          override def column = self.index - self.lineStart - 2
         }
         var end = new {}
       }
@@ -137,11 +191,11 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         if (this.source.charCodeAt(this.index + 1) == 0x2F) {
           this.index += 2
           if (this.trackComment) {
-            loc.end = new {
-              var line = self.lineNumber
-              var column = self.index - self.lineStart
+            loc.end = new Position{
+              override def line = self.lineNumber
+              override def column = self.index - self.lineStart
             }
-            object entry {
+            object entry extends Comment {
               var multiLine = true
               var slice = Array(start + 2, self.index - 2)
               var range = Array(start, self.index)
@@ -158,11 +212,11 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
     // Ran off the end of the file - the whole thing is a comment
     if (this.trackComment) {
-      loc.end = new {
-        var line = self.lineNumber
-        var column = self.index - self.lineStart
+      loc.end = new Position {
+        override def line = self.lineNumber
+        override def column = self.index - self.lineStart
       }
-      object entry {
+      object entry extends Comment {
         var multiLine = true
         var slice = Array(start + 2, self.index)
         var range = Array(start, self.index)
@@ -175,9 +229,9 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
   }
   
   def scanComments() = {
-    var comments = Array.empty[Unit]
+    var comments: ArrayBuffer[Comment] = null
     if (this.trackComment) {
-      comments = Array()
+      comments = ArrayBuffer()
     }
     var start = this.index == 0
     while (!this.eof()) {
@@ -240,7 +294,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     comments
   }
   
-  def isFutureReservedWord(id: String) = {
+  def isFutureReservedWord(id: String): Boolean = {
     id match {
       case "enum" | "export" | "import" | "super" =>
         return true
@@ -249,7 +303,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
   }
   
-  def isStrictModeReservedWord(id: String) = {
+  def isStrictModeReservedWord(id: String): Boolean = {
     id match {
       case "implements" | "interface" | "package" | "private" | "protected" | "public" | "static" | "yield" | "let" =>
         return true
@@ -262,7 +316,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     id == "eval" || id == "arguments"
   }
   
-  def isKeyword(id: String) = {
+  def isKeyword(id: String): Boolean = {
     id.length match {
       case 2 =>
         return id == "if" || id == "in" || id == "do"
@@ -285,10 +339,10 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
   }
   
-  def codePointAt(i: Double) = {
-    var cp = this.source.charCodeAt(i)
+  def codePointAt(i: Int) = {
+    var cp: Int = this.source.charCodeAt(i)
     if (cp >= 0xD800 && cp <= 0xDBFF) {
-      val second = this.source.charCodeAt(i + 1)
+      val second: Int = this.source.charCodeAt(i + 1)
       if (second >= 0xDC00 && second <= 0xDFFF) {
         val first = cp
         cp = (first - 0xD800) * 0x400 + second - 0xDC00 + 0x10000
@@ -297,7 +351,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     cp
   }
   
-  def scanHexEscape(prefix: String) = {
+  def scanHexEscape(prefix: String): String = {
     val len = if (prefix == "u") 4 else 2
     var code = 0
     for (i <- 0 until len) {
@@ -306,19 +360,19 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
           val temp = this.index
           this.index += 1
           temp
-        }))
+        }).toString)
       } else {
         return null
       }
     }
-    String.fromCharCode(code)
+    fromCharCode(code)
   }
   
-  def scanUnicodeCodePointEscape() = {
+  def scanUnicodeCodePointEscape(): String = {
     var ch = this.source(this.index)
     var code = 0
     // At least, one hex digit is required.
-    if (ch == "}") {
+    if (ch.toString == "}") {
       this.throwUnexpectedToken()
     }
     while (!this.eof()) {
@@ -327,18 +381,18 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         this.index += 1
         temp
       })
-      if (!Character.isHexDigit(ch.charCodeAt(0))) {
+      if (!Character.isHexDigit(ch)) {
         /* Unsupported: Break */ break;
       }
       code = code * 16 + hexValue(ch)
     }
-    if (code > 0x10FFFF || ch != "}") {
+    if (code > 0x10FFFF || ch.toString != "}") {
       this.throwUnexpectedToken()
     }
     Character.fromCodePoint(code)
   }
   
-  def getIdentifier() = {
+  def getIdentifier(): String = {
     val start = {
       val temp = this.index
       this.index += 1
@@ -364,7 +418,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     this.source.slice(start, this.index)
   }
   
-  def getComplexIdentifier() = {
+  def getComplexIdentifier(): String = {
     var cp = this.codePointAt(this.index)
     var id = Character.fromCodePoint(cp)
     this.index += id.length
@@ -375,7 +429,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         this.throwUnexpectedToken()
       }
       this.index += 1
-      if (this.source(this.index) == "{") {
+      if (this.source(this.index).toString == "{") {
         this.index += 1
         ch = this.scanUnicodeCodePointEscape()
       } else {
@@ -419,7 +473,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
   def octalToDecimal(ch: String) = {
     // \0 is not octal escape sequence
     var octal = ch != "0"
-    var code = octalValue(ch)
+    var code = octalValue(ch(0))
     if (!this.eof() && Character.isOctalDigit(this.source.charCodeAt(this.index))) {
       octal = true
       code = code * 8 + octalValue(this.source({
@@ -444,7 +498,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
   }
   
   def scanIdentifier() = {
-    var `type`: Double = _
+    var `type`: Int = -1
     val start = this.index
     // Backslash (U+005C) starts an escaped character.
     val id = if (this.source.charCodeAt(start) == 0x5C) this.getComplexIdentifier() else this.getIdentifier()
@@ -467,20 +521,20 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.tolerateUnexpectedToken(Messages.InvalidEscapedReservedWord)
       this.index = restore
     }
-    new {
-      var `type` = `type`
-      var value = id
-      var lineNumber = this.lineNumber
-      var lineStart = this.lineStart
-      var start = start
-      var end = this.index
+    new RawToken {
+      override def `type` = `type`
+      override def value = id
+      override def lineNumber = self.lineNumber
+      override def lineStart = self.lineStart
+      override def start = start
+      override def end = self.index
     }
   }
   
   def scanPunctuator() = {
     val start = this.index
     // Check for most common single-character punctuators.
-    var str = this.source(this.index)
+    var str = this.source(this.index).toString
     str match {
       case "(" | "{" =>
         if (str == "{") {
@@ -489,7 +543,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         this.index += 1
       case "." =>
         this.index += 1
-        if (this.source(this.index) == "." && this.source(this.index + 1) == ".") {
+        if (this.source(this.index).toString == "." && this.source(this.index + 1).toString == ".") {
           // Spread operator: ...
           this.index += 2
           str = "..."
@@ -516,7 +570,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
               this.index += 2
             } else {
               // 1-character punctuators.
-              str = this.source(this.index)
+              str = this.source(this.index).toString
               if ("<>=!+-*%&|^/".indexOf(str) >= 0) {
                 this.index += 1
               }
@@ -527,13 +581,13 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (this.index == start) {
       this.throwUnexpectedToken()
     }
-    new {
-      var `type` = 7
-      var value = str
-      var lineNumber = this.lineNumber
-      var lineStart = this.lineStart
-      var start = start
-      var end = this.index
+    new RawToken {
+      override def `type` = 7
+      override def value = str
+      override def lineNumber = self.lineNumber
+      override def lineStart = self.lineStart
+      override def start = start
+      override def end = self.index
     }
   }
   
@@ -555,19 +609,19 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (Character.isIdentifierStart(this.source.charCodeAt(this.index))) {
       this.throwUnexpectedToken()
     }
-    new {
-      var `type` = 6
-      var value = parseInt("0x" + num, 16)
-      var lineNumber = this.lineNumber
-      var lineStart = this.lineStart
-      var start = start
-      var end = this.index
+    new RawToken {
+      override def `type` = 6
+      override def value = parseInt("0x" + num, 16)
+      override def lineNumber = self.lineNumber
+      override def lineStart = self.lineStart
+      override def start = start
+      override def end = self.index
     }
   }
   
   def scanBinaryLiteral(start: Double) = {
     var num = ""
-    var ch: String = _
+    var ch: CharValue = null
     while (!this.eof()) {
       ch = this.source(this.index)
       if (ch != "0" && ch != "1") {
@@ -590,13 +644,13 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         this.throwUnexpectedToken()
       }
     }
-    new {
-      var `type` = 6
-      var value = parseInt(num, 2)
-      var lineNumber = this.lineNumber
-      var lineStart = this.lineStart
-      var start = start
-      var end = this.index
+    new RawToken {
+      override def `type` = 6
+      override def value = parseInt(num, 2)
+      override def lineNumber = self.lineNumber
+      override def lineStart = self.lineStart
+      override def start = start
+      override def end = self.index
     }
   }
   
@@ -755,13 +809,13 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
   
   def scanStringLiteral() = {
     val start = this.index
-    var quote = this.source(start)
+    var quote: String = this.source(start)
     assert(quote == "\'" || quote == "\"", "String literal must starts with a quote")
     this.index += 1
     var octal = false
     var str = ""
     while (!this.eof()) {
-      var ch = this.source({
+      var ch: String = this.source({
         val temp = this.index
         this.index += 1
         temp
@@ -855,7 +909,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     var rawOffset = 2
     this.index += 1
     while (!this.eof()) {
-      var ch = this.source({
+      var ch: String = this.source({
         val temp = this.index
         this.index += 1
         temp
@@ -964,7 +1018,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
   }
   
-  def testRegExp(pattern: Any, flags: String) = {
+  def testRegExp(pattern: String, flags: String): RegExp = {
     // The BMP character to use as a replacement for astral symbols when
     // translating an ES6 "u"-flagged pattern to an ES5-compatible
     // approximation.
@@ -981,7 +1035,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
           self.throwUnexpectedToken(Messages.InvalidRegExp)
         }
         if (codePoint <= 0xFFFF) {
-          return String.fromCharCode(codePoint)
+          return fromCharCode(codePoint)
         }
         astralSubstitute
       }
@@ -1007,9 +1061,9 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
   }
   
   def scanRegExpBody() = {
-    var ch = this.source(this.index)
+    var ch: String = this.source(this.index)
     assert(ch == "/", "Regular expression literal must start with a slash")
-    var str = this.source({
+    var str: String = this.source({
       val temp = this.index
       this.index += 1
       temp
@@ -1060,7 +1114,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     var str = ""
     var flags = ""
     while (!this.eof()) {
-      var ch = this.source(this.index)
+      var ch: String = this.source(this.index)
       if (!Character.isIdentifierPart(ch.charCodeAt(0))) {
         /* Unsupported: Break */ break;
       }
@@ -1103,28 +1157,28 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val pattern = this.scanRegExpBody()
     val flags = this.scanRegExpFlags()
     val value = this.testRegExp(pattern, flags)
-    new {
-      var `type` = 9
-      var value = ""
-      var pattern = pattern
-      var flags = flags
-      var regex = value
-      var lineNumber = this.lineNumber
-      var lineStart = this.lineStart
-      var start = start
-      var end = this.index
+    new RawToken {
+      override def `type` = 9
+      override def value = ""
+      override def pattern = pattern
+      override def flags = flags
+      override def regex = value
+      override def lineNumber = self.lineNumber
+      override def lineStart = self.lineStart
+      override def start = start
+      override def end = this.index
     }
   }
   
   def lex() = {
     if (this.eof()) {
-      return new {
-        var `type` = 2
-        var value = ""
-        var lineNumber = this.lineNumber
-        var lineStart = this.lineStart
-        var start = this.index
-        var end = this.index
+      return new RawToken {
+        override def `type` = 2
+        override def value = ""
+        override def lineNumber = this.lineNumber
+        override def lineStart = this.lineStart
+        override def start = self.index
+        override def end = self.index
       }
     }
     val cp = this.source.charCodeAt(this.index)

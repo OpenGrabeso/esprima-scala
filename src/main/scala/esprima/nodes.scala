@@ -5,6 +5,8 @@ nodes.js
 
 package esprima
 
+object Node {
+
 class ArrayExpression(var elements: Any) {
   var `type` = Syntax.ArrayExpression
 }
@@ -481,3 +483,4 @@ class YieldExpression(var argument: Any, var delegate: Any) {
 }
 
 
+}
