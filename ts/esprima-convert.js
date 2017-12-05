@@ -14,7 +14,6 @@ export * from "src/syntax"
 export * from "src/token"
 export * from "src/tokenizer"
 export * from "src/xhtml-entities"
-
 var ScalaFromJS_settings = {
     packages: [
         {
