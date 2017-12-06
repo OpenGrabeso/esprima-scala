@@ -5,6 +5,8 @@ nodes.js
 
 package esprima
 
+import esprima.port.RegExp
+
 import scala.collection.mutable.ArrayBuffer
 
 object Node {
@@ -358,12 +360,12 @@ class Property(var kind: Any, var key: Any, var computed: Any, var value: Any, v
 
 
 
-class RegexLiteral(var value: Any, var raw: Any, pattern: Any, flags: Any) extends Node {
+class RegexLiteral(var value: Any, var raw: Any, pattern: String, flags: String) extends Node {
   var `type` = Syntax.Literal
-  var regex = new {
-    var pattern = pattern
-    var flags = flags
-  }
+  var regex = new RegExp(
+    pattern = pattern,
+    flags = flags
+  )
 }
 
 

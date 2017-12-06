@@ -9,6 +9,7 @@ import Scanner.SourceLocation
 import Scanner.Metadata
 
 import scala.collection.mutable.ArrayBuffer
+import scala.util.control.Breaks._
 
 object CommentHandler {
   trait Comment {
@@ -83,13 +84,15 @@ class CommentHandler() {
   def findLeadingComments(metadata: Metadata): ArrayBuffer[Comment] = {
     val leadingComments = ArrayBuffer.empty[Comment]
     var target: Node.Node = null
-    while (this.stack.length > 0) {
-      val entry = this.stack(this.stack.length - 1)
-      if (entry && entry.start >= metadata.start.offset) {
-        target = entry.node
-        this.stack.pop()
-      } else {
-        /* Unsupported: Break */ break;
+    breakable {
+      while (this.stack.length > 0) {
+        val entry = this.stack(this.stack.length - 1)
+        if (entry && entry.start >= metadata.start.offset) {
+          target = entry.node
+          this.stack.pop()
+        } else {
+          break
+        }
       }
     }
     if (target) {

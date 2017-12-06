@@ -9,6 +9,7 @@ import esprima.Parser.TokenEntry
 import esprima.Scanner.Metadata
 
 import scala.collection.mutable.ArrayBuffer
+import scala.util.control.Breaks._
 
 object Esprima {
 /*
@@ -91,15 +92,17 @@ def tokenize(code: String, options: Parser.Options, delegate: (TokenEntry) => To
   val tokens = ArrayBuffer.empty[Parser.TokenEntry]
   val errors = ArrayBuffer.empty[ErrorHandler.Error]
   try {
-    while (true) {
-      var token = tokenizer.getNextToken()
-      if (!token) {
-        /* Unsupported: Break */ break;
+    breakable {
+      while (true) {
+        var token = tokenizer.getNextToken()
+        if (!token) {
+          break
+        }
+        if (delegate) {
+          token = delegate(token)
+        }
+        tokens.push(token)
       }
-      if (delegate) {
-        token = delegate(token)
-      }
-      tokens.push(token)
     }
   } catch {
     case e: ErrorHandler.Error =>

@@ -10,6 +10,7 @@ import esprima.Scanner.{Position, RawToken, SourceLocation}
 import esprima.port.RegExp
 
 import scala.collection.mutable.ArrayBuffer
+import scala.util.matching.Regex
 object Parser {
   val ArrowParameterPlaceHolder = "ArrowParameterPlaceHolder"
   class ArrowParameterPlaceHolder extends Node.Node {
@@ -31,6 +32,21 @@ object Parser {
   }
   class Config extends Options
 
+  trait Context {
+    var isModule: Boolean
+    var allowIn: Boolean
+    var allowStrictDirective: Boolean
+    var allowYield: Boolean
+    var await: Boolean
+    var firstCoverInitializedNameError: RawToken
+    var isAssignmentTarget: Boolean
+    var isBindingElement: Boolean
+    var inFunctionBody: Boolean
+    var inIteration: Boolean
+    var inSwitch: Boolean
+    var labelSet: Any
+    var strict: Boolean
+  }
 
   trait Marker {
     def index: Int
@@ -48,7 +64,7 @@ object Parser {
 
 }
 
-class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.Metadata) => Unit) {
+class Parser(code: String, options: Options, var delegate: (Scanner.Comment, Scanner.Metadata) => Unit) {
   self =>
   var config = new Config {
     override var range: Boolean = options.range
@@ -93,8 +109,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var / = 11
     var % = 11
   }
-  var lookahead = new RawToken {
-    override def `type` = 2
+  var lookahead: RawToken = new RawToken {
+    override var `type` = 2
     override def value = ""
     override def lineNumber = scanner.lineNumber
     override def lineStart = 0
@@ -102,7 +118,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     override def end = 0
   }
   var hasLineTerminator: Boolean = false
-  var context = new {
+  var context: Context = new Context {
     var isModule = false
     var await = false
     var allowIn = true
@@ -134,8 +150,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var line = scanner.lineNumber
     var column = scanner.index - scanner.lineStart
   }
-  def throwError(messageFormat: Any, args: String*) = {
-    val msg = messageFormat.replace("/%(\\d)/g".r, (whole, idx) => {
+  def throwError(messageFormat: String, args: String*) = {
+    val msg = "%(\\d)".r.replaceAllIn(messageFormat, m => {
+      val idx = m.source.toString.toInt
       assert(idx < args.length, "Message reference must be in range")
       args(idx)
     }
@@ -146,8 +163,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     throw this.errorHandler.createError(index, line, column, msg)
   }
   
-  def tolerateError(messageFormat: Any, args: String*) = {
-    val msg = messageFormat.replace("/%(\\d)/g".r, (whole, idx) => {
+  def tolerateError(messageFormat: String, args: String*) = {
+    val msg = "%(\\d)".r.replaceAllIn(messageFormat, m => {
+      val idx = m.source.toString.toInt
       assert(idx < args.length, "Message reference must be in range")
       args(idx)
     }
@@ -160,7 +178,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   
   def unexpectedTokenError(token: RawToken, message: String = null) = {
     var msg = message || Messages.UnexpectedToken
-    var value: String = _
+    var value: String = null
     if (token) {
       if (!message) {
         msg = if (token.`type` == 2) Messages.UnexpectedEOS else if (token.`type` == 3) Messages.UnexpectedIdentifier else if (token.`type` == 6) Messages.UnexpectedNumber else if (token.`type` == 8) Messages.UnexpectedString else if (token.`type` == 10) Messages.UnexpectedTemplate else Messages.UnexpectedToken
@@ -208,9 +226,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         for (e <- comments) {
           object node extends Scanner.Comment {
             var `type` = if (e.multiLine) "BlockComment" else "LineComment"
-            var value = self.scanner.source.slice(e.slice(0), e.slice(1))
-            var range: (Int, Int) = null
-            var loc: Scanner.SourceLocation = null
+            var value = self.scanner.source.slice(e.slice._1, e.slice._2)
+            var range: (Int, Int) = _
+            var loc: Scanner.SourceLocation = _
           }
           if (this.config.range) {
             node.range = e.range
@@ -244,9 +262,6 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     object t extends TokenEntry {
       var `type` = TokenName(token.`type`)
       var value = self.getTokenRaw(token)
-      var loc: SourceLocation = _
-      var range: (Int, Int) = _
-      var regex: RegExp =_
     }
     if (this.config.range) {
       t.range = (token.start, token.end)
@@ -322,12 +337,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
   }
   
-  def startNode(token: RawToken, lastLineStart: Double = 0): Marker = {
-    var column = token.start - token.lineStart
-    var line = token.lineNumber
-    if (column < 0) {
-      column += lastLineStart
-      line -= 1
+  def startNode(token: RawToken, lastLineStart: Int = 0): Marker = {
+    var column_ = token.start - token.lineStart
+    var line_ = token.lineNumber
+    if (column_ < 0) {
+      column_ += lastLineStart
+      line_ -= 1
     }
     new Marker {
       var index = token.start
@@ -356,7 +371,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       }
     }
     if (this.delegate) {
-      object metadata {
+      object metadata extends Scanner.Metadata {
         var start = new Position {
           override def line = marker.line
           override def column = marker.column
@@ -415,7 +430,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.lookahead.`type` == 3 && this.lookahead.value == keyword
   }
   
-  def matchAssign() = {
+  def matchAssign(): Boolean = {
     if (this.lookahead.`type` != 7) {
       return false
     }
@@ -556,7 +571,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   
   def parseArrayInitializer() = {
     val node = this.createNode()
-    val elements = Array.empty[Any]
+    val elements = ArrayBuffer.empty[Node.Node]
     this.expect("[")
     while (!this.`match`("]")) {
       if (this.`match`(",")) {

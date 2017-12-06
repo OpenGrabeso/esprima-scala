@@ -9,6 +9,7 @@ import Token._
 import Scanner._
 
 import scala.collection.mutable.ArrayBuffer
+import scala.util.control.Breaks._
 
 object Scanner {
   def hexValue(ch: Int): Int = {
@@ -240,61 +241,63 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       comments = ArrayBuffer()
     }
     var start = this.index == 0
-    while (!this.eof()) {
-      var ch = this.source.charCodeAt(this.index)
-      if (Character.isWhiteSpace(ch)) {
-        this.index += 1
-      } else if (Character.isLineTerminator(ch)) {
-        this.index += 1
-        if (ch == 0x0D && this.source.charCodeAt(this.index) == 0x0A) {
+    breakable {
+      while (!this.eof()) {
+        var ch = this.source.charCodeAt(this.index)
+        if (Character.isWhiteSpace(ch)) {
           this.index += 1
-        }
-        this.lineNumber += 1
-        this.lineStart = this.index
-        start = true
-      } else if (ch == 0x2F) {
-        ch = this.source.charCodeAt(this.index + 1)
-        if (ch == 0x2F) {
-          this.index += 2
-          val comment = this.skipSingleLineComment(2)
-          if (this.trackComment) {
-            comments = comments.concat(comment)
+        } else if (Character.isLineTerminator(ch)) {
+          this.index += 1
+          if (ch == 0x0D && this.source.charCodeAt(this.index) == 0x0A) {
+            this.index += 1
           }
+          this.lineNumber += 1
+          this.lineStart = this.index
           start = true
-        } else if (ch == 0x2A) {
-          this.index += 2
-          val comment = this.skipMultiLineComment()
-          if (this.trackComment) {
-            comments = comments.concat(comment)
+        } else if (ch == 0x2F) {
+          ch = this.source.charCodeAt(this.index + 1)
+          if (ch == 0x2F) {
+            this.index += 2
+            val comment = this.skipSingleLineComment(2)
+            if (this.trackComment) {
+              comments = comments.concat(comment)
+            }
+            start = true
+          } else if (ch == 0x2A) {
+            this.index += 2
+            val comment = this.skipMultiLineComment()
+            if (this.trackComment) {
+              comments = comments.concat(comment)
+            }
+          } else {
+            break
+          }
+        } else if (start && ch == 0x2D) {
+          // U+003E is '>'
+          if (this.source.charCodeAt(this.index + 1) == 0x2D && this.source.charCodeAt(this.index + 2) == 0x3E) {
+            // '-->' is a single-line comment
+            this.index += 3
+            val comment = this.skipSingleLineComment(3)
+            if (this.trackComment) {
+              comments = comments.concat(comment)
+            }
+          } else {
+            break
+          }
+        } else if (ch == 0x3C && !this.isModule) {
+          if (this.source.slice(this.index + 1, this.index + 4) == "!--") {
+            this.index += 4
+            // `<!--`
+            val comment = this.skipSingleLineComment(4)
+            if (this.trackComment) {
+              comments = comments.concat(comment)
+            }
+          } else {
+            break
           }
         } else {
-          /* Unsupported: Break */ break;
+          break
         }
-      } else if (start && ch == 0x2D) {
-        // U+003E is '>'
-        if (this.source.charCodeAt(this.index + 1) == 0x2D && this.source.charCodeAt(this.index + 2) == 0x3E) {
-          // '-->' is a single-line comment
-          this.index += 3
-          val comment = this.skipSingleLineComment(3)
-          if (this.trackComment) {
-            comments = comments.concat(comment)
-          }
-        } else {
-          /* Unsupported: Break */ break;
-        }
-      } else if (ch == 0x3C && !this.isModule) {
-        if (this.source.slice(this.index + 1, this.index + 4) == "!--") {
-          this.index += 4
-          // `<!--`
-          val comment = this.skipSingleLineComment(4)
-          if (this.trackComment) {
-            comments = comments.concat(comment)
-          }
-        } else {
-          /* Unsupported: Break */ break;
-        }
-      } else {
-        /* Unsupported: Break */ break;
       }
     }
     comments
@@ -381,16 +384,18 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (ch.toString == "}") {
       this.throwUnexpectedToken()
     }
-    while (!this.eof()) {
-      ch = this.source({
-        val temp = this.index
-        this.index += 1
-        temp
-      })
-      if (!Character.isHexDigit(ch)) {
-        /* Unsupported: Break */ break;
+    breakable {
+      while (!this.eof()) {
+        ch = this.source({
+          val temp = this.index
+          this.index += 1
+          temp
+        })
+        if (!Character.isHexDigit(ch)) {
+          break
+        }
+        code = code * 16 + hexValue(ch)
       }
-      code = code * 16 + hexValue(ch)
     }
     if (code > 0x10FFFF || ch.toString != "}") {
       this.throwUnexpectedToken()
