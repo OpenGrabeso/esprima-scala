@@ -1,5 +1,5 @@
 /*
-ScalaFromJS: 2017-12-05 14:51:46.266
+ScalaFromJS: 2017-12-06 21:28:23.723
 nodes.js
 */
 
@@ -294,7 +294,7 @@ class LabeledStatement(var label: Any, var body: Any) {
 
 exports.LabeledStatement = LabeledStatement
 
-class Literal(var value: Any, var raw: Any) {
+class Literal(var value: String, var raw: Any) {
   var `type` = syntax_1.Syntax.Literal
 }
 
@@ -415,8 +415,8 @@ class TaggedTemplateExpression(var tag: Any, var quasi: Any) {
 
 exports.TaggedTemplateExpression = TaggedTemplateExpression
 
-class TemplateElement(var value: String, var tail: Any) {
-  var `type`: Double = syntax_1.Syntax.TemplateElement
+class TemplateElement(var value: Any, var tail: Any) {
+  var `type` = syntax_1.Syntax.TemplateElement
 }
 
 exports.TemplateElement = TemplateElement

@@ -1,5 +1,5 @@
 /*
-ScalaFromJS: 2017-12-05 14:48:54.460
+ScalaFromJS: 2017-12-06 21:28:23.723
 tokenizer.js
 */
 

@@ -1,5 +1,5 @@
 /*
-ScalaFromJS: 2017-12-05 14:51:46.266
+ScalaFromJS: 2017-12-06 21:28:23.723
 parser.js
 */
 
@@ -680,8 +680,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     key
   }
   
-  def isPropertyKey(key: Node.Node, value: String): Boolean = {
-    key.`type` == Syntax.Identifier && key.name == value || key.`type` == Syntax.Literal && key.value == value
+  def isPropertyKey(key: Node.Node, value: String) = {
+    key.isInstanceOf[Node.Identifier] && key.asInstanceOf[Node.Identifier].name == value || key.isInstanceOf[Node.Literal] && key.asInstanceOf[Node.Literal].value == value
   }
   
   def parseObjectProperty(hasProto: ByRef[Boolean]) = {
@@ -831,7 +831,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       case expr: Node.ObjectExpression =>
         expr.`type` = Syntax.ObjectPattern
         for (property <- expr.properties) {
-          this.reinterpretExpressionAsPattern(if (property.`type` == Syntax.SpreadElement) property else property.value)
+          this.reinterpretExpressionAsPattern(if (property.isInstanceOf[SpreadElement]) property else property.value)
         }
       case expr: Node.AssignmentExpression =>
         expr.`type` = Syntax.AssignmentPattern
@@ -923,10 +923,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         if (!arrow) {
           this.expect(")")
           if (this.`match`("=>")) {
-            if (expr.`type` == Syntax.Identifier && expr.name == "yield") {
+            if (expr.isInstanceOf[Identifier] && expr.asInstanceOf[Identifier].name == "yield") {
+              var expr_cast = expr.asInstanceOf[Identifier]
               arrow = true
-              expr = new ArrowParameterPlaceHolder {
-                override var params = ArrayBuffer(expr)
+              expr_cast = new ArrowParameterPlaceHolder {
+                override var params = ArrayBuffer(expr_cast)
                 override var async = false
               }
             }
@@ -935,19 +936,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
                 this.throwUnexpectedToken(this.lookahead)
               }
               expr match {
-                case expr: Node.SequenceExpression =>
-                  for (i <- expr.expressions) {
+                case expr_cast: Node.SequenceExpression =>
+                  for (i <- expr_cast.expressions) {
                     this.reinterpretExpressionAsPattern(i)
                   }
                 case _ =>
                   this.reinterpretExpressionAsPattern(expr)
               }
-              val parameters = expr match {
-                case expr: Node.SequenceExpression =>
-                  ArrayBuffer(expr.expressions:_*)
-                case _ =>
-                  ArrayBuffer(expr)
-              }
+              val parameters = if (expr.isInstanceOf[SequenceExpression]) expr.expressions else ArrayBuffer(expr)
               expr = new ArrowParameterPlaceHolder {
                 override var params = parameters
                 override var async = false
@@ -1098,7 +1094,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           this.context.isBindingElement = false
           this.context.isAssignmentTarget = false
           val args = if (asyncArrow) this.parseAsyncArguments() else this.parseArguments()
-          if (exprNode.`type` == Syntax.Import && args.length != 1) {
+          if (expr.isInstanceOf[Import] && args.length != 1) {
             this.tolerateError(Messages.BadImportCallArity)
           }
           exprNode = this.finalize(this.startNode(startToken), new Node.CallExpression(expr, args))
@@ -1175,7 +1171,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       val node = this.startNode(startToken)
       val token = this.nextToken()
       expr = this.inheritCoverGrammar(this.parseUnaryExpression)
-      if (this.context.strict && expr.`type` == Syntax.Identifier && this.scanner.isRestrictedWord(expr.name)) {
+      if (this.context.strict && expr.isInstanceOf[Identifier] && this.scanner.isRestrictedWord(expr.name)) {
         this.tolerateError(Messages.StrictLHSPrefix)
       }
       if (!this.context.isAssignmentTarget) {
@@ -1189,7 +1185,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       expr = this.inheritCoverGrammar(this.parseLeftHandSideExpressionAllowCall)
       if (!this.hasLineTerminator && this.lookahead.`type` == 7) {
         if (this.`match`("++") || this.`match`("--")) {
-          if (this.context.strict && expr.`type` == Syntax.Identifier && this.scanner.isRestrictedWord(expr.name)) {
+          if (this.context.strict && expr.isInstanceOf[Identifier] && this.scanner.isRestrictedWord(expr.name)) {
             this.tolerateError(Messages.StrictLHSPostfix)
           }
           if (!this.context.isAssignmentTarget) {
@@ -1220,7 +1216,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       val token = this.nextToken()
       expr = this.inheritCoverGrammar(this.parseUnaryExpression)
       expr = this.finalize(node, new Node.UnaryExpression(token.value, expr))
-      if (this.context.strict && expr.operator == "delete" && expr.argument.`type` == Syntax.Identifier) {
+      if (this.context.strict && expr.operator == "delete" && expr.argument.isInstanceOf[Identifier]) {
         this.tolerateError(Messages.StrictDelete)
       }
       this.context.isAssignmentTarget = false
@@ -1346,7 +1342,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         }
       case param: Node.ObjectPattern =>
         for (property <- param.properties) {
-          this.checkPatternParam(options, if (property.`type` == Syntax.RestElement) property else property.value)
+          this.checkPatternParam(options, if (property.isInstanceOf[RestElement]) property else property.value)
         }
       case _ =>
     }
@@ -1370,26 +1366,31 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     for (i <- params.indices) {
       val param = params(i)
-      if (param.`type` == Syntax.AssignmentPattern) {
-        if (param.right.`type` == Syntax.YieldExpression) {
-          if (param.right.argument) {
+      param match {
+        case param_cast: AssignmentPattern =>
+          if (param_cast.right.isInstanceOf[YieldExpression]) {
+            if (param_cast.right.argument) {
+              this.throwUnexpectedToken(this.lookahead)
+            }
+            param_cast.right.`type` = syntax_1.Syntax.Identifier
+            param_cast.right.name = "yield"
+            param_cast.right.argument = null
+            param_cast.right.delegate = null
+          }
+        case _ =>
+          if (asyncArrow && param.isInstanceOf[Identifier] && param.name == "await") {
             this.throwUnexpectedToken(this.lookahead)
           }
-          param.right.`type` = Syntax.Identifier
-          param.right.name = "yield"
-          param.right.argument = null
-          param.right.delegate = null
-        }
-      } else if (asyncArrow && param.`type` == Syntax.Identifier && param.name == "await") {
-        this.throwUnexpectedToken(this.lookahead)
       }
       this.checkPatternParam(options, param)
       params(i) = param
     }
     if (this.context.strict || !this.context.allowYield) {
       for (param <- params) {
-        if (param.`type` == Syntax.YieldExpression) {
-          this.throwUnexpectedToken(this.lookahead)
+        param match {
+          case param_cast: YieldExpression =>
+            this.throwUnexpectedToken(this.lookahead)
+          case _ =>
         }
       }
     }
@@ -1425,12 +1426,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           }
         }
       }
-      if (expr.`type` == ArrowParameterPlaceHolder || this.`match`("=>")) {
+      if (expr.isInstanceOf[ArrowParameterPlaceHolder] || this.`match`("=>")) {
+        var expr_cast = expr.asInstanceOf[ArrowParameterPlaceHolder]
         // https://tc39.github.io/ecma262/#sec-arrow-function-definitions
         this.context.isAssignmentTarget = false
         this.context.isBindingElement = false
-        val isAsync = expr.async
-        val list = this.reinterpretAsCoverFormalsList(expr)
+        val isAsync = expr_cast.async
+        val list = this.reinterpretAsCoverFormalsList(expr_cast)
         if (list) {
           if (this.hasLineTerminator) {
             this.tolerateUnexpectedToken(this.lookahead)
@@ -1461,7 +1463,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           if (this.context.strict && list.stricted) {
             this.tolerateUnexpectedToken(list.stricted, list.message)
           }
-          expr = if (isAsync) this.finalize(node, new Node.AsyncArrowFunctionExpression(list.params, body, expression)) else this.finalize(node, new Node.ArrowFunctionExpression(list.params, body, expression))
+          expr_cast = if (isAsync) this.finalize(node, new Node.AsyncArrowFunctionExpression(list.params, body, expression)) else this.finalize(node, new Node.ArrowFunctionExpression(list.params, body, expression))
           this.context.strict = previousStrict
           this.context.allowStrictDirective = previousAllowStrictDirective
           this.context.allowYield = previousAllowYield
@@ -1472,8 +1474,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           if (!this.context.isAssignmentTarget) {
             this.tolerateError(Messages.InvalidLHSInAssignment)
           }
-          if (this.context.strict && expr.`type` == Syntax.Identifier) {
-            val id = expr
+          if (this.context.strict && expr.isInstanceOf[Identifier]) {
+            var expr_cast = expr.asInstanceOf[Identifier]
+            val id = expr_cast
             if (this.scanner.isRestrictedWord(id.name)) {
               this.tolerateUnexpectedToken(token, Messages.StrictLHSAssignment)
             }
@@ -1575,8 +1578,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val node = this.createNode()
     val params = ArrayBuffer.empty[RawToken]
     val id = this.parsePattern(params, kind)
-    if (this.context.strict && id.`type` == Syntax.Identifier) {
-      if (this.scanner.isRestrictedWord(id.name)) {
+    if (this.context.strict && id.isInstanceOf[Identifier]) {
+      val id_cast = id.asInstanceOf[Identifier]
+      if (this.scanner.isRestrictedWord(id_cast.name)) {
         this.tolerateError(Messages.StrictVarName)
       }
     }
@@ -1774,8 +1778,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val node = this.createNode()
     val params = ArrayBuffer.empty[RawToken]
     val id = this.parsePattern(params, "var")
-    if (this.context.strict && id.`type` == Syntax.Identifier) {
-      if (this.scanner.isRestrictedWord(id.name)) {
+    if (this.context.strict && id.isInstanceOf[Identifier]) {
+      val id_cast = id.asInstanceOf[Identifier]
+      if (this.scanner.isRestrictedWord(id_cast.name)) {
         this.tolerateError(Messages.StrictVarName)
       }
     }
@@ -1920,7 +1925,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         this.context.allowIn = previousAllowIn
         if (declarations.length == 1 && this.matchKeyword("in")) {
           val decl = declarations(0)
-          if (decl.init && (decl.id.`type` == Syntax.ArrayPattern || decl.id.`type` == Syntax.ObjectPattern || this.context.strict)) {
+          if (decl.init && (decl.id.isInstanceOf[ArrayPattern] || decl.id.isInstanceOf[ObjectPattern] || this.context.strict)) {
             this.tolerateError(Messages.ForInOfLoopInitializer, "for-in")
           }
           initNode = this.finalize(init, new Node.VariableDeclaration(declarations, "var"))
@@ -1980,7 +1985,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         initNode = this.inheritCoverGrammar(this.parseAssignmentExpression)
         this.context.allowIn = previousAllowIn
         if (this.matchKeyword("in")) {
-          if (!this.context.isAssignmentTarget || initNode.`type` == Syntax.AssignmentExpression) {
+          if (!this.context.isAssignmentTarget || init.isInstanceOf[AssignmentExpression]) {
             this.tolerateError(Messages.InvalidLHSInForIn)
           }
           this.nextToken()
@@ -1989,7 +1994,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           right = this.parseExpression()
           init = null
         } else if (this.matchContextualKeyword("of")) {
-          if (!this.context.isAssignmentTarget || initNode.`type` == Syntax.AssignmentExpression) {
+          if (!this.context.isAssignmentTarget || init.isInstanceOf[AssignmentExpression]) {
             this.tolerateError(Messages.InvalidLHSInForLoop)
           }
           this.nextToken()
@@ -2159,9 +2164,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val node = this.createNode()
     val expr = this.parseExpression()
     var statement: Node.Node = null
-    if (expr.`type` == Syntax.Identifier && this.`match`(":")) {
+    if (expr.isInstanceOf[Identifier] && this.`match`(":")) {
+      val expr_cast = expr.asInstanceOf[Identifier]
       this.nextToken()
-      val id = expr
+      val id = expr_cast
       val key = "$" + id.name
       if (this.context.labelSet contains key) {
         this.throwError(Messages.Redeclaration, "Label", id.name)
@@ -2220,8 +2226,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       }
       paramMap(key) = true
     }
-    if (this.context.strict && param.`type` == Syntax.Identifier) {
-      if (this.scanner.isRestrictedWord(param.name)) {
+    if (this.context.strict && param.isInstanceOf[Identifier]) {
+      val param_cast = param.asInstanceOf[Identifier]
+      if (this.scanner.isRestrictedWord(param_cast.name)) {
         this.tolerateError(Messages.StrictCatchVariable)
       }
     }
@@ -2552,7 +2559,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val token = this.lookahead
     val node = this.createNode()
     val expr = this.parseExpression()
-    val directive = if (expr.`type` == Syntax.Literal) this.getTokenRaw(token).slice(1, -1) else null
+    val directive = if (expr.isInstanceOf[Literal]) this.getTokenRaw(token).slice(1, -1) else null
     this.consumeSemicolon()
     this.finalize(node, if (directive) new Node.Directive(expr, directive) else new Node.ExpressionStatement(expr))
   }
