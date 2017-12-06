@@ -64,7 +64,7 @@ object Parser {
 
 }
 
-class Parser(code: String, options: Options, var delegate: (Scanner.Comment, Scanner.Metadata) => Unit) {
+class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.Metadata) => Unit) {
   self =>
   var config = new Config {
     override var range: Boolean = options.range
@@ -110,6 +110,7 @@ class Parser(code: String, options: Options, var delegate: (Scanner.Comment, Sca
     var % = 11
   }
   var lookahead: RawToken = new RawToken {
+    import OrType._
     override var `type` = 2
     override def value = ""
     override def lineNumber = scanner.lineNumber
@@ -224,11 +225,11 @@ class Parser(code: String, options: Options, var delegate: (Scanner.Comment, Sca
       val comments = this.scanner.scanComments()
       if (comments.length > 0 && this.delegate) {
         for (e <- comments) {
-          object node extends Scanner.Comment {
+          object node extends Node.CommentNode {
             var `type` = if (e.multiLine) "BlockComment" else "LineComment"
-            var value = self.scanner.source.slice(e.slice._1, e.slice._2)
-            var range: (Int, Int) = _
-            var loc: Scanner.SourceLocation = _
+            override var value = self.scanner.source.slice(e.slice._1, e.slice._2)
+            override var range: (Int, Int) = _
+            override var loc: Scanner.SourceLocation = _
           }
           if (this.config.range) {
             node.range = e.range
@@ -346,8 +347,8 @@ class Parser(code: String, options: Options, var delegate: (Scanner.Comment, Sca
     }
     new Marker {
       var index = token.start
-      var line = line
-      var column = column
+      var line = line_
+      var column = column_
     }
   }
   
@@ -966,7 +967,7 @@ class Parser(code: String, options: Options, var delegate: (Scanner.Comment, Sca
     args
   }
   
-  def isIdentifierName(token: Any) = {
+  def isIdentifierName(token: RawToken) = {
     token.`type` == 3 || token.`type` == 4 || token.`type` == 1 || token.`type` == 5
   }
   
@@ -976,6 +977,7 @@ class Parser(code: String, options: Options, var delegate: (Scanner.Comment, Sca
     if (!this.isIdentifierName(token)) {
       this.throwUnexpectedToken(token)
     }
+    import OrType._
     this.finalize(node, new Node.Identifier(token.value))
   }
   
@@ -1708,7 +1710,7 @@ class Parser(code: String, options: Options, var delegate: (Scanner.Comment, Sca
     pattern
   }
   
-  def parsePatternWithDefault(params: ArrayBuffer[RawToken], kind: String): Node.Node = {
+  def parsePatternWithDefault(params: ArrayBuffer[RawToken], kind: String = ""): Node.Node = {
     val startToken = this.lookahead
     var pattern = this.parsePattern(params, kind)
     if (this.`match`("=")) {
@@ -2346,7 +2348,7 @@ class Parser(code: String, options: Options, var delegate: (Scanner.Comment, Sca
     }
   }
   
-  def parseRestElement(params: Array[Any]) = {
+  def parseRestElement(params: ArrayBuffer[RawToken]) = {
     val node = this.createNode()
     this.expect("...")
     val arg = this.parsePattern(params)
@@ -2360,7 +2362,7 @@ class Parser(code: String, options: Options, var delegate: (Scanner.Comment, Sca
   }
   
   def parseFormalParameter(options: Any) = {
-    val params = Array.empty[Any]
+    val params = ArrayBuffer.empty[RawToken]
     val param = if (this.`match`("...")) this.parseRestElement(params) else this.parsePatternWithDefault(params)
     for (i <- params) {
       this.validateParam(options, i, i.value)
@@ -2369,11 +2371,11 @@ class Parser(code: String, options: Options, var delegate: (Scanner.Comment, Sca
     options.params.push(param)
   }
   
-  def parseFormalParameters(firstRestricted: Any) = {
+  def parseFormalParameters(firstRestricted: RawToken) = {
     object options {
       var simple = true
       var params = Array()
-      var firstRestricted = firstRestricted
+      var _firstRestricted = firstRestricted
     }
     this.expect("(")
     if (!this.`match`(")")) {
@@ -2482,7 +2484,7 @@ class Parser(code: String, options: Options, var delegate: (Scanner.Comment, Sca
       this.nextToken()
     }
     var message: String = null
-    var id = null
+    var id: Node.Identifier = null
     var firstRestricted = new {}
     val previousAllowAwait = this.context.await
     val previousAllowYield = this.context.allowYield

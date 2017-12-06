@@ -9,6 +9,7 @@ import Token._
 import Scanner._
 
 import scala.collection.mutable.ArrayBuffer
+import scala.language.implicitConversions
 import scala.util.control.Breaks._
 
 object Scanner {
@@ -54,10 +55,10 @@ object Scanner {
 
   trait RawToken {
     var `type`: Int = _
-    def value: Any  = ??? // String | Int
+    def value: OrType  = ??? // String | Int
     def pattern: String = ??? // UndefOr
     def flags: String = ??? // UndefOr
-    def regex: RegExp = ??? // UndefOr
+    def regex: String = ??? // UndefOr
     def octal: Boolean = ??? // UndefOr
     def cooked: String = ??? // UndefOr
     def head: Boolean = ??? // UndefOr
@@ -105,11 +106,11 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     this.index >= this.length
   }
   
-  def throwUnexpectedToken(message: Any = Messages.UnexpectedTokenIllegal) = {
+  def throwUnexpectedToken(message: String = Messages.UnexpectedTokenIllegal) = {
     this.errorHandler.throwError(this.index, this.lineNumber, this.index - this.lineStart + 1, message)
   }
   
-  def tolerateUnexpectedToken(message: Any = Messages.UnexpectedTokenIllegal) = {
+  def tolerateUnexpectedToken(message: String = Messages.UnexpectedTokenIllegal) = {
     this.errorHandler.tolerateError(this.index, this.lineNumber, this.index - this.lineStart + 1, message)
   }
   
@@ -1166,6 +1167,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val flags = this.scanRegExpFlags()
     val value = this.testRegExp(pattern, flags)
     new RawToken {
+      import OrType._
       override var `type` = 9
       override def value = ""
       override def pattern = pattern
@@ -1181,6 +1183,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
   def lex(): RawToken = {
     if (this.eof()) {
       return new RawToken {
+        import OrType._
         override var `type` = 2
         override def value = ""
         override def lineNumber = this.lineNumber

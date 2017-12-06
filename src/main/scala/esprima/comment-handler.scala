@@ -15,8 +15,8 @@ object CommentHandler {
   trait Comment {
     def `type`: String
     def value: String
-    var range: (Int, Int)
-    var loc: SourceLocation
+    var range: (Int, Int) = _
+    var loc: SourceLocation = _
   }
 
   trait Entry {
@@ -138,7 +138,7 @@ class CommentHandler() {
     })
   }
   
-  def visitComment(node: Node.Node, metadata: Metadata) = {
+  def visitComment(node: Node.CommentNode, metadata: Metadata) = {
     val `type_` = if (node.`type`(0) == "L") "Line" else "Block"
     object comment extends Comment {
       var `type` = `type`
@@ -154,9 +154,9 @@ class CommentHandler() {
     if (this.attach) {
       object entry extends Entry {
         var comment = new Comment {
-          var `type` = `type_`
-          var value = node.value
-          var range = (metadata.start.offset, metadata.end.offset)
+          override var `type` = `type_`
+          override var value = node.value
+          override var range = (metadata.start.offset, metadata.end.offset)
         }
         var start = metadata.start.offset
       }
@@ -171,9 +171,9 @@ class CommentHandler() {
   
   def visit(node: Node.Node, metadata: Metadata) = {
     if (node.`type` == "LineComment") {
-      this.visitComment(node, metadata)
+      this.visitComment(node.asInstanceOf[Node.CommentNode], metadata)
     } else if (node.`type` == "BlockComment") {
-      this.visitComment(node, metadata)
+      this.visitComment(node.asInstanceOf[Node.CommentNode], metadata)
     } else if (this.attach) {
       this.visitNode(node, metadata)
     }
