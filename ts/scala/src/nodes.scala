@@ -1,5 +1,5 @@
 /*
-ScalaFromJS: 2017-12-05 14:51:46.266
+ScalaFromJS: 2017-12-06 21:01:26.857
 nodes.js
 */
 
@@ -294,7 +294,7 @@ class LabeledStatement(var label: Any, var body: Any) {
 
 exports.LabeledStatement = LabeledStatement
 
-class Literal(var value: Any, var raw: Any) {
+class Literal(var value: String, var raw: Any) {
   var `type` = syntax_1.Syntax.Literal
 }
 

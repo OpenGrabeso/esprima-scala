@@ -1,5 +1,5 @@
 /*
-ScalaFromJS: 2017-12-05 14:48:54.460
+ScalaFromJS: 2017-12-06 21:01:26.857
 comment-handler.js
 */
 
@@ -18,7 +18,8 @@ class CommentHandler() {
   def insertInnerComments(node: Any, metadata: Any) = {
     //  innnerComments for properties empty block
     //  `function a() {/** comments **\/}`
-    if (node.`type` == syntax_1.Syntax.BlockStatement && node.body.length == 0) {
+    if (node.isInstanceOf[BlockStatement] && node.asInstanceOf[BlockStatement].body.length == 0) {
+      val node_cast = node.asInstanceOf[BlockStatement]
       val innerComments = Array.empty[Unit]
       for (i <- this.leading.length - 1 to 0 by -1) {
         val entry = this.leading(i)
@@ -29,7 +30,7 @@ class CommentHandler() {
         }
       }
       if (innerComments.length) {
-        node.innerComments = innerComments
+        node_cast.innerComments = innerComments
       }
     }
   }
