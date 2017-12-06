@@ -15,6 +15,20 @@ export * from "src/token"
 export * from "src/tokenizer"
 export * from "src/xhtml-entities"
 var ScalaFromJS_settings = {
+    members: [
+        /*
+        {
+            cls: ".*",
+            name: "type",
+            operation: "make-property"
+        },
+        */
+        {
+            cls: ".*",
+            name: "type",
+            operation: "getClass"
+        }
+    ],
     packages: [
         {
             folder: "test",

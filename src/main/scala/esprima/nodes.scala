@@ -26,12 +26,12 @@ object Node {
     var value: String = _
   }
 
-  class ArrayExpression(var elements: Any) extends Node {
+  class ArrayExpression(var elements: Array[Node]) extends Node {
     var `type` = Syntax.ArrayExpression
   }
 
 
-  class ArrayPattern(var elements: Any) extends Node {
+  class ArrayPattern(var elements: Array[Node]) extends Node {
     var `type` = Syntax.ArrayPattern
   }
 
@@ -44,17 +44,17 @@ object Node {
   }
 
 
-  class AssignmentExpression(var operator: Any, var left: Any, var right: Any) extends Node {
+  class AssignmentExpression(var operator: String, var left: Node, var right: Node) extends Node {
     var `type` = Syntax.AssignmentExpression
   }
 
 
-  class AssignmentPattern(var left: Any, var right: Any) extends Node {
+  class AssignmentPattern(var left: Node, var right: Node) extends Node {
     var `type` = Syntax.AssignmentPattern
   }
 
 
-  class AsyncArrowFunctionExpression(var params: Any, var body: Any, var expression: Any) extends Node {
+  class AsyncArrowFunctionExpression(var params: Any, var body: Any, var expression: Node) extends Node {
     var `type` = Syntax.ArrowFunctionExpression
     var id = null
     var generator: Boolean = false
@@ -78,12 +78,12 @@ object Node {
   }
 
 
-  class AwaitExpression(var argument: Any) extends Node {
+  class AwaitExpression(var argument: Node) extends Node {
     var `type` = Syntax.AwaitExpression
   }
 
 
-  class BinaryExpression(operator_par: String, left_par: Any, right_par: Any) extends Node {
+  class BinaryExpression(operator_par: String, left_par: Node, right_par: Node) extends Node {
     var `type`: String = _
     var operator: String = _
     var left: Any = _
@@ -306,7 +306,7 @@ object Node {
   }
 
 
-  class ObjectPattern(var properties: Any) extends Node {
+  class ObjectPattern(var properties: Array[Node]) extends Node {
     var `type` = Syntax.ObjectPattern
   }
 
@@ -344,7 +344,7 @@ object Node {
   }
 
 
-  class SpreadElement(var argument: Any) extends Node {
+  class SpreadElement(var argument: Node) extends Node {
     var `type` = Syntax.SpreadElement
   }
 

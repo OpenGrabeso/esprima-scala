@@ -17,7 +17,7 @@ object Parser {
   val ArrowParameterPlaceHolder = "ArrowParameterPlaceHolder"
   class ArrowParameterPlaceHolder extends Node.Node {
     var `type` = ArrowParameterPlaceHolder
-    var params: Array[Node.Node] = _
+    var params: ArrayBuffer[Node.Node] = _
     var async: Boolean = _
   }
 
@@ -684,7 +684,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     key.`type` == Syntax.Identifier && key.name == value || key.`type` == Syntax.Literal && key.value == value
   }
   
-  def parseObjectProperty(hasProto: Any) = {
+  def parseObjectProperty(hasProto: ByRef[Boolean]) = {
     val node = this.createNode()
     val token = this.lookahead
     var kind: String = ""
@@ -695,7 +695,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var shorthand = false
     var isAsync = false
     if (token.`type` == 3) {
-      val id = token.value
+      val id: String = token.value
       this.nextToken()
       computed = this.`match`("[")
       isAsync = !this.hasLineTerminator && id == "async" && !this.`match`(":") && !this.`match`("(") && !this.`match`("*") && !this.`match`(",")
@@ -707,18 +707,18 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       key = this.parseObjectPropertyKey()
     }
     val lookaheadPropertyKey = this.qualifiedPropertyName(this.lookahead)
-    if (token.`type` == 3 && !isAsync && token.value == "get" && lookaheadPropertyKey) {
+    if (token.`type` == 3 && !isAsync && token.value === "get" && lookaheadPropertyKey) {
       kind = "get"
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
       this.context.allowYield = false
       value = this.parseGetterMethod()
-    } else if (token.`type` == 3 && !isAsync && token.value == "set" && lookaheadPropertyKey) {
+    } else if (token.`type` == 3 && !isAsync && token.value === "set" && lookaheadPropertyKey) {
       kind = "set"
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
       value = this.parseSetterMethod()
-    } else if (token.`type` == 7 && token.value == "*" && lookaheadPropertyKey) {
+    } else if (token.`type` == 7 && token.value === "*" && lookaheadPropertyKey) {
       kind = "init"
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
@@ -816,24 +816,24 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   }
   
   def reinterpretExpressionAsPattern(expr: Node.Node): Unit = {
-    expr.`type` match {
-      case Syntax.Identifier | Syntax.MemberExpression | Syntax.RestElement | Syntax.AssignmentPattern =>
-      case Syntax.SpreadElement =>
+    expr match {
+      case _: Node.Identifier | _: Node.ComputedMemberExpression | _: Node.RestElement | _: Node.AssignmentPattern =>
+      case expr: Node.SpreadElement =>
         expr.`type` = Syntax.RestElement
         this.reinterpretExpressionAsPattern(expr.argument)
-      case Syntax.ArrayExpression =>
+      case expr: Node.ArrayExpression =>
         expr.`type` = Syntax.ArrayPattern
         for (i <- expr.elements) {
           if (i != null) {
             this.reinterpretExpressionAsPattern(i)
           }
         }
-      case Syntax.ObjectExpression =>
+      case expr: Node.ObjectExpression =>
         expr.`type` = Syntax.ObjectPattern
         for (property <- expr.properties) {
           this.reinterpretExpressionAsPattern(if (property.`type` == Syntax.SpreadElement) property else property.value)
         }
-      case Syntax.AssignmentExpression =>
+      case expr: Node.AssignmentExpression =>
         expr.`type` = Syntax.AssignmentPattern
         expr.operator = null
         this.reinterpretExpressionAsPattern(expr.left)
@@ -850,7 +850,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         this.expect("=>")
       }
       expr = new ArrowParameterPlaceHolder {
-        override var params = Array()
+        override var params = ArrayBuffer()
         override var async = false
       }
     } else {
@@ -863,7 +863,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           this.expect("=>")
         }
         expr = new ArrowParameterPlaceHolder {
-          override var params = Array(expr)
+          override var params = ArrayBuffer(expr)
           override var async = false
         }
       } else {
@@ -926,7 +926,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
             if (expr.`type` == Syntax.Identifier && expr.name == "yield") {
               arrow = true
               expr = new ArrowParameterPlaceHolder {
-                override var params = Array(expr)
+                override var params = ArrayBuffer(expr)
                 override var async = false
               }
             }
@@ -944,9 +944,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
               }
               val parameters = expr match {
                 case expr: Node.SequenceExpression =>
-                  expr.expressions
+                  ArrayBuffer(expr.expressions:_*)
                 case _ =>
-                  Array(expr)
+                  ArrayBuffer(expr)
               }
               expr = new ArrowParameterPlaceHolder {
                 override var params = parameters
@@ -1085,44 +1085,46 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     } else {
       exprNode = this.inheritCoverGrammar(if (this.matchKeyword("new")) this.parseNewExpression else this.parsePrimaryExpression)
     }
-    while (true) {
-      if (this.`match`(".")) {
-        this.context.isBindingElement = false
-        this.context.isAssignmentTarget = true
-        this.expect(".")
-        val property = this.parseIdentifierName()
-        exprNode = this.finalize(this.startNode(startToken), new Node.StaticMemberExpression(expr, property))
-      } else if (this.`match`("(")) {
-        val asyncArrow = maybeAsync && startToken.lineNumber == this.lookahead.lineNumber
-        this.context.isBindingElement = false
-        this.context.isAssignmentTarget = false
-        val args = if (asyncArrow) this.parseAsyncArguments() else this.parseArguments()
-        if (expr.`type` == Syntax.Import && args.length != 1) {
-          this.tolerateError(Messages.BadImportCallArity)
-        }
-        exprNode = this.finalize(this.startNode(startToken), new Node.CallExpression(expr, args))
-        if (asyncArrow && this.`match`("=>")) {
-          for (i <- args) {
-            this.reinterpretExpressionAsPattern(i)
+    breakable {
+      while (true) {
+        if (this.`match`(".")) {
+          this.context.isBindingElement = false
+          this.context.isAssignmentTarget = true
+          this.expect(".")
+          val property = this.parseIdentifierName()
+          exprNode = this.finalize(this.startNode(startToken), new Node.StaticMemberExpression(expr, property))
+        } else if (this.`match`("(")) {
+          val asyncArrow = maybeAsync && startToken.lineNumber == this.lookahead.lineNumber
+          this.context.isBindingElement = false
+          this.context.isAssignmentTarget = false
+          val args = if (asyncArrow) this.parseAsyncArguments() else this.parseArguments()
+          if (exprNode.`type` == Syntax.Import && args.length != 1) {
+            this.tolerateError(Messages.BadImportCallArity)
           }
-          exprNode = new ArrowParameterPlaceHolder {
-            override var `type` = ArrowParameterPlaceHolder
-            override var params = args
-            override var async = true
+          exprNode = this.finalize(this.startNode(startToken), new Node.CallExpression(expr, args))
+          if (asyncArrow && this.`match`("=>")) {
+            for (i <- args) {
+              this.reinterpretExpressionAsPattern(i)
+            }
+            exprNode = new ArrowParameterPlaceHolder {
+              override var `type` = ArrowParameterPlaceHolder
+              override var params = ArrayBuffer(args: _*)
+              override var async = true
+            }
           }
+        } else if (this.`match`("[")) {
+          this.context.isBindingElement = false
+          this.context.isAssignmentTarget = true
+          this.expect("[")
+          val property = this.isolateCoverGrammar(this.parseExpression)
+          this.expect("]")
+          exprNode = this.finalize(this.startNode(startToken), new Node.ComputedMemberExpression(expr, property))
+        } else if (this.lookahead.`type` == 10 && this.lookahead.head) {
+          val quasi = this.parseTemplateLiteral()
+          exprNode = this.finalize(this.startNode(startToken), new Node.TaggedTemplateExpression(expr, quasi))
+        } else {
+          break
         }
-      } else if (this.`match`("[")) {
-        this.context.isBindingElement = false
-        this.context.isAssignmentTarget = true
-        this.expect("[")
-        val property = this.isolateCoverGrammar(this.parseExpression)
-        this.expect("]")
-        exprNode = this.finalize(this.startNode(startToken), new Node.ComputedMemberExpression(expr, property))
-      } else if (this.lookahead.`type` == 10 && this.lookahead.head) {
-        val quasi = this.parseTemplateLiteral()
-        exprNode = this.finalize(this.startNode(startToken), new Node.TaggedTemplateExpression(expr, quasi))
-      } else {
-        /* Unsupported: Break */ break;
       }
     }
     this.context.allowIn = previousAllowIn
@@ -1328,21 +1330,21 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     expr
   }
   
-  def checkPatternParam(options: ParameterOptions, param: Node.Node) = {
-    param.`type` match {
-      case Syntax.Identifier =>
+  def checkPatternParam(options: ParameterOptions, param: Node.Node): Unit = {
+    param match {
+      case param: Node.Identifier =>
         this.validateParam(options, param, param.name)
-      case Syntax.RestElement =>
+      case param: Node.RestElement =>
         this.checkPatternParam(options, param.argument)
-      case Syntax.AssignmentPattern =>
+      case param: Node.AssignmentPattern =>
         this.checkPatternParam(options, param.left)
-      case Syntax.ArrayPattern =>
+      case param: Node.ArrayPattern =>
         for (i <- param.elements) {
           if (i != null) {
             this.checkPatternParam(options, i)
           }
         }
-      case Syntax.ObjectPattern =>
+      case param: Node.ObjectPattern =>
         for (property <- param.properties) {
           this.checkPatternParam(options, if (property.`type` == Syntax.RestElement) property else property.value)
         }
@@ -1354,9 +1356,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   def reinterpretAsCoverFormalsList(expr: Node.Node): ParameterOptions = {
     var params = ArrayBuffer(expr)
     var asyncArrow = false
-    expr.`type` match {
-      case Syntax.Identifier =>
-      case ArrowParameterPlaceHolder =>
+    expr match {
+      case expr: Node.Identifier =>
+      case expr: ArrowParameterPlaceHolder =>
         params = expr.params
         asyncArrow = expr.async
       case _ =>
@@ -1418,7 +1420,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           val arg = this.parsePrimaryExpression()
           this.reinterpretExpressionAsPattern(arg)
           expr = new ArrowParameterPlaceHolder {
-            override var params = Array(arg)
+            override var params = ArrayBuffer(arg)
             override var async = true
           }
         }
