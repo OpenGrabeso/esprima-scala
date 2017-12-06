@@ -54,7 +54,7 @@ object Node {
   }
 
 
-  class AsyncArrowFunctionExpression(var params: Any, var body: Any, var expression: Node) extends Node {
+  class AsyncArrowFunctionExpression(var params: Any, var body: Any, var expression: Boolean) extends Node {
     var `type` = Syntax.ArrowFunctionExpression
     var id = null
     var generator: Boolean = false
@@ -301,7 +301,7 @@ object Node {
   }
 
 
-  class ObjectExpression(var properties: Any) extends Node {
+  class ObjectExpression(var properties: Array[Node]) extends Node {
     var `type` = Syntax.ObjectExpression
   }
 

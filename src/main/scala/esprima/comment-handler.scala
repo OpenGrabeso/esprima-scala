@@ -42,8 +42,8 @@ class CommentHandler() {
   def insertInnerComments(node: Node.Node, metadata: Metadata) = {
     //  innnerComments for properties empty block
     //  `function a() {/** comments **\/}`
-    if (node.isInstanceOf[BlockStatement] && node.asInstanceOf[BlockStatement].body.length == 0) {
-      val node_cast = node.asInstanceOf[BlockStatement]
+    if (node.isInstanceOf[Node.BlockStatement] && node.asInstanceOf[Node.BlockStatement].body.length == 0) {
+      val node_cast = node.asInstanceOf[Node.BlockStatement]
       val innerComments = ArrayBuffer.empty[Comment]
       for (i <- this.leading.length - 1 to 0 by -1) {
         val entry = this.leading(i)
@@ -121,7 +121,7 @@ class CommentHandler() {
   }
   
   def visitNode(node: Node.Node, metadata: Metadata): Unit = {
-    if (node.`type` == Syntax.Program && node.body.length > 0) {
+    if (node.isInstanceOf[Node.Program] && node.asInstanceOf[Node.Program].body.length > 0) {
       return
     }
     this.insertInnerComments(node, metadata)
