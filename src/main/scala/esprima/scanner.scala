@@ -33,6 +33,11 @@ object Scanner {
     def offset: Int = ???
   }
 
+  trait Metadata {
+    var start: Position
+    var end: Position
+  }
+
   trait SourceLocation {
     var start: Position
     var end: Position
@@ -41,13 +46,13 @@ object Scanner {
 
   trait Comment {
     def multiLine: Boolean = ???
-    def slice: Array[Int] = ???
+    def slice: (Int, Int) = ???
     def range: (Int, Int)
     def loc: SourceLocation
   }
 
   trait RawToken {
-    def `type`: Int = ???
+    var `type`: Int = _
     def value: Any  = ??? // String | Int
     def pattern: String = ??? // UndefOr
     def flags: String = ??? // UndefOr
@@ -132,9 +137,9 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
             override def column = self.index - self.lineStart - 1
           }
           object entry extends Comment {
-            var multiLine = false
-            var slice = Array(start + offset, self.index - 1)
-            var range = Array(start, self.index - 1)
+            override var multiLine = false
+            override def slice = (start + offset, self.index - 1)
+            var range = (start, self.index - 1)
             var loc = loc
           }
           comments.push(entry)
@@ -520,7 +525,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.index = restore
     }
     new RawToken {
-      override def `type` = `type`
+      override var `type` = `type`
       override def value = id
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
@@ -580,7 +585,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.throwUnexpectedToken()
     }
     new RawToken {
-      override def `type` = 7
+      override var `type` = 7
       override def value = str
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
@@ -608,7 +613,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.throwUnexpectedToken()
     }
     new RawToken {
-      override def `type` = 6
+      override var `type` = 6
       override def value = parseInt("0x" + num, 16)
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
@@ -643,7 +648,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       }
     }
     new RawToken {
-      override def `type` = 6
+      override var `type` = 6
       override def value = parseInt(num, 2)
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
@@ -683,7 +688,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.throwUnexpectedToken()
     }
     new RawToken {
-      override def `type` = 6
+      override var `type` = 6
       override def value = parseInt(num, 8)
       override def octal = octal
       override def lineNumber = self.lineNumber
@@ -796,7 +801,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.throwUnexpectedToken()
     }
     new RawToken {
-      override def `type` = 6
+      override var `type` = 6
       override def value = parseFloat(num)
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
@@ -888,7 +893,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.throwUnexpectedToken()
     }
     new RawToken {
-      override def `type` = 8
+      override var `type` = 8
       override def value = str
       override def octal = octal
       override def lineNumber = self.lineNumber
@@ -1004,7 +1009,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.curlyStack.pop()
     }
     new RawToken {
-      override def `type` = 10
+      override var `type` = 10
       override def value = self.source.slice(start + 1, self.index - rawOffset)
       override def cooked = cooked
       override def head = head
@@ -1156,7 +1161,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val flags = this.scanRegExpFlags()
     val value = this.testRegExp(pattern, flags)
     new RawToken {
-      override def `type` = 9
+      override var `type` = 9
       override def value = ""
       override def pattern = pattern
       override def flags = flags
@@ -1171,7 +1176,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
   def lex(): RawToken = {
     if (this.eof()) {
       return new RawToken {
-        override def `type` = 2
+        override var `type` = 2
         override def value = ""
         override def lineNumber = this.lineNumber
         override def lineStart = this.lineStart

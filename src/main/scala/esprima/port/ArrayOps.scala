@@ -8,6 +8,13 @@ import scala.reflect.ClassTag
 trait ArrayOps {
   implicit class ArrayBufferOps[T](a: ArrayBuffer[T]) {
     def push(x: T) = a append x
+    def push(x: T, xx: T*) = {
+      // form with a single element is used most often, we want it to be efficient
+      // even if it means the mutliple elements form is a bit complicated and inefficient
+      a append x
+      a appendAll xx
+    }
+    def unshift(x: T*) = a.insertAll(0, x)
     def pop(): T = {
       val ret = a.last
       a.dropRight(1)
@@ -16,6 +23,22 @@ trait ArrayOps {
     def concat(b: TraversableOnce[T]): ArrayBuffer[T] = {
       a.appendAll(b)
       a
+    }
+
+    def splice(start: Int, toDelete: Int, toInsert: T*): ArrayBuffer[T] = {
+      val (take, drop) = a.splitAt(start)
+      val dropped = drop.take(toDelete)
+      a.remove(start, toDelete)
+      a.insertAll(start, toInsert)
+      a
+    }
+
+    def splice(start: Int): ArrayBuffer[T] = a.splice(start, a.length - start)
+
+    def setLength: Int = a.length // getter not needed, but othewise we cannot defined the setter
+    def setLength_= (l: Int) = {
+      assert(l <= a.length) // verify we are shrinking only
+      a.reduceToSize(l)
     }
   }
 

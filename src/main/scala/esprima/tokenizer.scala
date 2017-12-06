@@ -5,11 +5,16 @@ tokenizer.js
 
 package esprima
 
+import esprima.Scanner._
+import esprima.port.RegExp
+
+import scala.collection.mutable.ArrayBuffer
+
 class Reader() {
   var paren: Int = -1
-  var values = Array.empty[String]
+  var values = ArrayBuffer.empty[Any]
   var curly: Int = paren
-  def beforeFunctionExpression(t: String) = {
+  def beforeFunctionExpression(t: Any) = {
     Array("(", "{", "[", "in", "typeof", "instanceof", "new", "return", "case", "delete", "throw", "void", // assignment operators
     "=", "+=", "-=", "*=", "**=", "/=", "%=", "<<=", ">>=", ">>>=", "&=", "|=", "^=", ",", // binary/unary operators
     "+", "-", "*", "**", "/", "%", "++", "--", "<<", ">>", ">>>", "&", "|", "^", "!", "~", "&&", "||", "?", ":", "===", "==", ">=", "<=", "<", ">", "!=", "!==").indexOf(t) >= 0
@@ -31,18 +36,18 @@ class Reader() {
         if (this.values(this.curly - 3) == "function") {
           // Anonymous function, e.g. function(){} /42
           val check = this.values(this.curly - 4)
-          regex = if (check) !this.beforeFunctionExpression(check) else false
+          regex = if (check == true) !this.beforeFunctionExpression(check) else false
         } else if (this.values(this.curly - 4) == "function") {
           // Named function, e.g. function f(){} /42/
           val check = this.values(this.curly - 5)
-          regex = if (check) !this.beforeFunctionExpression(check) else true
+          regex = if (check == true) !this.beforeFunctionExpression(check) else true
         }
       case _ =>
     }
     regex
   }
   
-  def push(token: TemplateElement) = {
+  def push(token: RawToken) = {
     if (token.`type` == 7 || token.`type` == 4) {
       if (token.value == "{") {
         this.curly = this.values.length
@@ -57,26 +62,27 @@ class Reader() {
   
 }
 
-class Tokenizer(code: String, config: Any) {
+class Tokenizer(code: String, config: Parser.Options) {
+  self =>
   var errorHandler: ErrorHandler = new ErrorHandler()
   errorHandler.tolerant = config.tolerant
   var scanner: Scanner = new Scanner(code, this.errorHandler)
   scanner.trackComment = config.comment
   var trackRange: Boolean = config.range
   var trackLoc: Boolean = config.loc
-  var buffer = Array.empty[Any]
+  var buffer = Array.empty[Parser.TokenEntry]
   var reader: Reader = new Reader()
   def errors() = {
     this.errorHandler.errors
   }
   
-  def getNextToken() = {
+  def getNextToken(): Parser.TokenEntry = {
     if (this.buffer.length == 0) {
       val comments = this.scanner.scanComments()
       if (this.scanner.trackComment) {
         this.buffer ++= comments.map { e =>
-          val value = this.scanner.source.slice(e.slice(0), e.slice(1))
-          object comment {
+          val value = this.scanner.source.slice(e.slice._1, e.slice._2)
+          object comment extends Parser.TokenEntry {
             var `type` = if (e.multiLine) "BlockComment" else "LineComment"
             var value = value
           }
@@ -90,24 +96,24 @@ class Tokenizer(code: String, config: Any) {
         }
       }
       if (!this.scanner.eof()) {
-        var loc = new {}
+        var loc: SourceLocation = null
         if (this.trackLoc) {
-          loc = new {
-            var start = new {
+          loc = new SourceLocation {
+            var start = new Position {
               override def line = self.scanner.lineNumber
-              var column = this.scanner.index - this.scanner.lineStart
+              override def column = self.scanner.index - self.scanner.lineStart
             }
-            var end = new {}
+            var end = null
           }
         }
-        val maybeRegex = this.scanner.source(this.scanner.index) == "/" && this.reader.isRegexStart()
-        var token: TemplateElement = _
+        val maybeRegex = this.scanner.source(this.scanner.index).toString == "/" && this.reader.isRegexStart()
+        var token: RawToken = null
         if (maybeRegex) {
           val state = this.scanner.saveState()
           try {
             token = this.scanner.scanRegExp()
           } catch {
-            case e =>
+            case e: Throwable =>
               this.scanner.restoreState(state)
               token = this.scanner.lex()
           }
@@ -115,27 +121,27 @@ class Tokenizer(code: String, config: Any) {
           token = this.scanner.lex()
         }
         this.reader.push(token)
-        object entry {
+        object entry extends Parser.TokenEntry {
           var `type` = TokenName(token.`type`)
-          var value = this.scanner.source.slice(token.start, token.end)
+          var value = self.scanner.source.slice(token.start, token.end)
         }
         if (this.trackRange) {
-          entry.range = Array(token.start, token.end)
+          entry.range = (token.start, token.end)
         }
         if (this.trackLoc) {
-          loc.end = new {
+          loc.end = new Position {
             override def line = self.scanner.lineNumber
-            var column = this.scanner.index - this.scanner.lineStart
+            override def column = self.scanner.index - self.scanner.lineStart
           }
           entry.loc = loc
         }
         if (token.`type` == 9) {
           val pattern = token.pattern
           val flags = token.flags
-          entry.regex = new {
-            var pattern = pattern
-            var flags = flags
-          }
+          entry.regex = new RegExp (
+            pattern = pattern,
+            flags = flags
+          )
         }
         this.buffer.push(entry)
       }

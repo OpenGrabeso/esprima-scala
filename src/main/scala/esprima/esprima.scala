@@ -5,6 +5,11 @@ esprima.js
 
 package esprima
 
+import esprima.Parser.TokenEntry
+import esprima.Scanner.Metadata
+
+import scala.collection.mutable.ArrayBuffer
+
 object Esprima {
 /*
 Copyright JS Foundation and other contributors, https://js.foundation/
@@ -30,9 +35,9 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-def parse(code: Any, options: AnyRef, delegate: (Unit, Unit) => Any) = {
+def parse(code: String, options: Parser.Options, delegate: (Node.Node, Metadata) => Unit) = {
   var commentHandler: CommentHandler = null
-  val proxyDelegate = (node, metadata) => {
+  def proxyDelegate(node: Node.Node, metadata: Metadata) = {
     if (delegate) {
       delegate(node, metadata)
     }
@@ -40,11 +45,11 @@ def parse(code: Any, options: AnyRef, delegate: (Unit, Unit) => Any) = {
       commentHandler.visit(node, metadata)
     }
   }
-  var parserDelegate = if (delegate != null) proxyDelegate else null
+  var parserDelegate = if (delegate != null) proxyDelegate _ else null
   var collectComment = false
   if (options) {
-    collectComment = options.comment.getClass == "boolean" && options.comment
-    val attachComment = options.attachComment.getClass == "boolean" && options.attachComment
+    collectComment = options.comment
+    val attachComment = options.attachComment
     if (collectComment || attachComment) {
       commentHandler = new CommentHandler()
       commentHandler.attach = attachComment
@@ -69,21 +74,22 @@ def parse(code: Any, options: AnyRef, delegate: (Unit, Unit) => Any) = {
   ast
 }
 
-def parseModule(code: Any, options: Any, delegate: (Unit, Unit) => Any) = {
-  val parsingOptions = options || new {}
+def parseModule(code: String, options: Parser.Options, delegate: (Node.Node, Metadata) => Unit) = {
+  val parsingOptions = options
   parsingOptions.sourceType = "module"
   parse(code, parsingOptions, delegate)
 }
 
-def parseScript(code: String, options: Any, delegate: (Unit, Unit) => Any) = {
-  val parsingOptions = options || new {}
+def parseScript(code: String, options: Parser.Options, delegate: (Node.Node, Metadata) => Unit) = {
+  val parsingOptions = options
   parsingOptions.sourceType = "script"
   parse(code, parsingOptions, delegate)
 }
 
-def tokenize(code: String, options: Any, delegate: (Unit) => Any) = {
+def tokenize(code: String, options: Parser.Options, delegate: (TokenEntry) => TokenEntry): (Array[TokenEntry], Array[ErrorHandler.Error]) = {
   val tokenizer = new Tokenizer(code, options)
-  val tokens = Array.empty[Unit]
+  val tokens = ArrayBuffer.empty[Parser.TokenEntry]
+  val errors = ArrayBuffer.empty[ErrorHandler.Error]
   try {
     while (true) {
       var token = tokenizer.getNextToken()
@@ -96,13 +102,13 @@ def tokenize(code: String, options: Any, delegate: (Unit) => Any) = {
       tokens.push(token)
     }
   } catch {
-    case e =>
+    case e: ErrorHandler.Error =>
       tokenizer.errorHandler.tolerate(e)
   }
   if (tokenizer.errorHandler.tolerant) {
-    tokens.errors = tokenizer.errors()
+    errors ++= tokenizer.errors()
   }
-  tokens
+  tokens.toArray -> errors.toArray
 }
 val version = "4.0.0-dev"
 

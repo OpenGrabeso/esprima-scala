@@ -5,17 +5,44 @@ comment-handler.js
 
 package esprima
 
+import Scanner.SourceLocation
+import Scanner.Metadata
+
+import scala.collection.mutable.ArrayBuffer
+
+object CommentHandler {
+  trait Comment {
+    def `type`: String
+    def value: String
+    var range: (Int, Int)
+    var loc: SourceLocation
+  }
+
+  trait Entry {
+    def comment: Comment
+    def start: Int
+  }
+
+  trait NodeInfo {
+    def node: Node.Node
+    def start: Int
+  }
+
+}
+
+import CommentHandler._
+
 class CommentHandler() {
   var attach: Boolean = false
-  var comments = Array.empty[Any]
-  var stack = Array.empty[Any]
-  var leading = Array.empty[Any]
-  var trailing = Array.empty[Any]
-  def insertInnerComments(node: Any, metadata: Any) = {
+  var comments = ArrayBuffer.empty[Comment]
+  var stack = ArrayBuffer.empty[NodeInfo]
+  var leading = ArrayBuffer.empty[Entry]
+  var trailing = ArrayBuffer.empty[Entry]
+  def insertInnerComments(node: Node.Node, metadata: Metadata) = {
     //  innnerComments for properties empty block
     //  `function a() {/** comments **\/}`
     if (node.`type` == Syntax.BlockStatement && node.body.length == 0) {
-      val innerComments = Array.empty[Unit]
+      val innerComments = ArrayBuffer.empty[Comment]
       for (i <- this.leading.length - 1 to 0 by -1) {
         val entry = this.leading(i)
         if (metadata.end.offset >= entry.start) {
@@ -30,8 +57,8 @@ class CommentHandler() {
     }
   }
   
-  def findTrailingComments(metadata: Any) = {
-    var trailingComments = Array.empty[Unit]
+  def findTrailingComments(metadata: Metadata): ArrayBuffer[Comment] = {
+    var trailingComments = ArrayBuffer.empty[Comment]
     if (this.trailing.length > 0) {
       for (i <- this.trailing.length - 1 to 0 by -1) {
         val entry = this.trailing(i)
@@ -39,13 +66,13 @@ class CommentHandler() {
           trailingComments.unshift(entry.comment)
         }
       }
-      this.trailing.length = 0
+      this.trailing.setLength = 0
       return trailingComments
     }
     val entry = this.stack(this.stack.length - 1)
     if (entry && entry.node.trailingComments) {
       val firstComment = entry.node.trailingComments(0)
-      if (firstComment && firstComment.range(0) >= metadata.end.offset) {
+      if (firstComment && firstComment.range._1 >= metadata.end.offset) {
         trailingComments = entry.node.trailingComments
         entry.node.trailingComments = null
       }
@@ -53,9 +80,9 @@ class CommentHandler() {
     trailingComments
   }
   
-  def findLeadingComments(metadata: Any) = {
-    val leadingComments = Array.empty[Unit]
-    var target: Node.Node = _
+  def findLeadingComments(metadata: Metadata): ArrayBuffer[Comment] = {
+    val leadingComments = ArrayBuffer.empty[Comment]
+    var target: Node.Node = null
     while (this.stack.length > 0) {
       val entry = this.stack(this.stack.length - 1)
       if (entry && entry.start >= metadata.start.offset) {
@@ -69,7 +96,7 @@ class CommentHandler() {
       val count = if (target.leadingComments) target.leadingComments.length else 0
       for (i <- count - 1 to 0 by -1) {
         val comment = target.leadingComments(i)
-        if (comment.range(1) <= metadata.start.offset) {
+        if (comment.range._2 <= metadata.start.offset) {
           leadingComments.unshift(comment)
           target.leadingComments.splice(i, 1)
         }
@@ -89,7 +116,7 @@ class CommentHandler() {
     leadingComments
   }
   
-  def visitNode(node: Node, metadata: Any) = {
+  def visitNode(node: Node.Node, metadata: Metadata): Unit = {
     if (node.`type` == Syntax.Program && node.body.length > 0) {
       return
     }
@@ -102,15 +129,15 @@ class CommentHandler() {
     if (trailingComments.length > 0) {
       node.trailingComments = trailingComments
     }
-    this.stack.push(new {
-      var node = node
-      var start = metadata.start.offset
+    this.stack.push(new NodeInfo {
+      def node = node
+      def start = metadata.start.offset
     })
   }
   
-  def visitComment(node: Node, metadata: Any) = {
-    val `type` = if (node.`type`(0) == "L") "Line" else "Block"
-    object comment {
+  def visitComment(node: Node.Node, metadata: Metadata) = {
+    val `type_` = if (node.`type`(0) == "L") "Line" else "Block"
+    object comment extends Comment {
       var `type` = `type`
       var value = node.value
     }
@@ -122,24 +149,24 @@ class CommentHandler() {
     }
     this.comments.push(comment)
     if (this.attach) {
-      object entry {
-        var comment = new {
-          var `type` = `type`
+      object entry extends Entry {
+        var comment = new Comment {
+          var `type` = `type_`
           var value = node.value
-          var range = Array(metadata.start.offset, metadata.end.offset)
+          var range = (metadata.start.offset, metadata.end.offset)
         }
         var start = metadata.start.offset
       }
       if (node.loc) {
         entry.comment.loc = node.loc
       }
-      node.`type` = `type`
+      node.`type` = `type_`
       this.leading.push(entry)
       this.trailing.push(entry)
     }
   }
   
-  def visit(node: Any, metadata: Any) = {
+  def visit(node: Node.Node, metadata: Metadata) = {
     if (node.`type` == "LineComment") {
       this.visitComment(node, metadata)
     } else if (node.`type` == "BlockComment") {

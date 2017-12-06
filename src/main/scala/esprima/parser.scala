@@ -19,12 +19,15 @@ object Parser {
   }
 
   class Options {
+
     var range: Boolean = false
     var loc: Boolean = false
     var source: String = null
     var tokens: Boolean = false
     var comment: Boolean = false
     var tolerant : Boolean = false
+    var attachComment: Boolean = false
+    var sourceType: String = _
   }
   class Config extends Options
 
@@ -38,14 +41,14 @@ object Parser {
   trait TokenEntry {
     def `type`: String
     def value: String
-    def regex: RegExp
-    def range: (Int, Int)
-    def loc: SourceLocation
+    var regex: RegExp = _
+    var range: (Int, Int) = _
+    var loc: SourceLocation = _
   }
 
 }
 
-class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
+class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.Metadata) => Unit) {
   self =>
   var config = new Config {
     override var range: Boolean = options.range
@@ -114,7 +117,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
     var labelSet = new {}
     var strict = false
   }
-  var tokens = ArrayBuffer.empty[Any]
+  var tokens = ArrayBuffer.empty[Parser.TokenEntry]
   var startMarker = new {
     var index = 0
     var line = scanner.lineNumber
@@ -215,7 +218,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
           if (this.config.loc) {
             node.loc = e.loc
           }
-          object metadata {
+          object metadata extends Scanner.Metadata {
             var start = new Position {
               override def line = e.loc.start.line
               override def column = e.loc.start.column
@@ -646,16 +649,16 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
     key
   }
   
-  def isPropertyKey(key: Any, value: String) = {
+  def isPropertyKey(key: Node.Node, value: String): Boolean = {
     key.`type` == Syntax.Identifier && key.name == value || key.`type` == Syntax.Literal && key.value == value
   }
   
   def parseObjectProperty(hasProto: Any) = {
     val node = this.createNode()
     val token = this.lookahead
-    var kind: String = _
-    var key = null
-    var value = null
+    var kind: String = ""
+    var key: Node.Node = null
+    var value: Node.Node = null
     var computed = false
     var method = false
     var shorthand = false
@@ -729,9 +732,9 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
   def parseObjectInitializer() = {
     val node = this.createNode()
     this.expect("{")
-    val properties = Array.empty[Any]
-    object hasProto extends Resource {
-      var value = false
+    val properties = ArrayBuffer.empty[Node.Node]
+    object hasProto extends ByRef[Boolean] {
+      override var value = false
     }
     while (!this.`match`("}")) {
       properties.push(if (this.`match`("...")) this.parseSpreadElement() else this.parseObjectProperty(hasProto))
@@ -2785,7 +2788,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.ClassExpression(id, superClass, classBody))
   }
   
-  def parseModule() = {
+  def parseModule(): Node.Module = {
     this.context.strict = true
     this.context.isModule = true
     this.scanner.isModule = true

@@ -5,12 +5,19 @@ nodes.js
 
 package esprima
 
+import scala.collection.mutable.ArrayBuffer
+
 object Node {
 
   trait Node {
+
     var `type`: String
     var range: (Int, Int) = _
     var loc: Scanner.SourceLocation =_
+
+    var leadingComments: ArrayBuffer[CommentHandler.Comment] = _
+    var innerComments: ArrayBuffer[CommentHandler.Comment] = _
+    var trailingComments: ArrayBuffer[CommentHandler.Comment] = _
   }
 
 
@@ -99,7 +106,7 @@ class BinaryExpression(operator_par: String, left_par: Any, right_par: Any) exte
 
 
 
-class BlockStatement(var body: Any) extends Node {
+class BlockStatement(var body: Seq[Node.Node]) extends Node {
   var `type` = Syntax.BlockStatement
 }
 
@@ -313,14 +320,19 @@ class MethodDefinition(var key: Any, var computed: Any, var value: Any, var kind
   var `type` = Syntax.MethodDefinition
 }
 
-
-
-class Module(var body: Any) extends Node {
+sealed abstract class Program(var body: Seq[Node.Node]) extends Node {
   var `type` = Syntax.Program
-  var sourceType: String = "module"
+  def sourceType: String
+
+  var comments: ArrayBuffer[CommentHandler.Comment] = _
+  var tokens: ArrayBuffer[Parser.TokenEntry] = _
+  var errors: ArrayBuffer[ErrorHandler.Error] = _
+
 }
 
-
+class Module(body: Seq[Node.Node]) extends Program(body) {
+  def sourceType: String = "module"
+}
 
 class NewExpression(var callee: Any, var arguments: Any) extends Node {
   var `type` = Syntax.NewExpression
@@ -367,13 +379,9 @@ class ReturnStatement(var argument: Any) extends Node {
 }
 
 
-
-class Script(var body: Any) extends Node {
-  var `type` = Syntax.Program
-  var sourceType: String = "script"
+class Script(body: Seq[Node.Node]) extends Program(body) {
+  def sourceType: String = "script"
 }
-
-
 
 class SequenceExpression(var expressions: Any) extends Node {
   var `type` = Syntax.SequenceExpression
