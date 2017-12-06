@@ -73,6 +73,10 @@ object Parser {
     var message: String = _
   }
 
+  trait VariableOptions {
+    var inFor: Boolean = _
+  }
+
 }
 
 class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.Metadata) => Unit) {
@@ -650,7 +654,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.AsyncFunctionExpression(null, params.params, method))
   }
   
-  def parseObjectPropertyKey() = {
+  def parseObjectPropertyKey(): Node.Node = {
     val node = this.createNode()
     val token = this.nextToken()
     var key: Node.Node = null
@@ -1243,7 +1247,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   
   def binaryPrecedence(token: RawToken) = {
     val op: String = token.value
-    var precedence: Double = _
+    var precedence: Int = 0
     if (token.`type` == 7) {
       precedence = this.operatorPrecedence(op) || 0
     } else if (token.`type` == 4) {
@@ -1531,16 +1535,16 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
             statement = this.parseImportDeclaration()
           }
         case "const" =>
-          statement = this.parseLexicalDeclaration(new {
-            var inFor = false
+          statement = this.parseLexicalDeclaration(new VariableOptions {
+            override var inFor = false
           })
         case "function" =>
           statement = this.parseFunctionDeclaration()
         case "class" =>
           statement = this.parseClassDeclaration()
         case "let" =>
-          statement = if (this.isLexicalDeclaration()) this.parseLexicalDeclaration(new {
-            var inFor = false
+          statement = if (this.isLexicalDeclaration()) this.parseLexicalDeclaration(new VariableOptions {
+            override var inFor = false
           }) else this.parseStatement()
         case _ =>
           statement = this.parseStatement()
@@ -1565,7 +1569,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.BlockStatement(block))
   }
   
-  def parseLexicalBinding(kind: String, options: Any): Node.VariableDeclarator = {
+  def parseLexicalBinding(kind: String, options: VariableOptions): Node.VariableDeclarator = {
     val node = this.createNode()
     val params = ArrayBuffer.empty[RawToken]
     val id = this.parsePattern(params, kind)
@@ -1591,7 +1595,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.VariableDeclarator(id, init))
   }
   
-  def parseBindingList(kind: String, options: Any): Array[Node.VariableDeclarator] = {
+  def parseBindingList(kind: String, options: VariableOptions): Array[Node.VariableDeclarator] = {
     val list = ArrayBuffer(this.parseLexicalBinding(kind, options))
     while (this.`match`(",")) {
       this.nextToken()
@@ -1608,7 +1612,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     next.`type` == 3 || next.`type` == 7 && next.value === "[" || next.`type` == 7 && next.value === "{" || next.`type` == 4 && next.value === "let" || next.`type` == 4 && next.value === "yield"
   }
   
-  def parseLexicalDeclaration(options: Any): Node.VariableDeclaration = {
+  def parseLexicalDeclaration(options: VariableOptions): Node.VariableDeclaration = {
     val node = this.createNode()
     val kind: String = this.nextToken().value
     assert(kind == "let" || kind == "const", "Lexical declaration must be either let or const")
@@ -1628,19 +1632,21 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val node = this.createNode()
     this.expect("[")
     val elements = ArrayBuffer.empty[Node.Node]
-    while (!this.`match`("]")) {
-      if (this.`match`(",")) {
-        this.nextToken()
-        elements.push(null)
-      } else {
-        if (this.`match`("...")) {
-          elements.push(this.parseBindingRestElement(params, kind))
-          /* Unsupported: Break */ break;
+    breakable {
+      while (!this.`match`("]")) {
+        if (this.`match`(",")) {
+          this.nextToken()
+          elements.push(null)
         } else {
-          elements.push(this.parsePatternWithDefault(params, kind))
-        }
-        if (!this.`match`("]")) {
-          this.expect(",")
+          if (this.`match`("...")) {
+            elements.push(this.parseBindingRestElement(params, kind))
+            break
+          } else {
+            elements.push(this.parsePatternWithDefault(params, kind))
+          }
+          if (!this.`match`("]")) {
+            this.expect(",")
+          }
         }
       }
     }
@@ -1762,7 +1768,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.Identifier(token.value))
   }
   
-  def parseVariableDeclaration(options: Any): Node.VariableDeclarator = {
+  def parseVariableDeclaration(options: VariableOptions): Node.VariableDeclarator = {
     val node = this.createNode()
     val params = ArrayBuffer.empty[RawToken]
     val id = this.parsePattern(params, "var")
@@ -1781,9 +1787,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.VariableDeclarator(id, init))
   }
   
-  def parseVariableDeclarationList(options: Any) = {
-    object opt {
-      var inFor = options.inFor
+  def parseVariableDeclarationList(options: VariableOptions) = {
+    object opt extends VariableOptions{
+      override var inFor = options.inFor
     }
     val list = ArrayBuffer.empty[Node.VariableDeclarator]
     list.push(this.parseVariableDeclaration(opt))
@@ -1797,8 +1803,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   def parseVariableStatement(): Node.VariableDeclaration = {
     val node = this.createNode()
     this.expectKeyword("var")
-    val declarations = this.parseVariableDeclarationList(new {
-      var inFor = false
+    val declarations = this.parseVariableDeclarationList(new VariableOptions {
+      override var inFor = false
     })
     this.consumeSemicolon()
     this.finalize(node, new Node.VariableDeclaration(declarations, "var"))
@@ -1906,8 +1912,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         this.nextToken()
         val previousAllowIn = this.context.allowIn
         this.context.allowIn = false
-        val declarations = this.parseVariableDeclarationList(new {
-          var inFor = true
+        val declarations = this.parseVariableDeclarationList(new VariableOptions {
+          override var inFor = true
         })
         this.context.allowIn = previousAllowIn
         if (declarations.length == 1 && this.matchKeyword("in")) {
@@ -1934,7 +1940,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       } else if (this.matchKeyword("const") || this.matchKeyword("let")) {
         init = this.createNode()
         val kind = this.nextToken().value
-        if (!this.context.strict && this.lookahead.value == "in") {
+        if (!this.context.strict && this.lookahead.value === "in") {
           initNode = this.finalize(init, new Node.Identifier(kind))
           this.nextToken()
           left = initNode
@@ -1943,8 +1949,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         } else {
           val previousAllowIn = this.context.allowIn
           this.context.allowIn = false
-          val declarations = this.parseBindingList(kind, new {
-            var inFor = true
+          val declarations = this.parseBindingList(kind, new VariableOptions {
+            override var inFor = true
           })
           this.context.allowIn = previousAllowIn
           if (declarations.length == 1 && declarations(0).init == null && this.matchKeyword("in")) {
@@ -2703,9 +2709,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           token = this.lookahead
           key = this.parseObjectPropertyKey()
           if (token.`type` == 3) {
-            if (token.value == "get" || token.value == "set") {
+            if (token.value === "get" || token.value === "set") {
               this.tolerateUnexpectedToken(token)
-            } else if (token.value == "constructor") {
+            } else if (token.value === "constructor") {
               this.tolerateUnexpectedToken(token, Messages.ConstructorIsAsync)
             }
           }
@@ -3011,8 +3017,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       var declaration: Node.Node = null
       this.lookahead.value.get[String] match {
         case "let" | "const" =>
-          declaration = this.parseLexicalDeclaration(new {
-            var inFor = false
+          declaration = this.parseLexicalDeclaration(new VariableOptions {
+            override var inFor = false
           })
         case "var" | "class" | "function" =>
           declaration = this.parseStatementListItem()

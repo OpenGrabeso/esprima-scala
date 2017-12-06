@@ -267,7 +267,7 @@ object Node {
   }
 
 
-  class Literal(var value: Any, var raw: Any) extends Node {
+  class Literal(var value: OrType, var raw: Any) extends Node {
     var `type` = Syntax.Literal
   }
 
