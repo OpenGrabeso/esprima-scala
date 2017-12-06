@@ -1,5 +1,5 @@
 /*
-ScalaFromJS: 2017-12-05 14:51:46.266
+ScalaFromJS: 2017-12-06 21:18:26.753
 esprima-convert.js
 */
 
@@ -20,3 +20,5 @@ package esprima-convert.js
 /* export * from "src/token" */
 /* export * from "src/tokenizer" */
 /* export * from "src/xhtml-entities" */
+/* import * from "types" */
+import types*

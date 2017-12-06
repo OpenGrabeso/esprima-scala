@@ -1,5 +1,5 @@
 /*
-ScalaFromJS: 2017-12-05 14:48:54.460
+ScalaFromJS: 2017-12-06 21:28:23.723
 tokenizer.js
 */
 
@@ -49,7 +49,7 @@ class Reader() {
     regex
   }
   
-  def push(token: TemplateElement) = {
+  def push(token: RawToken) = {
     if (token.`type` == 7 || token.`type` == 4) {
       if (token.value == "{") {
         this.curly = this.values.length
@@ -64,7 +64,7 @@ class Reader() {
   
 }
 
-class Tokenizer(code: Any, config: ErrorHandler) {
+class Tokenizer(code: Any, config: Any) {
   var errorHandler: ErrorHandler = new error_handler_1.ErrorHandler()
   errorHandler.tolerant = if (config) config.tolerant.getClass == "boolean" && config.tolerant else false
   var scanner: Scanner = new scanner_1.Scanner(code, this.errorHandler)
@@ -108,7 +108,7 @@ class Tokenizer(code: Any, config: ErrorHandler) {
           }
         }
         val maybeRegex = this.scanner.source(this.scanner.index) == "/" && this.reader.isRegexStart()
-        var token: TemplateElement = _
+        var token: RawToken = _
         if (maybeRegex) {
           val state = this.scanner.saveState()
           try {

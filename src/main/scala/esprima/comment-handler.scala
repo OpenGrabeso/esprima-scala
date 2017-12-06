@@ -1,5 +1,5 @@
 /*
-ScalaFromJS: 2017-12-06 21:01:26.857
+ScalaFromJS: 2017-12-06 21:28:23.723
 comment-handler.js
 */
 
@@ -15,7 +15,7 @@ class CommentHandler() {
   var stack = Array.empty[Any]
   var leading = Array.empty[Any]
   var trailing = Array.empty[Any]
-  def insertInnerComments(node: Any, metadata: Any) = {
+  def insertInnerComments(node: Node, metadata: SourceLocation) = {
     //  innnerComments for properties empty block
     //  `function a() {/** comments **\/}`
     if (node.isInstanceOf[BlockStatement] && node.asInstanceOf[BlockStatement].body.length == 0) {
@@ -35,7 +35,7 @@ class CommentHandler() {
     }
   }
   
-  def findTrailingComments(metadata: Any) = {
+  def findTrailingComments(metadata: SourceLocation) = {
     var trailingComments = Array.empty[Unit]
     if (this.trailing.length > 0) {
       for (i <- this.trailing.length - 1 to 0 by -1) {
@@ -58,9 +58,9 @@ class CommentHandler() {
     trailingComments
   }
   
-  def findLeadingComments(metadata: Any) = {
+  def findLeadingComments(metadata: SourceLocation) = {
     val leadingComments = Array.empty[Unit]
-    var target = _
+    var target: Node = _
     while (this.stack.length > 0) {
       val entry = this.stack(this.stack.length - 1)
       if (entry && entry.start >= metadata.start.offset) {
@@ -94,7 +94,7 @@ class CommentHandler() {
     leadingComments
   }
   
-  def visitNode(node: Any, metadata: Any) = {
+  def visitNode(node: Node, metadata: SourceLocation) = {
     if (node.`type` == syntax_1.Syntax.Program && node.body.length > 0) {
       return
     }
@@ -113,7 +113,7 @@ class CommentHandler() {
     })
   }
   
-  def visitComment(node: Any, metadata: Any) = {
+  def visitComment(node: Node, metadata: SourceLocation) = {
     val `type` = if (node.`type`(0) == "L") "Line" else "Block"
     object comment {
       var `type` = `type`
@@ -144,7 +144,7 @@ class CommentHandler() {
     }
   }
   
-  def visit(node: Any, metadata: Any) = {
+  def visit(node: Node, metadata: SourceLocation) = {
     if (node.`type` == "LineComment") {
       this.visitComment(node, metadata)
     } else if (node.`type` == "BlockComment") {

@@ -1,5 +1,5 @@
 /*
-ScalaFromJS: 2017-12-06 21:01:26.857
+ScalaFromJS: 2017-12-06 21:28:23.723
 parser.js
 */
 
