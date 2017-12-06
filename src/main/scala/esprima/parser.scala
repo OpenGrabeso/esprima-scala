@@ -505,7 +505,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var raw: String = null
     this.lookahead.`type` match {
       case 3 =>
-        if ((this.context.isModule || this.context.await) && this.lookahead.value == "await") {
+        if ((this.context.isModule || this.context.await) && this.lookahead.value === "await") {
           this.tolerateUnexpectedToken(this.lookahead)
         }
         expr = if (this.matchAsyncFunction()) this.parseFunctionExpression() else this.finalize(node, new Node.Identifier(this.nextToken().value))
@@ -517,13 +517,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         this.context.isBindingElement = false
         token = this.nextToken()
         raw = this.getTokenRaw(token)
-        expr = this.finalize(node, new Node.Literal(token.value, raw))
+        expr = this.finalize(node, new Node.Literal(token.value.get[Int], raw))
       case 1 =>
         this.context.isAssignmentTarget = false
         this.context.isBindingElement = false
         token = this.nextToken()
         raw = this.getTokenRaw(token)
-        expr = this.finalize(node, new Node.Literal(token.value == "true", raw))
+        expr = this.finalize(node, new Node.Literal(token.value === "true", raw))
       case 5 =>
         this.context.isAssignmentTarget = false
         this.context.isBindingElement = false
@@ -1004,7 +1004,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var expr: Node.Node = null
     if (this.`match`(".")) {
       this.nextToken()
-      if (this.lookahead.`type` == 3 && this.context.inFunctionBody && this.lookahead.value == "target") {
+      if (this.lookahead.`type` == 3 && this.context.inFunctionBody && this.lookahead.value === "target") {
         val property = this.parseIdentifierName()
         expr = new Node.MetaProperty(id, property)
       } else {
@@ -1106,9 +1106,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
             this.reinterpretExpressionAsPattern(i)
           }
           exprNode = new ArrowParameterPlaceHolder {
-            var `type` = ArrowParameterPlaceHolder
-            var params = args
-            var async = true
+            override var `type` = ArrowParameterPlaceHolder
+            override var params = args
+            override var async = true
           }
         }
       } else if (this.`match`("[")) {
@@ -1352,7 +1352,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   }
   
   def reinterpretAsCoverFormalsList(expr: Node.Node): ParameterOptions = {
-    var params = Array(expr)
+    var params = ArrayBuffer(expr)
     var asyncArrow = false
     expr.`type` match {
       case Syntax.Identifier =>
