@@ -96,33 +96,37 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   errorHandler.tolerant = config.tolerant
   var scanner: Scanner = new Scanner(code, this.errorHandler)
   scanner.trackComment = config.comment
-  var operatorPrecedence = new {
-    var `)` = 0
-    var `;` = 0
-    var `,` = 0
-    var `=` = 0
-    var `]` = 0
-    var || = 1
-    var && = 2
-    var | = 3
-    var ^ = 4
-    var & = 5
-    var == = 6
-    var != = 6
-    var === = 6
-    var !== = 6
-    var < = 7
-    var > = 7
-    var <= = 7
-    var >= = 7
-    var << = 8
-    var >> = 8
-    var >>> = 8
-    var + = 9
-    var - = 9
-    var * = 11
-    var / = 11
-    var % = 11
+  object operatorPrecedence {
+    object list {
+      var `)` = 0
+      var `;` = 0
+      var `,` = 0
+      var `=` = 0
+      var `]` = 0
+      var || = 1
+      var && = 2
+      var | = 3
+      var ^ = 4
+      var & = 5
+      var == = 6
+      var != = 6
+      var === = 6
+      var !== = 6
+      var < = 7
+      var > = 7
+      var <= = 7
+      var >= = 7
+      var << = 8
+      var >> = 8
+      var >>> = 8
+      var + = 9
+      var - = 9
+      var * = 11
+      var / = 11
+      var % = 11
+    }
+    val map = port.MapFromObject.mapFromObject[Int](list)
+    def apply(op: String): Int = map.getOrElse(op, 0)
   }
   var lookahead: RawToken = new RawToken {
     import OrType._
@@ -1248,7 +1252,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val op: String = token.value
     var precedence: Int = 0
     if (token.`type` == 7) {
-      precedence = this.operatorPrecedence(op) || 0
+      precedence = this.operatorPrecedence(op)
     } else if (token.`type` == 4) {
       precedence = if (op == "instanceof" || this.context.allowIn && op == "in") 7 else 0
     } else {
