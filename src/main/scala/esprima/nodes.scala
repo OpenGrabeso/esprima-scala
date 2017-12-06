@@ -22,6 +22,10 @@ object Node {
     var trailingComments: ArrayBuffer[CommentHandler.Comment] = _
   }
 
+  trait HasGenerator {
+    def generator: Boolean
+  }
+
   abstract class CommentNode extends Node {
     var value: String = _
   }
@@ -36,7 +40,7 @@ object Node {
   }
 
 
-  class ArrowFunctionExpression(var params: Any, var body: Any, var expression: Any) extends Node {
+  class ArrowFunctionExpression(var params: Any, var body: Any, var expression: Any) extends Node with HasGenerator {
     var `type` = Syntax.ArrowFunctionExpression
     var id = null
     var generator: Boolean = false
@@ -54,15 +58,16 @@ object Node {
   }
 
 
-  class AsyncArrowFunctionExpression(var params: Any, var body: Any, var expression: Boolean) extends Node {
+  class AsyncArrowFunctionExpression(var params: Any, var body: Any, var expression: Boolean) extends Node with HasGenerator {
     var `type` = Syntax.ArrowFunctionExpression
     var id = null
     var generator: Boolean = false
     var async: Boolean = true
   }
 
+  trait AFunctionDeclaration extends Node with HasGenerator
 
-  class AsyncFunctionDeclaration(var id: Any, var params: Any, var body: Any) extends Node {
+  class AsyncFunctionDeclaration(var id: Any, var params: Any, var body: Any) extends AFunctionDeclaration {
     var `type` = Syntax.FunctionDeclaration
     var generator: Boolean = false
     var expression: Boolean = false
@@ -70,7 +75,7 @@ object Node {
   }
 
 
-  class AsyncFunctionExpression(var id: Any, var params: Any, var body: Any) extends Node {
+  class AsyncFunctionExpression(var id: Any, var params: Any, var body: Any) extends Node with HasGenerator {
     var `type` = Syntax.FunctionExpression
     var generator: Boolean = false
     var expression: Boolean = false
@@ -213,14 +218,14 @@ object Node {
   }
 
 
-  class FunctionDeclaration(var id: Any, var params: Any, var body: Any, var generator: Any) extends Node {
+  class FunctionDeclaration(var id: Any, var params: Any, var body: Any, var generator: Any) extends Node with AFunctionDeclaration {
     var `type` = Syntax.FunctionDeclaration
     var expression: Boolean = false
     var async: Boolean = false
   }
 
 
-  class FunctionExpression(var id: Any, var params: Any, var body: Any, var generator: Any) extends Node {
+  class FunctionExpression(var id: Any, var params: Any, var body: Any, var generator: Any) extends Node with HasGenerator {
     var `type` = Syntax.FunctionExpression
     var expression: Boolean = false
     var async: Boolean = false
@@ -311,7 +316,7 @@ object Node {
   }
 
 
-  class Property(var kind: Any, var key: Any, var computed: Any, var value: Any, var method: Any, var shorthand: Any) extends Node {
+  class Property(var kind: Any, var key: Any, var computed: Any, var value: Node, var method: Any, var shorthand: Any) extends Node {
     var `type` = Syntax.Property
   }
 
@@ -325,7 +330,7 @@ object Node {
   }
 
 
-  class RestElement(var argument: Any) extends Node {
+  class RestElement(var argument: Node) extends Node {
     var `type` = Syntax.RestElement
   }
 
@@ -406,7 +411,7 @@ object Node {
   }
 
 
-  class UnaryExpression(var operator: Any, var argument: Any) extends Node {
+  class UnaryExpression(var operator: String, var argument: Node) extends Node {
     var `type` = Syntax.UnaryExpression
     var prefix: Boolean = true
   }
@@ -437,7 +442,7 @@ object Node {
   }
 
 
-  class YieldExpression(var argument: Any, var delegate: Any) extends Node {
+  class YieldExpression(var argument: Node, var delegate: Any) extends Node {
     var `type` = Syntax.YieldExpression
   }
 

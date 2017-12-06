@@ -6,6 +6,7 @@ trait OrTypes {
   case class OrType(var value: Any = null) {
     def get[T]: T = value.asInstanceOf[T]
     def === [T](that: T): Boolean = get[T] == that
+    def !== [T](that: T): Boolean = get[T] != that
   }
 
   object OrType {
