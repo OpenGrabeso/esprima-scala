@@ -57,7 +57,7 @@ object Scanner {
     def value: OrType  = ??? // String | Int
     def pattern: String = ??? // UndefOr
     def flags: String = ??? // UndefOr
-    def regex: String = ??? // UndefOr
+    def regex: RegExp = ??? // UndefOr
     def octal: Boolean = ??? // UndefOr
     def cooked: String = ??? // UndefOr
     def head: Boolean = ??? // UndefOr
@@ -89,9 +89,9 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
   var curlyStack = ArrayBuffer.empty[String]
   def saveState(): ScannerState = {
     new ScannerState {
-      var index = this.index
-      var lineNumber = this.lineNumber
-      var lineStart = this.lineStart
+      var index = self.index
+      var lineNumber = self.lineNumber
+      var lineStart = self.lineStart
     }
   }
   
@@ -121,11 +121,11 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       comments = ArrayBuffer()
       start = this.index - offset
       loc = new SourceLocation {
-        var start = new RawToken {
+        var start = new Position {
           var line = self.lineNumber
           var column = self.index - self.lineStart - offset
         }
-        var end = new {}
+        var end = null
       }
     }
     while (!this.eof()) {
@@ -159,9 +159,9 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         override def column = self.index - self.lineStart
       }
       object entry extends Comment {
-        var multiLine = false
-        var slice = Array(start + offset, self.index)
-        var range = Array(start, self.index)
+        override var multiLine = false
+        override var slice = (start + offset, self.index)
+        var range = (start, self.index)
         var loc = loc
       }
       comments.push(entry)
@@ -181,7 +181,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
           override def line = self.lineNumber
           override def column = self.index - self.lineStart - 2
         }
-        var end = new {}
+        var end = null
       }
     }
     while (!this.eof()) {
@@ -203,9 +203,9 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
               override def column = self.index - self.lineStart
             }
             object entry extends Comment {
-              var multiLine = true
-              var slice = Array(start + 2, self.index - 2)
-              var range = Array(start, self.index)
+              override var multiLine = true
+              override var slice = (start + 2, self.index - 2)
+              var range = (start, self.index)
               var loc = loc
             }
             comments.push(entry)
@@ -224,9 +224,9 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         override def column = self.index - self.lineStart
       }
       object entry extends Comment {
-        var multiLine = true
-        var slice = Array(start + 2, self.index)
-        var range = Array(start, self.index)
+        override var multiLine = true
+        override var slice = (start + 2, self.index)
+        var range = (start, self.index)
         var loc = loc
       }
       comments.push(entry)
@@ -434,7 +434,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     var id = Character.fromCodePoint(cp)
     this.index += id.length
     // '\ u' (U+005C, U+0075) denotes an escaped character.
-    var ch: String = _
+    var ch: String = null
     if (cp == 0x5C) {
       if (this.source.charCodeAt(this.index) != 0x75) {
         this.throwUnexpectedToken()
@@ -481,7 +481,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     id
   }
   
-  def octalToDecimal(ch: String): (Int, Int) = {
+  def octalToDecimal(ch: String): (Int, Boolean) = {
     // \0 is not octal escape sequence
     var octal = ch != "0"
     var code = octalValue(ch(0))
@@ -529,12 +529,14 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.tolerateUnexpectedToken(Messages.InvalidEscapedReservedWord)
       this.index = restore
     }
+    val _type = `type`
+    val _start = start
     new RawToken {
-      override var `type` = `type`
+      override var `type` = `_type`
       override def value = id
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
-      override def start = start
+      override def start = _start
       override def end = self.index
     }
   }
@@ -619,7 +621,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
     new RawToken {
       override var `type` = 6
-      override def value = parseInt("0x" + num, 16)
+      override def value = parseInt("0x" + num, 16).toDouble
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
       override def start = start
@@ -654,7 +656,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
     new RawToken {
       override var `type` = 6
-      override def value = parseInt(num, 2)
+      override def value = parseInt(num, 2).toDouble
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
       override def start = start
@@ -694,7 +696,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
     new RawToken {
       override var `type` = 6
-      override def value = parseInt(num, 8)
+      override def value = parseInt(num, 8).toDouble
       override def octal = octal
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
@@ -806,6 +808,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.throwUnexpectedToken()
     }
     new RawToken {
+      import OrType._
       override var `type` = 6
       override def value = parseFloat(num)
       override def lineNumber = self.lineNumber
@@ -1037,23 +1040,25 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     var tmp = pattern
     val self = this
     if (flags.indexOf("u") >= 0) {
-      tmp = tmp.replace("""\\u\{([0-9a-fA-F]+)\}|\\u([a-fA-F0-9]{4})""", ($0, $1, $2) => {
+      tmp = """\\u\{([0-9a-fA-F]+)\}|\\u([a-fA-F0-9]{4})""".r.replaceAllIn(tmp, m => {
+        val $1 = m.group(1)
+        val $2 = m.group(2)
         val codePoint = parseInt($1 || $2, 16)
         if (codePoint > 0x10FFFF) {
           self.throwUnexpectedToken(Messages.InvalidRegExp)
         }
         if (codePoint <= 0xFFFF) {
-          return fromCharCode(codePoint)
+          return new RegExp(fromCharCode(codePoint))
         }
         astralSubstitute
       }
-      ).replace("/[\uD800-\uDBFF][\uDC00-\uDFFF]/g".r, astralSubstitute)
+      ).replace("[\uD800-\uDBFF][\uDC00-\uDFFF]", astralSubstitute)
     }
     // First, detect invalid regular expressions.
     try {
       RegExp(tmp)
     } catch {
-      case e =>
+      case e: Exception =>
         this.throwUnexpectedToken(Messages.InvalidRegExp)
     }
     // Return a regular expression object for this pattern-flag pair, or
@@ -1062,7 +1067,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     try {
       new RegExp(pattern, flags)
     } catch {
-      case exception =>
+      case exception: Exception =>
         /*istanbul ignore next */
         return null
     }
@@ -1164,14 +1169,14 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val start = this.index
     val pattern = this.scanRegExpBody()
     val flags = this.scanRegExpFlags()
-    val value = this.testRegExp(pattern, flags)
+    val value_ = this.testRegExp(pattern, flags)
     new RawToken {
       import OrType._
       override var `type` = 9
       override def value = ""
       override def pattern = pattern
       override def flags = flags
-      override def regex = value
+      override def regex = value_
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
       override def start = start

@@ -70,7 +70,7 @@ class Tokenizer(code: String, config: Parser.Options) {
   scanner.trackComment = config.comment
   var trackRange: Boolean = config.range
   var trackLoc: Boolean = config.loc
-  var buffer = Array.empty[Parser.TokenEntry]
+  var buffer = ArrayBuffer.empty[Parser.TokenEntry]
   var reader: Reader = new Reader()
   def errors() = {
     this.errorHandler.errors

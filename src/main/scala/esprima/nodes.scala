@@ -101,7 +101,7 @@ object Node {
   }
 
 
-  class BlockStatement(var body: Seq[Node.Node]) extends Node {
+  class BlockStatement(var body: Seq[Node]) extends Node {
     var `type` = Syntax.BlockStatement
   }
 
@@ -121,7 +121,7 @@ object Node {
   }
 
 
-  class ClassBody(var body: Array[Node.MethodDefinition]) extends Node {
+  class ClassBody(var body: Array[MethodDefinition]) extends Node {
     var `type` = Syntax.ClassBody
   }
 
@@ -281,7 +281,7 @@ object Node {
     var `type` = Syntax.MethodDefinition
   }
 
-  sealed abstract class Program(var body: Seq[Node.Node]) extends Node {
+  sealed abstract class Program(var body: Seq[Node]) extends Node {
     var `type` = Syntax.Program
 
     def sourceType: String
@@ -292,7 +292,7 @@ object Node {
 
   }
 
-  class Module(body: Seq[Node.Node]) extends Program(body) {
+  class Module(body: Seq[Node]) extends Program(body) {
     def sourceType: String = "module"
   }
 
@@ -335,11 +335,11 @@ object Node {
   }
 
 
-  class Script(body: Seq[Node.Node]) extends Program(body) {
+  class Script(body: Seq[Node]) extends Program(body) {
     def sourceType: String = "script"
   }
 
-  class SequenceExpression(var expressions: Array[Node.Node]) extends Node {
+  class SequenceExpression(var expressions: Array[Node]) extends Node {
     var `type` = Syntax.SequenceExpression
   }
 
@@ -360,7 +360,7 @@ object Node {
   }
 
 
-  class SwitchCase(var test: Any, var consequent: Any) extends Node {
+  class SwitchCase(var test: Node, var consequent: Array[Node]) extends Node {
     var `type` = Syntax.SwitchCase
   }
 
@@ -417,12 +417,12 @@ object Node {
   }
 
 
-  class VariableDeclaration(var declarations: Seq[Node.VariableDeclarator], var kind: Any) extends Node {
+  class VariableDeclaration(var declarations: Seq[VariableDeclarator], var kind: Any) extends Node {
     var `type` = Syntax.VariableDeclaration
   }
 
 
-  class VariableDeclarator(var id: Any, var init: Node.Node) extends Node {
+  class VariableDeclarator(var id: Any, var init: Node) extends Node {
     var `type` = Syntax.VariableDeclarator
   }
 
