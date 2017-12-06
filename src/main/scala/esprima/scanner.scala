@@ -5,7 +5,6 @@ scanner.js
 
 package esprima
 import port.RegExp
-import Token._
 import Scanner._
 
 import scala.collection.mutable.ArrayBuffer

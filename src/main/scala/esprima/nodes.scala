@@ -121,7 +121,7 @@ object Node {
   }
 
 
-  class ClassBody(var body: Any) extends Node {
+  class ClassBody(var body: Array[Node.MethodDefinition]) extends Node {
     var `type` = Syntax.ClassBody
   }
 
@@ -339,7 +339,7 @@ object Node {
     def sourceType: String = "script"
   }
 
-  class SequenceExpression(var expressions: Any) extends Node {
+  class SequenceExpression(var expressions: Array[Node.Node]) extends Node {
     var `type` = Syntax.SequenceExpression
   }
 
@@ -381,7 +381,7 @@ object Node {
     def raw: String
   }
 
-  class TemplateElement(var value: TemplateElementValue, var tail: Any) extends Node {
+  class TemplateElement(var value: TemplateElementValue, var tail: Boolean) extends Node {
     var `type`: String = Syntax.TemplateElement
   }
 
