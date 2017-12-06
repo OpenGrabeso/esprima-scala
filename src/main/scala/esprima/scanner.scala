@@ -47,19 +47,19 @@ object Scanner {
   }
 
   trait RawToken {
-    def `type`: Int = _
-    def value: Any  = _// String | Int
-    def pattern: String = _ // UndefOr
-    def flags: String = _ // UndefOr
-    def regex: RegExp = _ // UndefOr
-    def octal: Boolean = _ // UndefOr
-    def cooked: String = _ // UndefOr
-    def head: Boolean = _ // UndefOr
-    def tail: Boolean = _ // UndefOr
-    def lineNumber: Int = _
-    def lineStart: Int = _
-    def start: Int = _
-    def end: Int = _
+    def `type`: Int = ???
+    def value: Any  = ??? // String | Int
+    def pattern: String = ??? // UndefOr
+    def flags: String = ??? // UndefOr
+    def regex: RegExp = ??? // UndefOr
+    def octal: Boolean = ??? // UndefOr
+    def cooked: String = ??? // UndefOr
+    def head: Boolean = ??? // UndefOr
+    def tail: Boolean = ??? // UndefOr
+    def lineNumber: Int = ???
+    def lineStart: Int = ???
+    def start: Int = ???
+    def end: Int = ???
   }
 
   trait ScannerState {
@@ -423,7 +423,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     var cp = this.codePointAt(this.index)
     var id = Character.fromCodePoint(cp)
     this.index += id.length
-    // '\u' (U+005C, U+0075) denotes an escaped character.
+    // '\ u' (U+005C, U+0075) denotes an escaped character.
     var ch: String = _
     if (cp == 0x5C) {
       if (this.source.charCodeAt(this.index) != 0x75) {
@@ -449,7 +449,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       ch = Character.fromCodePoint(cp)
       id += ch
       this.index += ch.length
-      // '\u' (U+005C, U+0075) denotes an escaped character.
+      // '\ u' (U+005C, U+0075) denotes an escaped character.
       if (cp == 0x5C) {
         id = id.substr(0, id.length - 1)
         if (this.source.charCodeAt(this.index) != 0x75) {
@@ -1021,13 +1021,13 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     // translating an ES6 "u"-flagged pattern to an ES5-compatible
     // approximation.
     // Note: replacing with '\uFFFF' enables false positives in unlikely
-    // scenarios. For example, `[\u{1044f}-\u{10440}]` is an invalid
+    // scenarios. For example, `[\ u{1044f}-\ u{10440}]` is an invalid
     // pattern that would not be detected by this substitution.
     val astralSubstitute = "￿"
     var tmp = pattern
     val self = this
     if (flags.indexOf("u") >= 0) {
-      tmp = tmp.replace("/\\u\{([0-9a-fA-F]+)\}|\\u([a-fA-F0-9]{4})/g".r, ($0, $1, $2) => {
+      tmp = tmp.replace("""\\u\{([0-9a-fA-F]+)\}|\\u([a-fA-F0-9]{4})""", ($0, $1, $2) => {
         val codePoint = parseInt($1 || $2, 16)
         if (codePoint > 0x10FFFF) {
           self.throwUnexpectedToken(Messages.InvalidRegExp)

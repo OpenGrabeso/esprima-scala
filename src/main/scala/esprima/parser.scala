@@ -132,7 +132,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
     var column = scanner.index - scanner.lineStart
   }
   def throwError(messageFormat: Any, args: String*) = {
-    val msg = messageFormat.replace("/%(\d)/g".r, (whole, idx) => {
+    val msg = messageFormat.replace("/%(\\d)/g".r, (whole, idx) => {
       assert(idx < args.length, "Message reference must be in range")
       args(idx)
     }
@@ -144,7 +144,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
   }
   
   def tolerateError(messageFormat: Any, args: String*) = {
-    val msg = messageFormat.replace("/%(\d)/g".r, (whole, idx) => {
+    val msg = messageFormat.replace("/%(\\d)/g".r, (whole, idx) => {
       assert(idx < args.length, "Message reference must be in range")
       args(idx)
     }
@@ -233,7 +233,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
     }
   }
   
-  def getTokenRaw(token: RawToken) = {
+  def getTokenRaw(token: RawToken): String = {
     this.scanner.source.slice(token.start, token.end)
   }
   
@@ -466,9 +466,9 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
   
   def parsePrimaryExpression() = {
     val node = this.createNode()
-    var expr = _
-    var token = new {}
-    var raw = _
+    var expr: Node.Node = null
+    var token: RawToken = null
+    var raw: String = null
     this.lookahead.`type` match {
       case 3 =>
         if ((this.context.isModule || this.context.await) && this.lookahead.value == "await") {
@@ -623,7 +623,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
   def parseObjectPropertyKey() = {
     val node = this.createNode()
     val token = this.nextToken()
-    var key = _
+    var key: Node.Node = null
     token.`type` match {
       case 8 | 6 =>
         if (this.context.strict && token.octal) {
@@ -803,7 +803,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
         }
       case Syntax.AssignmentExpression =>
         expr.`type` = Syntax.AssignmentPattern
-        delete expr.operator
+        expr.operator = null
         this.reinterpretExpressionAsPattern(expr.left)
       case _ =>
     }
@@ -1337,8 +1337,8 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
           }
           param.right.`type` = Syntax.Identifier
           param.right.name = "yield"
-          delete param.right.argument
-          delete param.right.delegate
+          param.right.argument = null
+          param.right.delegate = null
         }
       } else if (asyncArrow && param.`type` == Syntax.Identifier && param.name == "await") {
         this.throwUnexpectedToken(this.lookahead)
@@ -1404,7 +1404,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
           this.context.await = isAsync
           val node = this.startNode(startToken)
           this.expect("=>")
-          var body = _
+          var body: Node.Node = _
           if (this.`match`("{")) {
             val previousAllowIn = this.context.allowIn
             this.context.allowIn = true
@@ -1618,8 +1618,8 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
     var computed = false
     var shorthand = false
     val method = false
-    var key = _
-    var value = _
+    var key: Node.Node = _
+    var value: Node.Node = _
     if (this.lookahead.`type` == 3) {
       val keyToken = this.lookahead
       key = this.parseVariableIdentifier()
@@ -1782,17 +1782,17 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.ExpressionStatement(expr))
   }
   
-  def parseIfClause() = {
+  def parseIfClause(): Node.Node = {
     if (this.context.strict && this.matchKeyword("function")) {
       this.tolerateError(Messages.StrictFunction)
     }
     this.parseStatement()
   }
   
-  def parseIfStatement() = {
+  def parseIfStatement(): Node.IfStatement = {
     val node = this.createNode()
-    var consequent = _
-    var alternate = null
+    var consequent: Node.Node = null
+    var alternate: Node.Node = null
     this.expectKeyword("if")
     this.expect("(")
     val test = this.parseExpression()
@@ -1833,7 +1833,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
   
   def parseWhileStatement() = {
     val node = this.createNode()
-    var body = _
+    var body: Node.Node = null
     this.expectKeyword("while")
     this.expect("(")
     val test = this.parseExpression()
@@ -1977,7 +1977,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
         updateNode = this.parseExpression()
       }
     }
-    var body = _
+    var body: Node.Node = null
     if (!this.`match`(")") && this.config.tolerant) {
       this.tolerateUnexpectedToken(this.nextToken())
       body = this.finalize(this.createNode(), new Node.EmptyStatement())
@@ -2046,7 +2046,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
       this.tolerateError(Messages.StrictModeWith)
     }
     val node = this.createNode()
-    var body = _
+    var body: Node.Node = null
     this.expectKeyword("with")
     this.expect("(")
     val `object` = this.parseExpression()
@@ -2062,7 +2062,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
   
   def parseSwitchCase() = {
     val node = this.createNode()
-    var test = _
+    var test: Node.Node = null
     if (this.matchKeyword("default")) {
       this.nextToken()
       test = null
@@ -2122,7 +2122,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
         this.throwError(Messages.Redeclaration, "Label", id.name)
       }
       this.context.labelSet(key) = true
-      var body = _
+      var body: Node.Node = null
       if (this.matchKeyword("class")) {
         this.tolerateUnexpectedToken(this.lookahead)
         body = this.parseClassDeclaration()
@@ -2404,7 +2404,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
     if (isGenerator) {
       this.nextToken()
     }
-    var message = _
+    var message: String = null
     var id = null
     var firstRestricted: RawToken = null
     if (!identifierIsOptional || !this.`match`("(")) {
@@ -2463,7 +2463,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
     if (isGenerator) {
       this.nextToken()
     }
-    var message = _
+    var message: String = null
     var id = null
     var firstRestricted = new {}
     val previousAllowAwait = this.context.await
@@ -2797,7 +2797,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.Module(body))
   }
   
-  def parseScript() = {
+  def parseScript(): Node.Script = {
     val node = this.createNode()
     val body = this.parseDirectivePrologues()
     while (this.lookahead.`type` != 2) {
@@ -2806,7 +2806,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.Script(body))
   }
   
-  def parseModuleSpecifier() = {
+  def parseModuleSpecifier(): Node.Literal = {
     val node = this.createNode()
     if (this.lookahead.`type` != 8) {
       this.throwError(Messages.InvalidModuleSpecifier)
@@ -2816,10 +2816,10 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.Literal(token.value, raw))
   }
   
-  def parseImportSpecifier() = {
+  def parseImportSpecifier(): Node.ImportSpecifier = {
     val node = this.createNode()
-    var imported = _
-    var local = _
+    var imported: Node.Identifier = null
+    var local: Node.Identifier = null
     if (this.lookahead.`type` == 3) {
       imported = this.parseVariableIdentifier()
       local = imported
@@ -2840,9 +2840,9 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.ImportSpecifier(local, imported))
   }
   
-  def parseNamedImports() = {
+  def parseNamedImports(): ArrayBuffer[Node.ImportSpecifier] = {
     this.expect("{")
-    val specifiers = Array.empty[Any]
+    val specifiers = ArrayBuffer.empty[Node.ImportSpecifier]
     while (!this.`match`("}")) {
       specifiers.push(this.parseImportSpecifier())
       if (!this.`match`("}")) {
@@ -2870,14 +2870,14 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.ImportNamespaceSpecifier(local))
   }
   
-  def parseImportDeclaration() = {
+  def parseImportDeclaration(): Node.ImportDeclaration = {
     if (this.context.inFunctionBody) {
       this.throwError(Messages.IllegalImportDeclaration)
     }
     val node = this.createNode()
     this.expectKeyword("import")
-    var src = _
-    var specifiers = Array.empty[Any]
+    var src: Node.Literal = null
+    var specifiers = ArrayBuffer.empty[Node.Node]
     if (this.lookahead.`type` == 8) {
       // import 'foo';
       src = this.parseModuleSpecifier()
@@ -2977,7 +2977,7 @@ class Parser(code: String, options: Options, var delegate: (Any, Any) => Any) {
       exportDeclaration = this.finalize(node, new Node.ExportAllDeclaration(src))
     } else if (this.lookahead.`type` == 4) {
       // export var f = 1;
-      var declaration = _
+      var declaration: Node.Node = null
       this.lookahead.value match {
         case "let" | "const" =>
           declaration = this.parseLexicalDeclaration(new {

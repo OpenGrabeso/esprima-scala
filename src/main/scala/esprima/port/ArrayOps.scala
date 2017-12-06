@@ -13,7 +13,7 @@ trait ArrayOps {
       a.dropRight(1)
       ret
     }
-    def concat(b: TraversableOnce[T]): a.type = {
+    def concat(b: TraversableOnce[T]): ArrayBuffer[T] = {
       a.appendAll(b)
       a
     }

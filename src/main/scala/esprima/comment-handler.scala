@@ -47,7 +47,7 @@ class CommentHandler() {
       val firstComment = entry.node.trailingComments(0)
       if (firstComment && firstComment.range(0) >= metadata.end.offset) {
         trailingComments = entry.node.trailingComments
-        delete entry.node.trailingComments
+        entry.node.trailingComments = null
       }
     }
     trailingComments
@@ -55,7 +55,7 @@ class CommentHandler() {
   
   def findLeadingComments(metadata: Any) = {
     val leadingComments = Array.empty[Unit]
-    var target = _
+    var target: Node.Node = _
     while (this.stack.length > 0) {
       val entry = this.stack(this.stack.length - 1)
       if (entry && entry.start >= metadata.start.offset) {
@@ -75,7 +75,7 @@ class CommentHandler() {
         }
       }
       if (target.leadingComments && target.leadingComments.length == 0) {
-        delete target.leadingComments
+        target.leadingComments = null
       }
       return leadingComments
     }

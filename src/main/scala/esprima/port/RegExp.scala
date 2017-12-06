@@ -3,7 +3,6 @@ package port
 
 // adapted from scala.js.RegExp facade
 
-import RegExp._
 
 object RegExp extends Object {
   def apply(pattern: String, flags: String = ""): RegExp = ???
@@ -15,6 +14,8 @@ object RegExp extends Object {
     var input: String
   }
 }
+
+import RegExp._
 
 // simulate JS RegExp using Scala or Java means
 class RegExp(pattern: String, flags: String = "") {
