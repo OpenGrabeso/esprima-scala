@@ -1286,7 +1286,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           // Reduce: make a binary expression from the three topmost entries.
           while (stack.length > 2 && prec <= precedences(precedences.length - 1)) {
             right = stack.pop().asInstanceOf[Node.Node]
-            val operator = stack.pop().asInstanceOf[String]
+            val operator: String = stack.pop().asInstanceOf[OrType]
             precedences.pop()
             left = stack.pop().asInstanceOf[Node.Node]
             markers.pop()
@@ -1308,7 +1308,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         val marker = markers.pop()
         val lastLineStart = if (lastMarker) lastMarker.lineStart else 0
         val node = this.startNode(marker, lastLineStart)
-        val operator = stack(i - 1).asInstanceOf[String]
+        val operator: String = stack(i - 1).asInstanceOf[OrType]
         expr = this.finalize(node, new Node.BinaryExpression(operator, stack(i - 2).asInstanceOf[Node.Node], expr))
         i -= 2
         lastMarker = marker
@@ -2704,7 +2704,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   def parseClassElement(hasConstructor: ByRef[Boolean]): Node.MethodDefinition = {
     var token = this.lookahead
     val node = this.createNode()
-    var kind = ""
+    var kind: String = null
     var key: Node.Node = null
     var value: Node.Node = null
     var computed = false

@@ -4,6 +4,7 @@ import scala.language.implicitConversions
 
 trait OrTypes {
   case class OrType(var value: Any = null) {
+    override def toString = value.toString
     def get[T]: T = value.asInstanceOf[T]
     def === [T](that: T): Boolean = get[T] == that
     def !== [T](that: T): Boolean = get[T] != that

@@ -56,6 +56,8 @@ object Scanner {
   type Token = Token.Token
 
   trait RawToken {
+    override def toString = `type`.toString + " " + value.toString
+
     var `type`: Token = _
     def value: OrType  = ??? // String | Int
     def pattern: String = ??? // UndefOr

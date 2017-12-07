@@ -23,7 +23,7 @@ trait ArrayOps {
     }
     def pop(): T = {
       val ret = a.last
-      a.dropRight(1)
+      a.reduceToSize(a.length - 1)
       ret
     }
     def concat(b: TraversableOnce[T]): ArrayBuffer[T] = {

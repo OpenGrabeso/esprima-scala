@@ -12,6 +12,7 @@ import scala.collection.mutable.ArrayBuffer
 object Node {
 
   trait Node {
+    override def toString = `type`
 
     var `type`: String
     var range: (Int, Int) = _
