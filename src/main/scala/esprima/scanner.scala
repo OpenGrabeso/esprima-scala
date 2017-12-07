@@ -774,13 +774,13 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         }
       }
       while (Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
-        num += this.source({
+        num += this.source.getChar({
           val temp = this.index
           this.index += 1
           temp
         })
       }
-      ch = this.source(this.index)
+      ch = this.source.getChar(this.index)
     }
     if (ch == ".") {
       num += this.source({

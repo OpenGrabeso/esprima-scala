@@ -30,7 +30,9 @@ trait StringOps {
 
   implicit class StringOps(s: String) {
     def slice(from: Int): String = s.drop(from)
-    def charCodeAt(i: Int): CharValue = CharValue(s(i))
+    def charCodeAt(i: Int): CharValue = if (i < s.length) CharValue(s(i)) else CharValue(0)
+    // TODO: merge with charCodeAt
+    def getChar(i: Int): Char = if (i < s.length) s(i) else 0
     def substr(from: Int, count: Int): String = s.substring(from, from + count)
   }
 
