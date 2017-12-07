@@ -1015,7 +1015,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.throwUnexpectedToken(this.lookahead)
     } else {
       val callee = this.isolateCoverGrammar(this.parseLeftHandSideExpression)
-      val args = if (this.`match`("(")) this.parseArguments() else Array()
+      val args = if (this.`match`("(")) this.parseArguments() else Array[Node.Node]()
       expr = new Node.NewExpression(callee, args)
       this.context.isAssignmentTarget = false
       this.context.isBindingElement = false
@@ -1093,7 +1093,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           this.context.isAssignmentTarget = true
           this.expect(".")
           val property = this.parseIdentifierName()
-          exprNode = this.finalize(this.startNode(startToken), new Node.StaticMemberExpression(expr, property))
+          exprNode = this.finalize(this.startNode(startToken), new Node.StaticMemberExpression(exprNode, property))
         } else if (this.`match`("(")) {
           val asyncArrow = maybeAsync && startToken.lineNumber == this.lookahead.lineNumber
           this.context.isBindingElement = false
@@ -1102,7 +1102,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           if (expr.isInstanceOf[Node.Import] && args.length != 1) {
             this.tolerateError(Messages.BadImportCallArity)
           }
-          exprNode = this.finalize(this.startNode(startToken), new Node.CallExpression(expr, args))
+          exprNode = this.finalize(this.startNode(startToken), new Node.CallExpression(exprNode, args))
           if (asyncArrow && this.`match`("=>")) {
             for (i <- args) {
               this.reinterpretExpressionAsPattern(i)
@@ -1118,10 +1118,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           this.expect("[")
           val property = this.isolateCoverGrammar(this.parseExpression)
           this.expect("]")
-          exprNode = this.finalize(this.startNode(startToken), new Node.ComputedMemberExpression(expr, property))
+          exprNode = this.finalize(this.startNode(startToken), new Node.ComputedMemberExpression(exprNode, property))
         } else if (this.lookahead.`type` == Template && this.lookahead.head) {
           val quasi = this.parseTemplateLiteral()
-          exprNode = this.finalize(this.startNode(startToken), new Node.TaggedTemplateExpression(expr, quasi))
+          exprNode = this.finalize(this.startNode(startToken), new Node.TaggedTemplateExpression(exprNode, quasi))
         } else {
           break
         }
@@ -2048,7 +2048,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       body = this.isolateCoverGrammar(this.parseStatement)
       this.context.inIteration = previousInIteration
     }
-    if (left == null) this.finalize(node, new Node.ForStatement(init, test, update, body)) else if (forIn) this.finalize(node, new Node.ForInStatement(left, right, body)) else this.finalize(node, new Node.ForOfStatement(left, right, body))
+    if (left == null) this.finalize(node, new Node.ForStatement(initNode, testNode, updateNode, body)) else if (forIn) this.finalize(node, new Node.ForInStatement(left, right, body)) else this.finalize(node, new Node.ForOfStatement(left, right, body))
   }
   
   def parseContinueStatement(): Node.ContinueStatement = {

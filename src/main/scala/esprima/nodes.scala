@@ -41,7 +41,7 @@ object Node {
   }
 
 
-  class ArrowFunctionExpression(var params: Any, var body: Any, var expression: Any) extends Node with HasGenerator {
+  class ArrowFunctionExpression(var params: Array[Node], var body: Node, var expression: Boolean) extends Node with HasGenerator {
     var `type` = Syntax.ArrowFunctionExpression
     var id = null
     var generator: Boolean = false
@@ -59,7 +59,7 @@ object Node {
   }
 
 
-  class AsyncArrowFunctionExpression(var params: Any, var body: Any, var expression: Boolean) extends Node with HasGenerator {
+  class AsyncArrowFunctionExpression(var params: Array[Node], var body: Node, var expression: Boolean) extends Node with HasGenerator {
     var `type` = Syntax.ArrowFunctionExpression
     var id = null
     var generator: Boolean = false
@@ -68,7 +68,7 @@ object Node {
 
   trait AFunctionDeclaration extends Node with HasGenerator
 
-  class AsyncFunctionDeclaration(var id: Any, var params: Any, var body: Any) extends AFunctionDeclaration {
+  class AsyncFunctionDeclaration(var id: Node, var params: Array[Node], var body: Node) extends AFunctionDeclaration {
     var `type` = Syntax.FunctionDeclaration
     var generator: Boolean = false
     var expression: Boolean = false
@@ -76,7 +76,7 @@ object Node {
   }
 
 
-  class AsyncFunctionExpression(var id: Any, var params: Any, var body: Any) extends Node with HasGenerator {
+  class AsyncFunctionExpression(var id: Node, var params: Array[Node], var body: Node) extends Node with HasGenerator {
     var `type` = Syntax.FunctionExpression
     var generator: Boolean = false
     var expression: Boolean = false
@@ -92,11 +92,11 @@ object Node {
   class BinaryExpression(operator_par: String, left_par: Node, right_par: Node) extends Node {
     var `type`: String = _
     var operator: String = _
-    var left: Any = _
-    var right: Any = _
+    var left: Node = _
+    var right: Node = _
     this.constructor(operator_par, left_par, right_par)
 
-    def constructor(operator: String, left: Any, right: Any) = {
+    def constructor(operator: String, left: Node, right: Node) = {
       val logical = operator == "||" || operator == "&&"
       this.`type` = if (logical) Syntax.LogicalExpression else Syntax.BinaryExpression
       this.operator = operator
@@ -112,17 +112,17 @@ object Node {
   }
 
 
-  class BreakStatement(var label: Any) extends Node {
+  class BreakStatement(var label: Node) extends Node {
     var `type` = Syntax.BreakStatement
   }
 
 
-  class CallExpression(var callee: Any, var arguments: Any) extends Node {
+  class CallExpression(var callee: Node, var arguments: Array[Node]) extends Node {
     var `type` = Syntax.CallExpression
   }
 
 
-  class CatchClause(var param: Any, var body: Any) extends Node {
+  class CatchClause(var param: Node, var body: Node) extends Node {
     var `type` = Syntax.CatchClause
   }
 
@@ -132,28 +132,28 @@ object Node {
   }
 
 
-  class ClassDeclaration(var id: Any, var superClass: Any, var body: Any) extends Node {
+  class ClassDeclaration(var id: Node, var superClass: Node, var body: Node) extends Node {
     var `type` = Syntax.ClassDeclaration
   }
 
 
-  class ClassExpression(var id: Any, var superClass: Any, var body: Any) extends Node {
+  class ClassExpression(var id: Node, var superClass: Node, var body: Node) extends Node {
     var `type` = Syntax.ClassExpression
   }
 
 
-  class ComputedMemberExpression(var `object`: Any, var property: Any) extends Node {
+  class ComputedMemberExpression(var `object`: Node, var property: Node) extends Node {
     var `type` = Syntax.MemberExpression
     var computed: Boolean = true
   }
 
 
-  class ConditionalExpression(var test: Any, var consequent: Any, var alternate: Any) extends Node {
+  class ConditionalExpression(var test: Node, var consequent: Node, var alternate: Node) extends Node {
     var `type` = Syntax.ConditionalExpression
   }
 
 
-  class ContinueStatement(var label: Any) extends Node {
+  class ContinueStatement(var label: Node) extends Node {
     var `type` = Syntax.ContinueStatement
   }
 
@@ -163,12 +163,12 @@ object Node {
   }
 
 
-  class Directive(var expression: Any, var directive: String) extends Node {
+  class Directive(var expression: Node, var directive: String) extends Node {
     var `type` = Syntax.ExpressionStatement
   }
 
 
-  class DoWhileStatement(var body: Any, var test: Any) extends Node {
+  class DoWhileStatement(var body: Node, var test: Node) extends Node {
     var `type` = Syntax.DoWhileStatement
   }
 
@@ -178,55 +178,55 @@ object Node {
   }
 
 
-  class ExportAllDeclaration(var source: Any) extends Node {
+  class ExportAllDeclaration(var source: Node) extends Node {
     var `type` = Syntax.ExportAllDeclaration
   }
 
 
-  class ExportDefaultDeclaration(var declaration: Any) extends Node {
+  class ExportDefaultDeclaration(var declaration: Node) extends Node {
     var `type` = Syntax.ExportDefaultDeclaration
   }
 
 
-  class ExportNamedDeclaration(var declaration: Any, var specifiers: Any, var source: Any) extends Node {
+  class ExportNamedDeclaration(var declaration: Node, var specifiers: Array[Node], var source: Node) extends Node {
     var `type` = Syntax.ExportNamedDeclaration
   }
 
 
-  class ExportSpecifier(var local: Any, var exported: Any) extends Node {
+  class ExportSpecifier(var local: Node, var exported: Node) extends Node {
     var `type` = Syntax.ExportSpecifier
   }
 
 
-  class ExpressionStatement(var expression: Any) extends Node {
+  class ExpressionStatement(var expression: Node) extends Node {
     var `type` = Syntax.ExpressionStatement
   }
 
 
-  class ForInStatement(var left: Any, var right: Any, var body: Any) extends Node {
+  class ForInStatement(var left: Node, var right: Node, var body: Node) extends Node {
     var `type` = Syntax.ForInStatement
     var each: Boolean = false
   }
 
 
-  class ForOfStatement(var left: Any, var right: Any, var body: Any) extends Node {
+  class ForOfStatement(var left: Node, var right: Node, var body: Node) extends Node {
     var `type` = Syntax.ForOfStatement
   }
 
 
-  class ForStatement(var init: Any, var test: Any, var update: Any, var body: Any) extends Node {
+  class ForStatement(var init: Node, var test: Node, var update: Node, var body: Node) extends Node {
     var `type` = Syntax.ForStatement
   }
 
 
-  class FunctionDeclaration(var id: Any, var params: Any, var body: Any, var generator: Boolean) extends Node with AFunctionDeclaration {
+  class FunctionDeclaration(var id: Node, var params: Array[Node], var body: Node, var generator: Boolean) extends Node with AFunctionDeclaration {
     var `type` = Syntax.FunctionDeclaration
     var expression: Boolean = false
     var async: Boolean = false
   }
 
 
-  class FunctionExpression(var id: Any, var params: Any, var body: Any, var generator: Boolean) extends Node with HasGenerator {
+  class FunctionExpression(var id: Node, var params: Array[Node], var body: Node, var generator: Boolean) extends Node with HasGenerator {
     var `type` = Syntax.FunctionExpression
     var expression: Boolean = false
     var async: Boolean = false
@@ -238,7 +238,7 @@ object Node {
   }
 
 
-  class IfStatement(var test: Any, var consequent: Any, var alternate: Any) extends Node {
+  class IfStatement(var test: Node, var consequent: Node, var alternate: Node) extends Node {
     var `type` = Syntax.IfStatement
   }
 
@@ -248,42 +248,42 @@ object Node {
   }
 
 
-  class ImportDeclaration(var specifiers: Any, var source: Any) extends Node {
+  class ImportDeclaration(var specifiers: Array[Node], var source: Node) extends Node {
     var `type` = Syntax.ImportDeclaration
   }
 
 
-  class ImportDefaultSpecifier(var local: Any) extends Node {
+  class ImportDefaultSpecifier(var local: Node) extends Node {
     var `type` = Syntax.ImportDefaultSpecifier
   }
 
 
-  class ImportNamespaceSpecifier(var local: Any) extends Node {
+  class ImportNamespaceSpecifier(var local: Node) extends Node {
     var `type` = Syntax.ImportNamespaceSpecifier
   }
 
 
-  class ImportSpecifier(var local: Any, var imported: Any) extends Node {
+  class ImportSpecifier(var local: Node, var imported: Node) extends Node {
     var `type` = Syntax.ImportSpecifier
   }
 
 
-  class LabeledStatement(var label: Any, var body: Any) extends Node {
+  class LabeledStatement(var label: Node, var body: Node) extends Node {
     var `type` = Syntax.LabeledStatement
   }
 
 
-  class Literal(var value: OrType, var raw: Any) extends Node {
+  class Literal(var value: OrType, var raw: String) extends Node {
     var `type` = Syntax.Literal
   }
 
 
-  class MetaProperty(var meta: Any, var property: Any) extends Node {
+  class MetaProperty(var meta: Node, var property: Node) extends Node {
     var `type` = Syntax.MetaProperty
   }
 
 
-  class MethodDefinition(var key: Any, var computed: Any, var value: Any, var kind: Any, var static: Any) extends Node {
+  class MethodDefinition(var key: Node, var computed: Boolean, var value: Node, var kind: Boolean, var static: Boolean) extends Node {
     var `type` = Syntax.MethodDefinition
   }
 
@@ -302,7 +302,7 @@ object Node {
     def sourceType: String = "module"
   }
 
-  class NewExpression(var callee: Any, var arguments: Any) extends Node {
+  class NewExpression(var callee: Node, var arguments: Array[Node]) extends Node {
     var `type` = Syntax.NewExpression
   }
 
@@ -317,12 +317,12 @@ object Node {
   }
 
 
-  class Property(var kind: Any, var key: Any, var computed: Any, var value: Node, var method: Any, var shorthand: Any) extends Node {
+  class Property(var kind: String, var key: Node, var computed: Boolean, var value: Node, var method: Boolean, var shorthand: Boolean) extends Node {
     var `type` = Syntax.Property
   }
 
 
-  class RegexLiteral(var value: Any, var raw: Any, pattern: String, flags: String) extends Node {
+  class RegexLiteral(var value: RegExp, var raw: String, pattern: String, flags: String) extends Node {
     var `type` = Syntax.Literal
     var regex = new RegExp(
       pattern = pattern,
@@ -336,7 +336,7 @@ object Node {
   }
 
 
-  class ReturnStatement(var argument: Any) extends Node {
+  class ReturnStatement(var argument: Node) extends Node {
     var `type` = Syntax.ReturnStatement
   }
 
@@ -355,7 +355,7 @@ object Node {
   }
 
 
-  class StaticMemberExpression(var `object`: Any, var property: Any) extends Node {
+  class StaticMemberExpression(var `object`: Node, var property: Node) extends Node {
     var `type` = Syntax.MemberExpression
     var computed: Boolean = false
   }
@@ -371,12 +371,12 @@ object Node {
   }
 
 
-  class SwitchStatement(var discriminant: Any, var cases: Any) extends Node {
+  class SwitchStatement(var discriminant: Node, var cases: Array[SwitchCase]) extends Node {
     var `type` = Syntax.SwitchStatement
   }
 
 
-  class TaggedTemplateExpression(var tag: Any, var quasi: Any) extends Node {
+  class TaggedTemplateExpression(var tag: Node, var quasi: Node) extends Node {
     var `type` = Syntax.TaggedTemplateExpression
   }
 
@@ -392,7 +392,7 @@ object Node {
   }
 
 
-  class TemplateLiteral(var quasis: Any, var expressions: Any) extends Node {
+  class TemplateLiteral(var quasis: Array[Node], var expressions: Array[Node]) extends Node {
     var `type` = Syntax.TemplateLiteral
   }
 
@@ -402,12 +402,12 @@ object Node {
   }
 
 
-  class ThrowStatement(var argument: Any) extends Node {
+  class ThrowStatement(var argument: Node) extends Node {
     var `type` = Syntax.ThrowStatement
   }
 
 
-  class TryStatement(var block: Any, var handler: Any, var finalizer: Any) extends Node {
+  class TryStatement(var block: Node, var handler: Node, var finalizer: Node) extends Node {
     var `type` = Syntax.TryStatement
   }
 
@@ -418,32 +418,32 @@ object Node {
   }
 
 
-  class UpdateExpression(var operator: Any, var argument: Any, var prefix: Any) extends Node {
+  class UpdateExpression(var operator: String, var argument: Node, var prefix: Boolean) extends Node {
     var `type` = Syntax.UpdateExpression
   }
 
 
-  class VariableDeclaration(var declarations: Seq[VariableDeclarator], var kind: Any) extends Node {
+  class VariableDeclaration(var declarations: Seq[VariableDeclarator], var kind: String) extends Node {
     var `type` = Syntax.VariableDeclaration
   }
 
 
-  class VariableDeclarator(var id: Any, var init: Node) extends Node {
+  class VariableDeclarator(var id: Node, var init: Node) extends Node {
     var `type` = Syntax.VariableDeclarator
   }
 
 
-  class WhileStatement(var test: Any, var body: Any) extends Node {
+  class WhileStatement(var test: Node, var body: Node) extends Node {
     var `type` = Syntax.WhileStatement
   }
 
 
-  class WithStatement(var `object`: Any, var body: Any) extends Node {
+  class WithStatement(var `object`: Node, var body: Node) extends Node {
     var `type` = Syntax.WithStatement
   }
 
 
-  class YieldExpression(var argument: Node, var delegate: Any) extends Node {
+  class YieldExpression(var argument: Node, var delegate: Boolean) extends Node {
     var `type` = Syntax.YieldExpression
   }
 
