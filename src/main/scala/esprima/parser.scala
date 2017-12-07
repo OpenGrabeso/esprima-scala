@@ -82,12 +82,12 @@ object Parser {
 class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.Metadata) => Unit) {
   self =>
   var config = new Config {
-    override var range: Boolean = options.range
-    override var loc: Boolean = options.loc
-    override var source: String = null
-    override var tokens: Boolean = options.tokens
-    override var comment: Boolean = options.comment
-    override var tolerant : Boolean= options.tolerant
+    range = options.range
+    loc = options.loc
+    source = null
+    tokens = options.tokens
+    comment = options.comment
+    tolerant = options.tolerant
   }
   if (config.loc && options.source && options.source != null) {
     config.source = options.source
@@ -130,7 +130,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   }
   var lookahead: RawToken = new RawToken {
     import OrType._
-    override var `type` = 2
+    `type` = 2
     override def value = ""
     override def lineNumber = scanner.lineNumber
     override def lineStart = 0
@@ -144,7 +144,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var allowIn = true
     var allowStrictDirective = true
     var allowYield = true
-    var firstCoverInitializedNameError = null
+    var firstCoverInitializedNameError: RawToken = null
     var isAssignmentTarget = false
     var isBindingElement = false
     var inFunctionBody = false
@@ -215,7 +215,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       value = "ILLEGAL"
     }
     msg = msg.replace("%0", value)
-    if (token && token.lineNumber.getClass == "number") {
+    if (token && token.lineNumber >= 0) {
       val index = token.start
       val line = token.lineNumber
       val lastMarkerLineStart = this.lastMarker.index - this.lastMarker.column
@@ -246,9 +246,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         for (e <- comments) {
           object node extends Node.CommentNode {
             var `type` = if (e.multiLine) "BlockComment" else "LineComment"
-            override var value = self.scanner.source.slice(e.slice._1, e.slice._2)
-            override var range: (Int, Int) = _
-            override var loc: Scanner.SourceLocation = _
+            value = self.scanner.source.slice(e.slice._1, e.slice._2)
           }
           if (this.config.range) {
             node.range = e.range
@@ -257,12 +255,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
             node.loc = e.loc
           }
           object metadata extends Scanner.Metadata {
-            var start = new Position {
+            var start: Position = new Position {
               override def line = e.loc.start.line
               override def column = e.loc.start.column
               override def offset = e.range._1
             }
-            var end = new Position {
+            var end: Position = new Position {
               override def line = e.loc.end.line
               override def column = e.loc.end.column
               override def offset = e.range._2
@@ -288,11 +286,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     if (this.config.loc) {
       t.loc = new SourceLocation {
-        var start = new Position {
+        var start: Position = new Position {
           override def line = self.startMarker.line
           override def column = self.startMarker.column
         }
-        var end = new Position {
+        var end: Position = new Position {
           override def line = self.scanner.lineNumber
           override def column = self.scanner.index - self.scanner.lineStart
         }
@@ -377,11 +375,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     if (this.config.loc) {
       node.loc = new SourceLocation {
-        var start = new Position {
+        var start: Position = new Position {
           override def line = marker.line
           override def column = marker.column
         }
-        var end = new Position {
+        var end: Position = new Position {
           override def line = self.lastMarker.line
           override def column = self.lastMarker.column
         }
@@ -392,12 +390,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     if (this.delegate) {
       object metadata extends Scanner.Metadata {
-        var start = new Position {
+        var start: Position = new Position {
           override def line = marker.line
           override def column = marker.column
           override def offset = marker.index
         }
-        var end = new Position {
+        var end: Position = new Position {
           override def line = self.lastMarker.line
           override def column = self.lastMarker.column
           override def offset = self.lastMarker.index
@@ -447,7 +445,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   }
   
   def matchContextualKeyword(keyword: String) = {
-    this.lookahead.`type` == 3 && this.lookahead.value == keyword
+    this.lookahead.`type` == 3 && this.lookahead.value === keyword
   }
   
   def matchAssign(): Boolean = {
@@ -854,8 +852,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         this.expect("=>")
       }
       expr = new ArrowParameterPlaceHolder {
-        override var params = ArrayBuffer()
-        override var async = false
+        params = ArrayBuffer()
+        async = false
       }
     } else {
       val startToken = this.lookahead
@@ -867,8 +865,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           this.expect("=>")
         }
         expr = new ArrowParameterPlaceHolder {
-          override var params = ArrayBuffer(expr)
-          override var async = false
+          params = ArrayBuffer(expr)
+          async = false
         }
       } else {
         var arrow = false
@@ -891,8 +889,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
                 }
                 arrow = true
                 expr = new ArrowParameterPlaceHolder {
-                  override var params = expressions
-                  override var async = false
+                  params = expressions
+                  async = false
                 }
               } else if (this.`match`("...")) {
                 if (!this.context.isBindingElement) {
@@ -909,8 +907,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
                 }
                 arrow = true
                 expr = new ArrowParameterPlaceHolder {
-                  override var params = expressions
-                  override var async = false
+                  params = expressions
+                  async = false
                 }
               } else {
                 expressions.push(this.inheritCoverGrammar(this.parseAssignmentExpression))
@@ -931,8 +929,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
               var expr_cast = expr.asInstanceOf[Node.Identifier]
               arrow = true
               expr = new ArrowParameterPlaceHolder {
-                override var params = ArrayBuffer(expr_cast)
-                override var async = false
+                params = ArrayBuffer(expr_cast)
+                async = false
               }
             }
             if (!arrow) {
@@ -949,8 +947,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
               }
               val parameters = if (expr.isInstanceOf[Node.SequenceExpression]) expr.asInstanceOf[Node.SequenceExpression].expressions else Array(expr)
               expr = new ArrowParameterPlaceHolder {
-                override var params = ArrayBuffer(parameters:_*)
-                override var async = false
+                params = ArrayBuffer(parameters:_*)
+                async = false
               }
             }
           }
@@ -1107,9 +1105,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
               this.reinterpretExpressionAsPattern(i)
             }
             exprNode = new ArrowParameterPlaceHolder {
-              override var `type` = ArrowParameterPlaceHolder
-              override var params = ArrayBuffer(args: _*)
-              override var async = true
+              params = ArrayBuffer(args: _*)
+              async = true
             }
           }
         } else if (this.`match`("[")) {
@@ -1366,8 +1363,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         return null
     }
     object options extends ParameterOptions {
-      override var simple = true
-      override var paramSet = mutable.Map.empty
+      simple = true
+      paramSet = mutable.Map.empty
     }
     for (i <- params.indices) {
       val param = params(i)
@@ -1404,11 +1401,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     val _params = params
     new ParameterOptions {
-      override var simple = options.simple
-      override var params = _params
-      override var stricted = options.stricted
-      override var firstRestricted = options.firstRestricted
-      override var message = options.message
+      simple = options.simple
+      params = _params
+      stricted = options.stricted
+      firstRestricted = options.firstRestricted
+      message = options.message
     }
   }
   
@@ -1420,13 +1417,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       val startToken = this.lookahead
       var token = startToken
       expr = this.parseConditionalExpression()
-      if (token.`type` == 3 && token.lineNumber == this.lookahead.lineNumber && token.value == "async") {
+      if (token.`type` == 3 && token.lineNumber == this.lookahead.lineNumber && token.value === "async") {
         if (this.lookahead.`type` == 3 || this.matchKeyword("yield")) {
           val arg = this.parsePrimaryExpression()
           this.reinterpretExpressionAsPattern(arg)
           expr = new ArrowParameterPlaceHolder {
-            override var params = ArrayBuffer(arg)
-            override var async = true
+            params = ArrayBuffer(arg)
+            async = true
           }
         }
       }
@@ -1545,7 +1542,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           }
         case "const" =>
           statement = this.parseLexicalDeclaration(new VariableOptions {
-            override var inFor = false
+            inFor = false
           })
         case "function" =>
           statement = this.parseFunctionDeclaration()
@@ -1553,7 +1550,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           statement = this.parseClassDeclaration()
         case "let" =>
           statement = if (this.isLexicalDeclaration()) this.parseLexicalDeclaration(new VariableOptions {
-            override var inFor = false
+            inFor = false
           }) else this.parseStatement()
         case _ =>
           statement = this.parseStatement()
@@ -1758,7 +1755,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   def parseVariableIdentifier(kind: String = ""): Node.Identifier = {
     val node = this.createNode()
     val token = this.nextToken()
-    if (token.`type` == 4 && token.value == "yield") {
+    if (token.`type` == 4 && token.value === "yield") {
       if (this.context.strict) {
         this.tolerateUnexpectedToken(token, Messages.StrictReservedWord)
       } else if (!this.context.allowYield) {
@@ -1768,7 +1765,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       if (this.context.strict && token.`type` == 4 && this.scanner.isStrictModeReservedWord(token.value)) {
         this.tolerateUnexpectedToken(token, Messages.StrictReservedWord)
       } else {
-        if (this.context.strict || token.value != "let" || kind != "var") {
+        if (this.context.strict || (token.value !== "let") || kind != "var") {
           this.throwUnexpectedToken(token)
         }
       }
@@ -1800,7 +1797,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   
   def parseVariableDeclarationList(options: VariableOptions) = {
     object opt extends VariableOptions{
-      override var inFor = options.inFor
+      inFor = options.inFor
     }
     val list = ArrayBuffer.empty[Node.VariableDeclarator]
     list.push(this.parseVariableDeclaration(opt))
@@ -1815,7 +1812,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val node = this.createNode()
     this.expectKeyword("var")
     val declarations = this.parseVariableDeclarationList(new VariableOptions {
-      override var inFor = false
+      inFor = false
     })
     this.consumeSemicolon()
     this.finalize(node, new Node.VariableDeclaration(declarations, "var"))
@@ -1924,7 +1921,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         val previousAllowIn = this.context.allowIn
         this.context.allowIn = false
         val declarations = this.parseVariableDeclarationList(new VariableOptions {
-          override var inFor = true
+          inFor = true
         })
         this.context.allowIn = previousAllowIn
         if (declarations.length == 1 && this.matchKeyword("in")) {
@@ -1961,7 +1958,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           val previousAllowIn = this.context.allowIn
           this.context.allowIn = false
           val declarations = this.parseBindingList(kind, new VariableOptions {
-            override var inFor = true
+            inFor = true
           })
           this.context.allowIn = previousAllowIn
           if (declarations.length == 1 && declarations(0).init == null && this.matchKeyword("in")) {
@@ -2399,9 +2396,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
 
   def parseFormalParameters(firstRestricted_ : RawToken = null): ParameterOptions = {
     object options extends ParameterOptions {
-      override var simple = true
-      override var params = ArrayBuffer()
-      override var firstRestricted = firstRestricted_
+      simple = true
+      params = ArrayBuffer()
+      firstRestricted = firstRestricted_
     }
     this.expect("(")
     if (!this.`match`(")")) {
@@ -2421,11 +2418,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     this.expect(")")
     new ParameterOptions {
-      override var simple = options.simple
-      override var params = options.params
-      override var stricted = options.stricted
-      override var firstRestricted = options.firstRestricted
-      override var message = options.message
+      simple = options.simple
+      params = options.params
+      stricted = options.stricted
+      firstRestricted = options.firstRestricted
+      message = options.message
     }
   }
   
@@ -2436,7 +2433,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.scanner.scanComments()
       val next = this.scanner.lex()
       this.scanner.restoreState(state)
-      `match` = state.lineNumber == next.lineNumber && next.`type` == 4 && next.value == "function"
+      `match` = state.lineNumber == next.lineNumber && next.`type` == 4 && next.value === "function"
     }
     `match`
   }
@@ -2608,7 +2605,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       case 3 | 8 | 1 | 5 | 6 | 4 =>
         return true
       case 7 =>
-        return token.value == "["
+        return token.value === "["
       case _ =>
     }
     false
@@ -3031,7 +3028,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.lookahead.value.get[String] match {
         case "let" | "const" =>
           declaration = this.parseLexicalDeclaration(new VariableOptions {
-            override var inFor = false
+            inFor = false
           })
         case "var" | "class" | "function" =>
           declaration = this.parseStatementListItem()

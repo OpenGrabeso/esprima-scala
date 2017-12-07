@@ -49,9 +49,9 @@ class Reader() {
   
   def push(token: RawToken) = {
     if (token.`type` == 7 || token.`type` == 4) {
-      if (token.value == "{") {
+      if (token.value === "{") {
         this.curly = this.values.length
-      } else if (token.value == "(") {
+      } else if (token.value === "(") {
         this.paren = this.values.length
       }
       this.values.push(token.value)
@@ -81,10 +81,10 @@ class Tokenizer(code: String, config: Parser.Options) {
       val comments = this.scanner.scanComments()
       if (this.scanner.trackComment) {
         this.buffer ++= comments.map { e =>
-          val value = this.scanner.source.slice(e.slice._1, e.slice._2)
+          val value_ = this.scanner.source.slice(e.slice._1, e.slice._2)
           object comment extends Parser.TokenEntry {
             var `type` = if (e.multiLine) "BlockComment" else "LineComment"
-            var value = value
+            var value = value_
           }
           if (this.trackRange) {
             comment.range = e.range
@@ -99,11 +99,11 @@ class Tokenizer(code: String, config: Parser.Options) {
         var loc: SourceLocation = null
         if (this.trackLoc) {
           loc = new SourceLocation {
-            var start = new Position {
+            var start: Position = new Position {
               override def line = self.scanner.lineNumber
               override def column = self.scanner.index - self.scanner.lineStart
             }
-            var end = null
+            var end: Position = null
           }
         }
         val maybeRegex = this.scanner.source(this.scanner.index).toString == "/" && this.reader.isRegexStart()

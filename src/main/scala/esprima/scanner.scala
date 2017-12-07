@@ -62,7 +62,7 @@ object Scanner {
     def cooked: String = ??? // UndefOr
     def head: Boolean = ??? // UndefOr
     def tail: Boolean = ??? // UndefOr
-    def lineNumber: Int = ???
+    def lineNumber: Int = -1
     def lineStart: Int = ???
     def start: Int = ???
     def end: Int = ???
@@ -121,11 +121,11 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       comments = ArrayBuffer()
       start = this.index - offset
       loc = new SourceLocation {
-        var start = new Position {
+        var start: Position = new Position {
           var line = self.lineNumber
           var column = self.index - self.lineStart - offset
         }
-        var end = null
+        var end: Position = null
       }
     }
     while (!this.eof()) {
@@ -137,11 +137,12 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
             override def line = self.lineNumber
             override def column = self.index - self.lineStart - 1
           }
+          val loc_ = loc
           object entry extends Comment {
-            override var multiLine = false
+            override def multiLine = false
             override def slice = (start + offset, self.index - 1)
-            var range = (start, self.index - 1)
-            var loc = loc
+            val range = (start, self.index - 1)
+            val loc = loc_
           }
           comments.push(entry)
         }
@@ -158,11 +159,12 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         override def line = self.lineNumber
         override def column = self.index - self.lineStart
       }
+      val loc_ = loc
       object entry extends Comment {
-        override var multiLine = false
-        override var slice = (start + offset, self.index)
+        override def multiLine = false
+        override def slice = (start + offset, self.index)
         var range = (start, self.index)
-        var loc = loc
+        var loc = loc_
       }
       comments.push(entry)
     }
@@ -177,11 +179,11 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       comments = ArrayBuffer()
       start = this.index - 2
       loc = new SourceLocation {
-        var start = new Position {
+        var start: Position = new Position {
           override def line = self.lineNumber
           override def column = self.index - self.lineStart - 2
         }
-        var end = null
+        var end: Position = null
       }
     }
     while (!this.eof()) {
@@ -202,11 +204,12 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
               override def line = self.lineNumber
               override def column = self.index - self.lineStart
             }
+            val loc_ = loc
             object entry extends Comment {
-              override var multiLine = true
-              override var slice = (start + 2, self.index - 2)
-              var range = (start, self.index)
-              var loc = loc
+              override def multiLine = true
+              override def slice = (start + 2, self.index - 2)
+              def range = (start, self.index)
+              def loc = loc_
             }
             comments.push(entry)
           }
@@ -223,11 +226,12 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         override def line = self.lineNumber
         override def column = self.index - self.lineStart
       }
+      val loc_ = loc
       object entry extends Comment {
-        override var multiLine = true
-        override var slice = (start + 2, self.index)
-        var range = (start, self.index)
-        var loc = loc
+        override def multiLine = true
+        override def slice = (start + 2, self.index)
+        def range = (start, self.index)
+        def loc = loc_
       }
       comments.push(entry)
     }
@@ -466,7 +470,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
           this.throwUnexpectedToken()
         }
         this.index += 1
-        if (this.source(this.index) == "{") {
+        if (this.source(this.index).toString == "{") {
           this.index += 1
           ch = this.scanUnicodeCodePointEscape()
         } else {
@@ -532,7 +536,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val _type = `type`
     val _start = start
     new RawToken {
-      override var `type` = `_type`
+      `type` = `_type`
       override def value = id
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
@@ -591,27 +595,30 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (this.index == start) {
       this.throwUnexpectedToken()
     }
+    val start_ = start
     new RawToken {
-      override var `type` = 7
+      `type` = 7
       override def value = str
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
-      override def start = start
+      override def start = start_
       override def end = self.index
     }
   }
   
-  def scanHexLiteral(start: Double) = {
+  def scanHexLiteral(start: Int) = {
     var num = ""
-    while (!this.eof()) {
-      if (!Character.isHexDigit(this.source.charCodeAt(this.index))) {
-        /* Unsupported: Break */ break;
+    breakable {
+      while (!this.eof()) {
+        if (!Character.isHexDigit(this.source.charCodeAt(this.index))) {
+          break
+        }
+        num += this.source({
+          val temp = this.index
+          this.index += 1
+          temp
+        })
       }
-      num += this.source({
-        val temp = this.index
-        this.index += 1
-        temp
-      })
     }
     if (num.length == 0) {
       this.throwUnexpectedToken()
@@ -619,29 +626,32 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (Character.isIdentifierStart(this.source.charCodeAt(this.index))) {
       this.throwUnexpectedToken()
     }
+    val start_ = start
     new RawToken {
-      override var `type` = 6
+      `type` = 6
       override def value = parseInt("0x" + num, 16).toDouble
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
-      override def start = start
+      override def start = start_
       override def end = self.index
     }
   }
   
-  def scanBinaryLiteral(start: Double) = {
+  def scanBinaryLiteral(start: Int) = {
     var num = ""
     var ch: CharValue = null
-    while (!this.eof()) {
-      ch = this.source(this.index)
-      if (ch != "0" && ch != "1") {
-        /* Unsupported: Break */ break;
+    breakable {
+      while (!this.eof()) {
+        ch = this.source(this.index)
+        if (ch != "0" && ch != "1") {
+          break
+        }
+        num += this.source({
+          val temp = this.index
+          this.index += 1
+          temp
+        })
       }
-      num += this.source({
-        val temp = this.index
-        this.index += 1
-        temp
-      })
     }
     if (num.length == 0) {
       // only 0b or 0B
@@ -654,17 +664,18 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         this.throwUnexpectedToken()
       }
     }
+    val start_ = start
     new RawToken {
-      override var `type` = 6
+      `type` = 6
       override def value = parseInt(num, 2).toDouble
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
-      override def start = start
+      override def start = start_
       override def end = self.index
     }
   }
   
-  def scanOctalLiteral(prefix: String, start: Double) = {
+  def scanOctalLiteral(prefix: String, start: Int) = {
     var num = ""
     var octal = false
     if (Character.isOctalDigit(prefix.charCodeAt(0))) {
@@ -677,15 +688,17 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     } else {
       this.index += 1
     }
-    while (!this.eof()) {
-      if (!Character.isOctalDigit(this.source.charCodeAt(this.index))) {
-        /* Unsupported: Break */ break;
+    breakable {
+      while (!this.eof()) {
+        if (!Character.isOctalDigit(this.source.charCodeAt(this.index))) {
+          break
+        }
+        num += this.source({
+          val temp = this.index
+          this.index += 1
+          temp
+        })
       }
-      num += this.source({
-        val temp = this.index
-        this.index += 1
-        temp
-      })
     }
     if (!octal && num.length == 0) {
       // only 0o or 0O
@@ -694,13 +707,15 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (Character.isIdentifierStart(this.source.charCodeAt(this.index)) || Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
       this.throwUnexpectedToken()
     }
+    val start_ = start
+    val octal_ = octal
     new RawToken {
-      override var `type` = 6
+      `type` = 6
       override def value = parseInt(num, 8).toDouble
-      override def octal = octal
+      override def octal = octal_
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
-      override def start = start
+      override def start = start_
       override def end = self.index
     }
   }
@@ -807,13 +822,14 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (Character.isIdentifierStart(this.source.charCodeAt(this.index))) {
       this.throwUnexpectedToken()
     }
+    val start_ = start
     new RawToken {
       import OrType._
-      override var `type` = 6
+      `type` = 6
       override def value = parseFloat(num)
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
-      override def start = start
+      override def start = start_
       override def end = self.index
     }
   }
@@ -843,7 +859,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         if (!ch || !Character.isLineTerminator(ch.charCodeAt(0))) {
           ch match {
             case "u" =>
-              if (this.source(this.index) == "{") {
+              if (this.source(this.index).toString == "{") {
                 this.index += 1
                 str += this.scanUnicodeCodePointEscape()
               } else {
@@ -885,7 +901,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
           }
         } else {
           this.lineNumber += 1
-          if (ch == "\r" && this.source(this.index) == "\n") {
+          if (ch == "\r" && this.source(this.index).toString == "\n") {
             this.index += 1
           }
           this.lineStart = this.index
@@ -900,13 +916,15 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.index = start
       this.throwUnexpectedToken()
     }
+    val start_ = start
+    val octal_ = octal
     new RawToken {
-      override var `type` = 8
+      `type` = 8
       override def value = str
-      override def octal = octal
+      override def octal = octal_
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
-      override def start = start
+      override def start = start_
       override def end = self.index
     }
   }
@@ -915,99 +933,101 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     var cooked = ""
     var terminated = false
     val start = this.index
-    val head = this.source(start) == "`"
+    val head = this.source(start).toString == "`"
     var tail = false
     var rawOffset = 2
     this.index += 1
-    while (!this.eof()) {
-      var ch: String = this.source({
-        val temp = this.index
-        this.index += 1
-        temp
-      })
-      if (ch == "`") {
-        rawOffset = 1
-        tail = true
-        terminated = true
-        /* Unsupported: Break */ break;
-      } else if (ch == "$") {
-        if (this.source(this.index) == "{") {
-          this.curlyStack.push("${")
-          this.index += 1
-          terminated = true
-          /* Unsupported: Break */ break;
-        }
-        cooked += ch
-      } else if (ch == "\\") {
-        ch = this.source({
+    breakable {
+      while (!this.eof()) {
+        var ch: String = this.source({
           val temp = this.index
           this.index += 1
           temp
         })
-        if (!Character.isLineTerminator(ch.charCodeAt(0))) {
-          ch match {
-            case "n" =>
-              cooked += "\n"
-            case "r" =>
-              cooked += "\r"
-            case "t" =>
-              cooked += "\t"
-            case "u" =>
-              if (this.source(this.index) == "{") {
-                this.index += 1
-                cooked += this.scanUnicodeCodePointEscape()
-              } else {
-                val restore = this.index
-                val unescaped = this.scanHexEscape(ch)
-                if (unescaped != null) {
-                  cooked += unescaped
+        if (ch == "`") {
+          rawOffset = 1
+          tail = true
+          terminated = true
+          break
+        } else if (ch == "$") {
+          if (this.source(this.index).toString == "{") {
+            this.curlyStack.push("${")
+            this.index += 1
+            terminated = true
+            break
+          }
+          cooked += ch
+        } else if (ch == "\\") {
+          ch = this.source({
+            val temp = this.index
+            this.index += 1
+            temp
+          })
+          if (!Character.isLineTerminator(ch.charCodeAt(0))) {
+            ch match {
+              case "n" =>
+                cooked += "\n"
+              case "r" =>
+                cooked += "\r"
+              case "t" =>
+                cooked += "\t"
+              case "u" =>
+                if (this.source(this.index).toString == "{") {
+                  this.index += 1
+                  cooked += this.scanUnicodeCodePointEscape()
                 } else {
-                  this.index = restore
+                  val restore = this.index
+                  val unescaped = this.scanHexEscape(ch)
+                  if (unescaped != null) {
+                    cooked += unescaped
+                  } else {
+                    this.index = restore
+                    cooked += ch
+                  }
+                }
+              case "x" =>
+                val unescaped = this.scanHexEscape(ch)
+                if (unescaped == null) {
+                  this.throwUnexpectedToken(Messages.InvalidHexEscapeSequence)
+                }
+                cooked += unescaped
+              case "b" =>
+                cooked += "\b"
+              case "f" =>
+                cooked += "\f"
+              case "v" =>
+                cooked += "\013"
+              case _ =>
+                if (ch == "0") {
+                  if (Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
+                    // Illegal: \01 \02 and so on
+                    this.throwUnexpectedToken(Messages.TemplateOctalLiteral)
+                  }
+                  cooked += "\00"
+                } else if (Character.isOctalDigit(ch.charCodeAt(0))) {
+                  // Illegal: \1 \2
+                  this.throwUnexpectedToken(Messages.TemplateOctalLiteral)
+                } else {
                   cooked += ch
                 }
-              }
-            case "x" =>
-              val unescaped = this.scanHexEscape(ch)
-              if (unescaped == null) {
-                this.throwUnexpectedToken(Messages.InvalidHexEscapeSequence)
-              }
-              cooked += unescaped
-            case "b" =>
-              cooked += "\b"
-            case "f" =>
-              cooked += "\f"
-            case "v" =>
-              cooked += "\013"
-            case _ =>
-              if (ch == "0") {
-                if (Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
-                  // Illegal: \01 \02 and so on
-                  this.throwUnexpectedToken(Messages.TemplateOctalLiteral)
-                }
-                cooked += "\00"
-              } else if (Character.isOctalDigit(ch.charCodeAt(0))) {
-                // Illegal: \1 \2
-                this.throwUnexpectedToken(Messages.TemplateOctalLiteral)
-              } else {
-                cooked += ch
-              }
+            }
+          } else {
+            this.lineNumber += 1
+            if (ch == "\r" && this.source(this.index).toString == "\n") {
+              this.index += 1
+            }
+            this.lineStart = this.index
           }
-        } else {
+        } else if (Character.isLineTerminator(ch.charCodeAt(0))) {
           this.lineNumber += 1
-          if (ch == "\r" && this.source(this.index) == "\n") {
+          if (ch == "\r" && this.source(this.index).toString == "\n") {
             this.index += 1
           }
           this.lineStart = this.index
+          cooked += "\n"
+        } else {
+          cooked += ch
         }
-      } else if (Character.isLineTerminator(ch.charCodeAt(0))) {
-        this.lineNumber += 1
-        if (ch == "\r" && this.source(this.index) == "\n") {
-          this.index += 1
-        }
-        this.lineStart = this.index
-        cooked += "\n"
-      } else {
-        cooked += ch
       }
     }
     if (!terminated) {
@@ -1016,15 +1036,19 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (!head) {
       this.curlyStack.pop()
     }
+    val start_ = start
+    val head_ = head
+    val tail_ = tail
+    val cooked_ = cooked
     new RawToken {
-      override var `type` = 10
+      `type` = 10
       override def value = self.source.slice(start + 1, self.index - rawOffset)
-      override def cooked = cooked
-      override def head = head
-      override def tail = tail
-      override def lineNumber = this.lineNumber
-      override def lineStart = this.lineStart
-      override def start = start
+      override def cooked = cooked_
+      override def head = head_
+      override def tail = tail_
+      override def lineNumber = self.lineNumber
+      override def lineStart = self.lineStart
+      override def start = start_
       override def end = self.index
     }
   }
@@ -1166,20 +1190,20 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
   }
   
   def scanRegExp() = {
-    val start = this.index
-    val pattern = this.scanRegExpBody()
-    val flags = this.scanRegExpFlags()
-    val value_ = this.testRegExp(pattern, flags)
+    val start_ = this.index
+    val pattern_ = this.scanRegExpBody()
+    val flags_ = this.scanRegExpFlags()
+    val value_ = this.testRegExp(pattern_, flags_)
     new RawToken {
       import OrType._
-      override var `type` = 9
+      `type` = 9
       override def value = ""
-      override def pattern = pattern
-      override def flags = flags
+      override def pattern = pattern_
+      override def flags = flags_
       override def regex = value_
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
-      override def start = start
+      override def start = start_
       override def end = self.index
     }
   }
@@ -1188,10 +1212,10 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (this.eof()) {
       return new RawToken {
         import OrType._
-        override var `type` = 2
+        `type` = 2
         override def value = ""
-        override def lineNumber = this.lineNumber
-        override def lineStart = this.lineStart
+        override def lineNumber = self.lineNumber
+        override def lineStart = self.lineStart
         override def start = self.index
         override def end = self.index
       }

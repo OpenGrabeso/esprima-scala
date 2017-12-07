@@ -218,14 +218,14 @@ object Node {
   }
 
 
-  class FunctionDeclaration(var id: Any, var params: Any, var body: Any, var generator: Any) extends Node with AFunctionDeclaration {
+  class FunctionDeclaration(var id: Any, var params: Any, var body: Any, var generator: Boolean) extends Node with AFunctionDeclaration {
     var `type` = Syntax.FunctionDeclaration
     var expression: Boolean = false
     var async: Boolean = false
   }
 
 
-  class FunctionExpression(var id: Any, var params: Any, var body: Any, var generator: Any) extends Node with HasGenerator {
+  class FunctionExpression(var id: Any, var params: Any, var body: Any, var generator: Boolean) extends Node with HasGenerator {
     var `type` = Syntax.FunctionExpression
     var expression: Boolean = false
     var async: Boolean = false

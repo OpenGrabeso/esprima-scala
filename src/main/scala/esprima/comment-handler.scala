@@ -133,16 +133,17 @@ class CommentHandler() {
     if (trailingComments.length > 0) {
       node.trailingComments = trailingComments
     }
+    val node_ = node
     this.stack.push(new NodeInfo {
-      def node = node
+      def node = node_
       def start = metadata.start.offset
     })
   }
   
   def visitComment(node: Node.CommentNode, metadata: Metadata) = {
-    val `type_` = if (node.`type`(0) == "L") "Line" else "Block"
+    val `type_` = if (node.`type`(0).toString == "L") "Line" else "Block"
     object comment extends Comment {
-      var `type` = `type`
+      var `type` = `type_`
       var value = node.value
     }
     if (node.range) {
@@ -155,9 +156,9 @@ class CommentHandler() {
     if (this.attach) {
       object entry extends Entry {
         var comment = new Comment {
-          override var `type` = `type_`
-          override var value = node.value
-          override var range = (metadata.start.offset, metadata.end.offset)
+          override def `type` = `type_`
+          override def value = node.value
+          range = (metadata.start.offset, metadata.end.offset)
         }
         var start = metadata.start.offset
       }
