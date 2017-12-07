@@ -133,7 +133,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   }
   var lookahead: RawToken = new RawToken {
     import OrType._
-    `type` = Token(2)
+    `type` = EOF
     override def value = ""
     override def lineNumber = scanner.lineNumber
     override def lineStart = 0
@@ -204,8 +204,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var value: String = null
     if (token) {
       if (!message) {
-        msg = if (token.`type` == Token(2)) Messages.UnexpectedEOS else if (token.`type` == Token(3)) Messages.UnexpectedIdentifier else if (token.`type` == Token(6)) Messages.UnexpectedNumber else if (token.`type` == Token(8)) Messages.UnexpectedString else if (token.`type` == Token(10)) Messages.UnexpectedTemplate else Messages.UnexpectedToken
-        if (token.`type` == Token(4)) {
+        msg = if (token.`type` == EOF) Messages.UnexpectedEOS else if (token.`type` == Identifier) Messages.UnexpectedIdentifier else if (token.`type` == NumericLiteral) Messages.UnexpectedNumber else if (token.`type` == StringLiteral) Messages.UnexpectedString else if (token.`type` == Template) Messages.UnexpectedTemplate else Messages.UnexpectedToken
+        if (token.`type` == Keyword) {
           if (this.scanner.isFutureReservedWord(token.value)) {
             msg = Messages.UnexpectedReserved
           } else if (this.context.strict && this.scanner.isStrictModeReservedWord(token.value)) {
@@ -299,7 +299,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         }
       }
     }
-    if (token.`type` == Token(9)) {
+    if (token.`type` == RegularExpression) {
       val pattern = token.pattern
       val flags = token.flags
       t.regex = new RegExp (
@@ -323,13 +323,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     val next = this.scanner.lex()
     this.hasLineTerminator = token.lineNumber != next.lineNumber
-    if (next && this.context.strict && next.`type` == Token(3)) {
+    if (next && this.context.strict && next.`type` == Identifier) {
       if (this.scanner.isStrictModeReservedWord(next.value)) {
-        next.`type` = Token(4)
+        next.`type` = Keyword
       }
     }
     this.lookahead = next
-    if (this.config.tokens && next.`type` != Token(2)) {
+    if (this.config.tokens && next.`type` != EOF) {
       this.tokens.push(this.convertToken(next))
     }
     token
@@ -411,7 +411,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   
   def expect(value: String) = {
     val token = this.nextToken()
-    if (token.`type` != Token(7) || (token.value !== value)) {
+    if (token.`type` != Punctuator || (token.value !== value)) {
       this.throwUnexpectedToken(token)
     }
   }
@@ -419,9 +419,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   def expectCommaSeparator() = {
     if (this.config.tolerant) {
       val token = this.lookahead
-      if (token.`type` == Token(7) && token.value === ",") {
+      if (token.`type` == Punctuator && token.value === ",") {
         this.nextToken()
-      } else if (token.`type` == Token(7) && token.value === ";") {
+      } else if (token.`type` == Punctuator && token.value === ";") {
         this.nextToken()
         this.tolerateUnexpectedToken(token)
       } else {
@@ -434,25 +434,25 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   
   def expectKeyword(keyword: String) = {
     val token = this.nextToken()
-    if (token.`type` != Token(4) || (token.value !== keyword)) {
+    if (token.`type` != Keyword || (token.value !== keyword)) {
       this.throwUnexpectedToken(token)
     }
   }
   
   def `match`(value: String) = {
-    this.lookahead.`type` == Token(7) && this.lookahead.value === value
+    this.lookahead.`type` == Punctuator && this.lookahead.value === value
   }
   
   def matchKeyword(keyword: String) = {
-    this.lookahead.`type` == Token(4) && this.lookahead.value === keyword
+    this.lookahead.`type` == Keyword && this.lookahead.value === keyword
   }
   
   def matchContextualKeyword(keyword: String) = {
-    this.lookahead.`type` == Token(3) && this.lookahead.value === keyword
+    this.lookahead.`type` == Identifier && this.lookahead.value === keyword
   }
   
   def matchAssign(): Boolean = {
-    if (this.lookahead.`type` != Token(7)) {
+    if (this.lookahead.`type` != Punctuator) {
       return false
     }
     val op: String = this.lookahead.value
@@ -494,7 +494,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     if (this.`match`(";")) {
       this.nextToken()
     } else if (!this.hasLineTerminator) {
-      if (this.lookahead.`type` != Token(2) && !this.`match`("}")) {
+      if (this.lookahead.`type` != EOF && !this.`match`("}")) {
         this.throwUnexpectedToken(this.lookahead)
       }
       this.lastMarker.index = this.startMarker.index
@@ -699,7 +699,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var method = false
     var shorthand = false
     var isAsync = false
-    if (token.`type` == Token(3)) {
+    if (token.`type` == Identifier) {
       val id: String = token.value
       this.nextToken()
       computed = this.`match`("[")
@@ -712,18 +712,18 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       key = this.parseObjectPropertyKey()
     }
     val lookaheadPropertyKey = this.qualifiedPropertyName(this.lookahead)
-    if (token.`type` == Token(3) && !isAsync && token.value === "get" && lookaheadPropertyKey) {
+    if (token.`type` == Identifier && !isAsync && token.value === "get" && lookaheadPropertyKey) {
       kind = "get"
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
       this.context.allowYield = false
       value = this.parseGetterMethod()
-    } else if (token.`type` == Token(3) && !isAsync && token.value === "set" && lookaheadPropertyKey) {
+    } else if (token.`type` == Identifier && !isAsync && token.value === "set" && lookaheadPropertyKey) {
       kind = "set"
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
       value = this.parseSetterMethod()
-    } else if (token.`type` == Token(7) && token.value === "*" && lookaheadPropertyKey) {
+    } else if (token.`type` == Punctuator && token.value === "*" && lookaheadPropertyKey) {
       kind = "init"
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
@@ -746,7 +746,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       } else if (this.`match`("(")) {
         value = if (isAsync) this.parsePropertyMethodAsyncFunction() else this.parsePropertyMethodFunction()
         method = true
-      } else if (token.`type` == Token(3)) {
+      } else if (token.`type` == Identifier) {
         val id = this.finalize(node, new Node.Identifier(token.value))
         if (this.`match`("=")) {
           this.context.firstCoverInitializedNameError = this.lookahead
@@ -793,7 +793,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   }
   
   def parseTemplateElement() = {
-    if (this.lookahead.`type` != Token(10)) {
+    if (this.lookahead.`type` != Template) {
       this.throwUnexpectedToken(this.lookahead)
     }
     val node = this.createNode()
@@ -880,7 +880,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           this.context.isAssignmentTarget = false
           expressions.push(expr)
           breakable {
-            while (this.lookahead.`type` != Token(2)) {
+            while (this.lookahead.`type` != EOF) {
               if (!this.`match`(",")) {
                 break
               }
@@ -985,7 +985,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   }
   
   def isIdentifierName(token: RawToken) = {
-    token.`type` == Token(3) || token.`type` == Token(4) || token.`type` == Token(1) || token.`type` == Token(5)
+    token.`type` == Identifier || token.`type` == Keyword || token.`type` == BooleanLiteral || token.`type` == NullLiteral
   }
   
   def parseIdentifierName() = {
@@ -1005,7 +1005,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var expr: Node.Node = null
     if (this.`match`(".")) {
       this.nextToken()
-      if (this.lookahead.`type` == Token(3) && this.context.inFunctionBody && this.lookahead.value === "target") {
+      if (this.lookahead.`type` == Identifier && this.context.inFunctionBody && this.lookahead.value === "target") {
         val property = this.parseIdentifierName()
         expr = new Node.MetaProperty(id, property)
       } else {
@@ -1058,7 +1058,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.scanner.scanComments()
       val next = this.scanner.lex()
       this.scanner.restoreState(state)
-      `match` = next.`type` == Token(7) && next.value === "("
+      `match` = next.`type` == Punctuator && next.value === "("
     }
     `match`
   }
@@ -1119,7 +1119,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           val property = this.isolateCoverGrammar(this.parseExpression)
           this.expect("]")
           exprNode = this.finalize(this.startNode(startToken), new Node.ComputedMemberExpression(expr, property))
-        } else if (this.lookahead.`type` == Token(10) && this.lookahead.head) {
+        } else if (this.lookahead.`type` == Template && this.lookahead.head) {
           val quasi = this.parseTemplateLiteral()
           exprNode = this.finalize(this.startNode(startToken), new Node.TaggedTemplateExpression(expr, quasi))
         } else {
@@ -1159,7 +1159,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           this.expect(".")
           val property = this.parseIdentifierName()
           expr = this.finalize(node, new Node.StaticMemberExpression(expr, property))
-        } else if (this.lookahead.`type` == Token(10) && this.lookahead.head) {
+        } else if (this.lookahead.`type` == Template && this.lookahead.head) {
           val quasi = this.parseTemplateLiteral()
           expr = this.finalize(node, new Node.TaggedTemplateExpression(expr, quasi))
         } else {
@@ -1189,7 +1189,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.context.isBindingElement = false
     } else {
       expr = this.inheritCoverGrammar(this.parseLeftHandSideExpressionAllowCall)
-      if (!this.hasLineTerminator && this.lookahead.`type` == Token(7)) {
+      if (!this.hasLineTerminator && this.lookahead.`type` == Punctuator) {
         if (this.`match`("++") || this.`match`("--")) {
           if (this.context.strict && expr.isInstanceOf[Node.Identifier] && this.scanner.isRestrictedWord(expr.asInstanceOf[Node.Identifier].name)) {
             this.tolerateError(Messages.StrictLHSPostfix)
@@ -1253,9 +1253,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   def binaryPrecedence(token: RawToken) = {
     val op: String = token.value
     var precedence: Int = 0
-    if (token.`type` == Token(7)) {
+    if (token.`type` == Punctuator) {
       precedence = this.operatorPrecedence(op)
-    } else if (token.`type` == Token(4)) {
+    } else if (token.`type` == Keyword) {
       precedence = if (op == "instanceof" || this.context.allowIn && op == "in") 7 else 0
     } else {
       precedence = 0
@@ -1424,8 +1424,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       val startToken = this.lookahead
       var token = startToken
       expr = this.parseConditionalExpression()
-      if (token.`type` == Token(3) && token.lineNumber == this.lookahead.lineNumber && token.value === "async") {
-        if (this.lookahead.`type` == Token(3) || this.matchKeyword("yield")) {
+      if (token.`type` == Identifier && token.lineNumber == this.lookahead.lineNumber && token.value === "async") {
+        if (this.lookahead.`type` == Identifier || this.matchKeyword("yield")) {
           val arg = this.parsePrimaryExpression()
           this.reinterpretExpressionAsPattern(arg)
           expr = new ArrowParameterPlaceHolder {
@@ -1516,7 +1516,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       val expressions = ArrayBuffer.empty[Node.Node]
       expressions.push(expr)
       breakable {
-        while (this.lookahead.`type` != Token(2)) {
+        while (this.lookahead.`type` != EOF) {
           if (!this.`match`(",")) {
             break
           }
@@ -1533,7 +1533,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var statement: Node.Node = null
     this.context.isAssignmentTarget = true
     this.context.isBindingElement = true
-    if (this.lookahead.`type` == Token(4)) {
+    if (this.lookahead.`type` == Keyword) {
       this.lookahead.value.get[String] match {
         case "export" =>
           if (!this.context.isModule) {
@@ -1627,7 +1627,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.scanner.scanComments()
     val next = this.scanner.lex()
     this.scanner.restoreState(state)
-    next.`type` == Token(3) || next.`type` == Token(7) && next.value === "[" || next.`type` == Token(7) && next.value === "{" || next.`type` == Token(4) && next.value === "let" || next.`type` == Token(4) && next.value === "yield"
+    next.`type` == Identifier || next.`type` == Punctuator && next.value === "[" || next.`type` == Punctuator && next.value === "{" || next.`type` == Keyword && next.value === "let" || next.`type` == Keyword && next.value === "yield"
   }
   
   def parseLexicalDeclaration(options: VariableOptions): Node.VariableDeclaration = {
@@ -1679,7 +1679,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val method = false
     var key: Node.Node = null
     var value: Node.Node = null
-    if (this.lookahead.`type` == Token(3)) {
+    if (this.lookahead.`type` == Identifier) {
       val keyToken = this.lookahead
       key = this.parseVariableIdentifier()
       val init = this.finalize(node, new Node.Identifier(keyToken.value))
@@ -1766,21 +1766,21 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   def parseVariableIdentifier(kind: String = ""): Node.Identifier = {
     val node = this.createNode()
     val token = this.nextToken()
-    if (token.`type` == Token(4) && token.value === "yield") {
+    if (token.`type` == Keyword && token.value === "yield") {
       if (this.context.strict) {
         this.tolerateUnexpectedToken(token, Messages.StrictReservedWord)
       } else if (!this.context.allowYield) {
         this.throwUnexpectedToken(token)
       }
-    } else if (token.`type` != Token(3)) {
-      if (this.context.strict && token.`type` == Token(4) && this.scanner.isStrictModeReservedWord(token.value)) {
+    } else if (token.`type` != Identifier) {
+      if (this.context.strict && token.`type` == Keyword && this.scanner.isStrictModeReservedWord(token.value)) {
         this.tolerateUnexpectedToken(token, Messages.StrictReservedWord)
       } else {
         if (this.context.strict || (token.value !== "let") || kind != "var") {
           this.throwUnexpectedToken(token)
         }
       }
-    } else if ((this.context.isModule || this.context.await) && token.`type` == Token(3) && token.value === "await") {
+    } else if ((this.context.isModule || this.context.await) && token.`type` == Identifier && token.value === "await") {
       this.tolerateUnexpectedToken(token)
     }
     this.finalize(node, new Node.Identifier(token.value))
@@ -2055,7 +2055,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val node = this.createNode()
     this.expectKeyword("continue")
     var label: Node.Identifier = null
-    if (this.lookahead.`type` == Token(3) && !this.hasLineTerminator) {
+    if (this.lookahead.`type` == Identifier && !this.hasLineTerminator) {
       val id = this.parseVariableIdentifier()
       label = id
       val key = "$" + id.name
@@ -2074,7 +2074,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val node = this.createNode()
     this.expectKeyword("break")
     var label: Node.Identifier = null
-    if (this.lookahead.`type` == Token(3) && !this.hasLineTerminator) {
+    if (this.lookahead.`type` == Identifier && !this.hasLineTerminator) {
       val id = this.parseVariableIdentifier()
       val key = "$" + id.name
       if (!(this.context.labelSet contains key)) {
@@ -2095,7 +2095,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     val node = this.createNode()
     this.expectKeyword("return")
-    val hasArgument = !this.`match`(";") && !this.`match`("}") && !this.hasLineTerminator && this.lookahead.`type` != Token(2) || this.lookahead.`type` == Token(10)
+    val hasArgument = !this.`match`(";") && !this.`match`("}") && !this.hasLineTerminator && this.lookahead.`type` != EOF || this.lookahead.`type` == Template
     val argument = if (hasArgument) this.parseExpression() else null
     this.consumeSemicolon()
     this.finalize(node, new Node.ReturnStatement(argument))
@@ -2727,13 +2727,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           key = this.parseObjectPropertyKey()
         }
       }
-      if (token.`type` == Token(3) && !this.hasLineTerminator && token.value === "async") {
+      if (token.`type` == Identifier && !this.hasLineTerminator && token.value === "async") {
         val punctuator: String = this.lookahead.value
         if (punctuator != ":" && punctuator != "(" && punctuator != "*") {
           isAsync = true
           token = this.lookahead
           key = this.parseObjectPropertyKey()
-          if (token.`type` == Token(3)) {
+          if (token.`type` == Identifier) {
             if (token.value === "get" || token.value === "set") {
               this.tolerateUnexpectedToken(token)
             } else if (token.value === "constructor") {
@@ -2744,7 +2744,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       }
     }
     val lookaheadPropertyKey = this.qualifiedPropertyName(this.lookahead)
-    if (token.`type` == Token(3)) {
+    if (token.`type` == Identifier) {
       if (token.value === "get" && lookaheadPropertyKey) {
         kind = "get"
         computed = this.`match`("[")
@@ -2757,7 +2757,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         key = this.parseObjectPropertyKey()
         value = this.parseSetterMethod()
       }
-    } else if (token.`type` == Token(7) && token.value === "*" && lookaheadPropertyKey) {
+    } else if (token.`type` == Punctuator && token.value === "*" && lookaheadPropertyKey) {
       kind = "init"
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
@@ -2820,7 +2820,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val previousStrict = this.context.strict
     this.context.strict = true
     this.expectKeyword("class")
-    val id = if (identifierIsOptional && this.lookahead.`type` != Token(3)) null else this.parseVariableIdentifier()
+    val id = if (identifierIsOptional && this.lookahead.`type` != Identifier) null else this.parseVariableIdentifier()
     var superClass: Node.Node = null
     if (this.matchKeyword("extends")) {
       this.nextToken()
@@ -2836,7 +2836,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val previousStrict = this.context.strict
     this.context.strict = true
     this.expectKeyword("class")
-    val id = if (this.lookahead.`type` == Token(3)) this.parseVariableIdentifier() else null
+    val id = if (this.lookahead.`type` == Identifier) this.parseVariableIdentifier() else null
     var superClass: Node.Node = null
     if (this.matchKeyword("extends")) {
       this.nextToken()
@@ -2853,7 +2853,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.scanner.isModule = true
     val node = this.createNode()
     val body = this.parseDirectivePrologues()
-    while (this.lookahead.`type` != Token(2)) {
+    while (this.lookahead.`type` != EOF) {
       body.push(this.parseStatementListItem())
     }
     this.finalize(node, new Node.Module(body))
@@ -2862,7 +2862,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   def parseScript(): Node.Script = {
     val node = this.createNode()
     val body = this.parseDirectivePrologues()
-    while (this.lookahead.`type` != Token(2)) {
+    while (this.lookahead.`type` != EOF) {
       body.push(this.parseStatementListItem())
     }
     this.finalize(node, new Node.Script(body))
@@ -2870,7 +2870,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   
   def parseModuleSpecifier(): Node.Literal = {
     val node = this.createNode()
-    if (this.lookahead.`type` != Token(8)) {
+    if (this.lookahead.`type` != StringLiteral) {
       this.throwError(Messages.InvalidModuleSpecifier)
     }
     val token = this.nextToken()
@@ -2882,7 +2882,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val node = this.createNode()
     var imported: Node.Identifier = null
     var local: Node.Identifier = null
-    if (this.lookahead.`type` == Token(3)) {
+    if (this.lookahead.`type` == Identifier) {
       imported = this.parseVariableIdentifier()
       local = imported
       if (this.matchContextualKeyword("as")) {
@@ -2940,7 +2940,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.expectKeyword("import")
     var src: Node.Literal = null
     var specifiers = ArrayBuffer.empty[Node.Node]
-    if (this.lookahead.`type` == Token(8)) {
+    if (this.lookahead.`type` == StringLiteral) {
       // import 'foo';
       src = this.parseModuleSpecifier()
     } else {
@@ -3037,7 +3037,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       val src = this.parseModuleSpecifier()
       this.consumeSemicolon()
       exportDeclaration = this.finalize(node, new Node.ExportAllDeclaration(src))
-    } else if (this.lookahead.`type` == Token(4)) {
+    } else if (this.lookahead.`type` == Keyword) {
       // export var f = 1;
       var declaration: Node.Node = null
       this.lookahead.value.get[String] match {

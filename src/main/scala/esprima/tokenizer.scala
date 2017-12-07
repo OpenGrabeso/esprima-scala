@@ -9,6 +9,7 @@ import esprima.Scanner._
 import esprima.port.RegExp
 
 import scala.collection.mutable.ArrayBuffer
+import Token._
 
 class Reader() {
   var paren: Int = -1
@@ -48,7 +49,7 @@ class Reader() {
   }
   
   def push(token: RawToken) = {
-    if (token.`type` == Token(7) || token.`type` == Token(4)) {
+    if (token.`type` == Punctuator || token.`type` == Keyword) {
       if (token.value === "{") {
         this.curly = this.values.length
       } else if (token.value === "(") {
@@ -135,7 +136,7 @@ class Tokenizer(code: String, config: Parser.Options) {
           }
           entry.loc = loc
         }
-        if (token.`type` == Token(9)) {
+        if (token.`type` == RegularExpression) {
           val pattern = token.pattern
           val flags = token.flags
           entry.regex = new RegExp (
