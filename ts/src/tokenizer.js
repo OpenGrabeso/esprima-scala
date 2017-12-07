@@ -1,8 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const error_handler_1 = require("./error-handler");
-const scanner_1 = require("./scanner");
-const token_1 = require("./token");
+import { ErrorHandler } from './error-handler';
+import { Scanner } from './scanner';
+import { TokenName } from './token';
 class Reader {
     constructor() {
         this.values = [];
@@ -69,11 +67,11 @@ class Reader {
         }
     }
 }
-class Tokenizer {
+export class Tokenizer {
     constructor(code, config) {
-        this.errorHandler = new error_handler_1.ErrorHandler();
+        this.errorHandler = new ErrorHandler();
         this.errorHandler.tolerant = config ? (typeof config.tolerant === 'boolean' && config.tolerant) : false;
-        this.scanner = new scanner_1.Scanner(code, this.errorHandler);
+        this.scanner = new Scanner(code, this.errorHandler);
         this.scanner.trackComment = config ? (typeof config.comment === 'boolean' && config.comment) : false;
         this.trackRange = config ? (typeof config.range === 'boolean' && config.range) : false;
         this.trackLoc = config ? (typeof config.loc === 'boolean' && config.loc) : false;
@@ -131,7 +129,7 @@ class Tokenizer {
                 }
                 this.reader.push(token);
                 const entry = {
-                    type: token_1.TokenName[token.type],
+                    type: TokenName[token.type],
                     value: this.scanner.source.slice(token.start, token.end)
                 };
                 if (this.trackRange) {
@@ -155,4 +153,3 @@ class Tokenizer {
         return this.buffer.shift();
     }
 }
-exports.Tokenizer = Tokenizer;

@@ -1,24 +1,20 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const syntax_1 = require("./syntax");
+import { Syntax } from './syntax';
 /* tslint:disable:max-classes-per-file */
-class ArrayExpression {
+export class ArrayExpression {
     constructor(elements) {
-        this.type = syntax_1.Syntax.ArrayExpression;
+        this.type = Syntax.ArrayExpression;
         this.elements = elements;
     }
 }
-exports.ArrayExpression = ArrayExpression;
-class ArrayPattern {
+export class ArrayPattern {
     constructor(elements) {
-        this.type = syntax_1.Syntax.ArrayPattern;
+        this.type = Syntax.ArrayPattern;
         this.elements = elements;
     }
 }
-exports.ArrayPattern = ArrayPattern;
-class ArrowFunctionExpression {
+export class ArrowFunctionExpression {
     constructor(params, body, expression) {
-        this.type = syntax_1.Syntax.ArrowFunctionExpression;
+        this.type = Syntax.ArrowFunctionExpression;
         this.id = null;
         this.params = params;
         this.body = body;
@@ -27,27 +23,24 @@ class ArrowFunctionExpression {
         this.async = false;
     }
 }
-exports.ArrowFunctionExpression = ArrowFunctionExpression;
-class AssignmentExpression {
+export class AssignmentExpression {
     constructor(operator, left, right) {
-        this.type = syntax_1.Syntax.AssignmentExpression;
+        this.type = Syntax.AssignmentExpression;
         this.operator = operator;
         this.left = left;
         this.right = right;
     }
 }
-exports.AssignmentExpression = AssignmentExpression;
-class AssignmentPattern {
+export class AssignmentPattern {
     constructor(left, right) {
-        this.type = syntax_1.Syntax.AssignmentPattern;
+        this.type = Syntax.AssignmentPattern;
         this.left = left;
         this.right = right;
     }
 }
-exports.AssignmentPattern = AssignmentPattern;
-class AsyncArrowFunctionExpression {
+export class AsyncArrowFunctionExpression {
     constructor(params, body, expression) {
-        this.type = syntax_1.Syntax.ArrowFunctionExpression;
+        this.type = Syntax.ArrowFunctionExpression;
         this.id = null;
         this.params = params;
         this.body = body;
@@ -56,10 +49,9 @@ class AsyncArrowFunctionExpression {
         this.async = true;
     }
 }
-exports.AsyncArrowFunctionExpression = AsyncArrowFunctionExpression;
-class AsyncFunctionDeclaration {
+export class AsyncFunctionDeclaration {
     constructor(id, params, body) {
-        this.type = syntax_1.Syntax.FunctionDeclaration;
+        this.type = Syntax.FunctionDeclaration;
         this.id = id;
         this.params = params;
         this.body = body;
@@ -68,10 +60,9 @@ class AsyncFunctionDeclaration {
         this.async = true;
     }
 }
-exports.AsyncFunctionDeclaration = AsyncFunctionDeclaration;
-class AsyncFunctionExpression {
+export class AsyncFunctionExpression {
     constructor(id, params, body) {
-        this.type = syntax_1.Syntax.FunctionExpression;
+        this.type = Syntax.FunctionExpression;
         this.id = id;
         this.params = params;
         this.body = body;
@@ -80,202 +71,177 @@ class AsyncFunctionExpression {
         this.async = true;
     }
 }
-exports.AsyncFunctionExpression = AsyncFunctionExpression;
-class AwaitExpression {
+export class AwaitExpression {
     constructor(argument) {
-        this.type = syntax_1.Syntax.AwaitExpression;
+        this.type = Syntax.AwaitExpression;
         this.argument = argument;
     }
 }
-exports.AwaitExpression = AwaitExpression;
-class BinaryExpression {
+export class BinaryExpression {
     constructor(operator, left, right) {
         const logical = (operator === '||' || operator === '&&');
-        this.type = logical ? syntax_1.Syntax.LogicalExpression : syntax_1.Syntax.BinaryExpression;
+        this.type = logical ? Syntax.LogicalExpression : Syntax.BinaryExpression;
         this.operator = operator;
         this.left = left;
         this.right = right;
     }
 }
-exports.BinaryExpression = BinaryExpression;
-class BlockStatement {
+export class BlockStatement {
     constructor(body) {
-        this.type = syntax_1.Syntax.BlockStatement;
+        this.type = Syntax.BlockStatement;
         this.body = body;
     }
 }
-exports.BlockStatement = BlockStatement;
-class BreakStatement {
+export class BreakStatement {
     constructor(label) {
-        this.type = syntax_1.Syntax.BreakStatement;
+        this.type = Syntax.BreakStatement;
         this.label = label;
     }
 }
-exports.BreakStatement = BreakStatement;
-class CallExpression {
+export class CallExpression {
     constructor(callee, args) {
-        this.type = syntax_1.Syntax.CallExpression;
+        this.type = Syntax.CallExpression;
         this.callee = callee;
         this.arguments = args;
     }
 }
-exports.CallExpression = CallExpression;
-class CatchClause {
+export class CatchClause {
     constructor(param, body) {
-        this.type = syntax_1.Syntax.CatchClause;
+        this.type = Syntax.CatchClause;
         this.param = param;
         this.body = body;
     }
 }
-exports.CatchClause = CatchClause;
-class ClassBody {
+export class ClassBody {
     constructor(body) {
-        this.type = syntax_1.Syntax.ClassBody;
+        this.type = Syntax.ClassBody;
         this.body = body;
     }
 }
-exports.ClassBody = ClassBody;
-class ClassDeclaration {
+export class ClassDeclaration {
     constructor(id, superClass, body) {
-        this.type = syntax_1.Syntax.ClassDeclaration;
+        this.type = Syntax.ClassDeclaration;
         this.id = id;
         this.superClass = superClass;
         this.body = body;
     }
 }
-exports.ClassDeclaration = ClassDeclaration;
-class ClassExpression {
+export class ClassExpression {
     constructor(id, superClass, body) {
-        this.type = syntax_1.Syntax.ClassExpression;
+        this.type = Syntax.ClassExpression;
         this.id = id;
         this.superClass = superClass;
         this.body = body;
     }
 }
-exports.ClassExpression = ClassExpression;
-class ComputedMemberExpression {
+export class ComputedMemberExpression {
     constructor(object, property) {
-        this.type = syntax_1.Syntax.MemberExpression;
+        this.type = Syntax.MemberExpression;
         this.computed = true;
         this.object = object;
         this.property = property;
     }
 }
-exports.ComputedMemberExpression = ComputedMemberExpression;
-class ConditionalExpression {
+export class ConditionalExpression {
     constructor(test, consequent, alternate) {
-        this.type = syntax_1.Syntax.ConditionalExpression;
+        this.type = Syntax.ConditionalExpression;
         this.test = test;
         this.consequent = consequent;
         this.alternate = alternate;
     }
 }
-exports.ConditionalExpression = ConditionalExpression;
-class ContinueStatement {
+export class ContinueStatement {
     constructor(label) {
-        this.type = syntax_1.Syntax.ContinueStatement;
+        this.type = Syntax.ContinueStatement;
         this.label = label;
     }
 }
-exports.ContinueStatement = ContinueStatement;
-class DebuggerStatement {
+export class DebuggerStatement {
     constructor() {
-        this.type = syntax_1.Syntax.DebuggerStatement;
+        this.type = Syntax.DebuggerStatement;
     }
 }
-exports.DebuggerStatement = DebuggerStatement;
-class Directive {
+export class Directive {
     constructor(expression, directive) {
-        this.type = syntax_1.Syntax.ExpressionStatement;
+        this.type = Syntax.ExpressionStatement;
         this.expression = expression;
         this.directive = directive;
     }
 }
-exports.Directive = Directive;
-class DoWhileStatement {
+export class DoWhileStatement {
     constructor(body, test) {
-        this.type = syntax_1.Syntax.DoWhileStatement;
+        this.type = Syntax.DoWhileStatement;
         this.body = body;
         this.test = test;
     }
 }
-exports.DoWhileStatement = DoWhileStatement;
-class EmptyStatement {
+export class EmptyStatement {
     constructor() {
-        this.type = syntax_1.Syntax.EmptyStatement;
+        this.type = Syntax.EmptyStatement;
     }
 }
-exports.EmptyStatement = EmptyStatement;
-class ExportAllDeclaration {
+export class ExportAllDeclaration {
     constructor(source) {
-        this.type = syntax_1.Syntax.ExportAllDeclaration;
+        this.type = Syntax.ExportAllDeclaration;
         this.source = source;
     }
 }
-exports.ExportAllDeclaration = ExportAllDeclaration;
-class ExportDefaultDeclaration {
+export class ExportDefaultDeclaration {
     constructor(declaration) {
-        this.type = syntax_1.Syntax.ExportDefaultDeclaration;
+        this.type = Syntax.ExportDefaultDeclaration;
         this.declaration = declaration;
     }
 }
-exports.ExportDefaultDeclaration = ExportDefaultDeclaration;
-class ExportNamedDeclaration {
+export class ExportNamedDeclaration {
     constructor(declaration, specifiers, source) {
-        this.type = syntax_1.Syntax.ExportNamedDeclaration;
+        this.type = Syntax.ExportNamedDeclaration;
         this.declaration = declaration;
         this.specifiers = specifiers;
         this.source = source;
     }
 }
-exports.ExportNamedDeclaration = ExportNamedDeclaration;
-class ExportSpecifier {
+export class ExportSpecifier {
     constructor(local, exported) {
-        this.type = syntax_1.Syntax.ExportSpecifier;
+        this.type = Syntax.ExportSpecifier;
         this.exported = exported;
         this.local = local;
     }
 }
-exports.ExportSpecifier = ExportSpecifier;
-class ExpressionStatement {
+export class ExpressionStatement {
     constructor(expression) {
-        this.type = syntax_1.Syntax.ExpressionStatement;
+        this.type = Syntax.ExpressionStatement;
         this.expression = expression;
     }
 }
-exports.ExpressionStatement = ExpressionStatement;
-class ForInStatement {
+export class ForInStatement {
     constructor(left, right, body) {
-        this.type = syntax_1.Syntax.ForInStatement;
+        this.type = Syntax.ForInStatement;
         this.left = left;
         this.right = right;
         this.body = body;
         this.each = false;
     }
 }
-exports.ForInStatement = ForInStatement;
-class ForOfStatement {
+export class ForOfStatement {
     constructor(left, right, body) {
-        this.type = syntax_1.Syntax.ForOfStatement;
+        this.type = Syntax.ForOfStatement;
         this.left = left;
         this.right = right;
         this.body = body;
     }
 }
-exports.ForOfStatement = ForOfStatement;
-class ForStatement {
+export class ForStatement {
     constructor(init, test, update, body) {
-        this.type = syntax_1.Syntax.ForStatement;
+        this.type = Syntax.ForStatement;
         this.init = init;
         this.test = test;
         this.update = update;
         this.body = body;
     }
 }
-exports.ForStatement = ForStatement;
-class FunctionDeclaration {
+export class FunctionDeclaration {
     constructor(id, params, body, generator) {
-        this.type = syntax_1.Syntax.FunctionDeclaration;
+        this.type = Syntax.FunctionDeclaration;
         this.id = id;
         this.params = params;
         this.body = body;
@@ -284,10 +250,9 @@ class FunctionDeclaration {
         this.async = false;
     }
 }
-exports.FunctionDeclaration = FunctionDeclaration;
-class FunctionExpression {
+export class FunctionExpression {
     constructor(id, params, body, generator) {
-        this.type = syntax_1.Syntax.FunctionExpression;
+        this.type = Syntax.FunctionExpression;
         this.id = id;
         this.params = params;
         this.body = body;
@@ -296,86 +261,75 @@ class FunctionExpression {
         this.async = false;
     }
 }
-exports.FunctionExpression = FunctionExpression;
-class Identifier {
+export class Identifier {
     constructor(name) {
-        this.type = syntax_1.Syntax.Identifier;
+        this.type = Syntax.Identifier;
         this.name = name;
     }
 }
-exports.Identifier = Identifier;
-class IfStatement {
+export class IfStatement {
     constructor(test, consequent, alternate) {
-        this.type = syntax_1.Syntax.IfStatement;
+        this.type = Syntax.IfStatement;
         this.test = test;
         this.consequent = consequent;
         this.alternate = alternate;
     }
 }
-exports.IfStatement = IfStatement;
-class Import {
+export class Import {
     constructor() {
-        this.type = syntax_1.Syntax.Import;
+        this.type = Syntax.Import;
     }
 }
-exports.Import = Import;
-class ImportDeclaration {
+export class ImportDeclaration {
     constructor(specifiers, source) {
-        this.type = syntax_1.Syntax.ImportDeclaration;
+        this.type = Syntax.ImportDeclaration;
         this.specifiers = specifiers;
         this.source = source;
     }
 }
-exports.ImportDeclaration = ImportDeclaration;
-class ImportDefaultSpecifier {
+export class ImportDefaultSpecifier {
     constructor(local) {
-        this.type = syntax_1.Syntax.ImportDefaultSpecifier;
+        this.type = Syntax.ImportDefaultSpecifier;
         this.local = local;
     }
 }
-exports.ImportDefaultSpecifier = ImportDefaultSpecifier;
-class ImportNamespaceSpecifier {
+export class ImportNamespaceSpecifier {
     constructor(local) {
-        this.type = syntax_1.Syntax.ImportNamespaceSpecifier;
+        this.type = Syntax.ImportNamespaceSpecifier;
         this.local = local;
     }
 }
-exports.ImportNamespaceSpecifier = ImportNamespaceSpecifier;
-class ImportSpecifier {
+export class ImportSpecifier {
     constructor(local, imported) {
-        this.type = syntax_1.Syntax.ImportSpecifier;
+        this.type = Syntax.ImportSpecifier;
         this.local = local;
         this.imported = imported;
     }
 }
-exports.ImportSpecifier = ImportSpecifier;
-class LabeledStatement {
+export class LabeledStatement {
     constructor(label, body) {
-        this.type = syntax_1.Syntax.LabeledStatement;
+        this.type = Syntax.LabeledStatement;
         this.label = label;
         this.body = body;
     }
 }
-exports.LabeledStatement = LabeledStatement;
-class Literal {
+export class Literal {
     constructor(value, raw) {
-        this.type = syntax_1.Syntax.Literal;
+        this.type = Syntax.Literal;
         this.value = value;
         this.raw = raw;
     }
 }
-exports.Literal = Literal;
-class MetaProperty {
+export class MetaProperty {
     constructor(meta, property) {
-        this.type = syntax_1.Syntax.MetaProperty;
+        this.type = Syntax.MetaProperty;
         this.meta = meta;
         this.property = property;
     }
 }
-exports.MetaProperty = MetaProperty;
-class MethodDefinition {
+export class MethodDefinition {
     constructor(key, computed, value, kind, isStatic) {
-        this.type = syntax_1.Syntax.MethodDefinition;
+        this.type = Syntax.MethodDefinition;
         this.key = key;
         this.computed = computed;
         this.value = value;
@@ -383,40 +337,35 @@ class MethodDefinition {
         this.static = isStatic;
     }
 }
-exports.MethodDefinition = MethodDefinition;
-class Module {
+export class Module {
     constructor(body) {
-        this.type = syntax_1.Syntax.Program;
+        this.type = Syntax.Program;
         this.body = body;
         this.sourceType = 'module';
     }
 }
-exports.Module = Module;
-class NewExpression {
+export class NewExpression {
     constructor(callee, args) {
-        this.type = syntax_1.Syntax.NewExpression;
+        this.type = Syntax.NewExpression;
         this.callee = callee;
         this.arguments = args;
     }
 }
-exports.NewExpression = NewExpression;
-class ObjectExpression {
+export class ObjectExpression {
     constructor(properties) {
-        this.type = syntax_1.Syntax.ObjectExpression;
+        this.type = Syntax.ObjectExpression;
         this.properties = properties;
     }
 }
-exports.ObjectExpression = ObjectExpression;
-class ObjectPattern {
+export class ObjectPattern {
     constructor(properties) {
-        this.type = syntax_1.Syntax.ObjectPattern;
+        this.type = Syntax.ObjectPattern;
         this.properties = properties;
     }
 }
-exports.ObjectPattern = ObjectPattern;
-class Property {
+export class Property {
     constructor(kind, key, computed, value, method, shorthand) {
-        this.type = syntax_1.Syntax.Property;
+        this.type = Syntax.Property;
         this.key = key;
         this.computed = computed;
         this.value = value;
@@ -425,184 +374,160 @@ class Property {
         this.shorthand = shorthand;
     }
 }
-exports.Property = Property;
-class RegexLiteral {
+export class RegexLiteral {
     constructor(value, raw, pattern, flags) {
-        this.type = syntax_1.Syntax.Literal;
+        this.type = Syntax.Literal;
         this.value = value;
         this.raw = raw;
         this.regex = { pattern, flags };
     }
 }
-exports.RegexLiteral = RegexLiteral;
-class RestElement {
+export class RestElement {
     constructor(argument) {
-        this.type = syntax_1.Syntax.RestElement;
+        this.type = Syntax.RestElement;
         this.argument = argument;
     }
 }
-exports.RestElement = RestElement;
-class ReturnStatement {
+export class ReturnStatement {
     constructor(argument) {
-        this.type = syntax_1.Syntax.ReturnStatement;
+        this.type = Syntax.ReturnStatement;
         this.argument = argument;
     }
 }
-exports.ReturnStatement = ReturnStatement;
-class Script {
+export class Script {
     constructor(body) {
-        this.type = syntax_1.Syntax.Program;
+        this.type = Syntax.Program;
         this.body = body;
         this.sourceType = 'script';
     }
 }
-exports.Script = Script;
-class SequenceExpression {
+export class SequenceExpression {
     constructor(expressions) {
-        this.type = syntax_1.Syntax.SequenceExpression;
+        this.type = Syntax.SequenceExpression;
         this.expressions = expressions;
     }
 }
-exports.SequenceExpression = SequenceExpression;
-class SpreadElement {
+export class SpreadElement {
     constructor(argument) {
-        this.type = syntax_1.Syntax.SpreadElement;
+        this.type = Syntax.SpreadElement;
         this.argument = argument;
     }
 }
-exports.SpreadElement = SpreadElement;
-class StaticMemberExpression {
+export class StaticMemberExpression {
     constructor(object, property) {
-        this.type = syntax_1.Syntax.MemberExpression;
+        this.type = Syntax.MemberExpression;
         this.computed = false;
         this.object = object;
         this.property = property;
     }
 }
-exports.StaticMemberExpression = StaticMemberExpression;
-class Super {
+export class Super {
     constructor() {
-        this.type = syntax_1.Syntax.Super;
+        this.type = Syntax.Super;
     }
 }
-exports.Super = Super;
-class SwitchCase {
+export class SwitchCase {
     constructor(test, consequent) {
-        this.type = syntax_1.Syntax.SwitchCase;
+        this.type = Syntax.SwitchCase;
         this.test = test;
         this.consequent = consequent;
     }
 }
-exports.SwitchCase = SwitchCase;
-class SwitchStatement {
+export class SwitchStatement {
     constructor(discriminant, cases) {
-        this.type = syntax_1.Syntax.SwitchStatement;
+        this.type = Syntax.SwitchStatement;
         this.discriminant = discriminant;
         this.cases = cases;
     }
 }
-exports.SwitchStatement = SwitchStatement;
-class TaggedTemplateExpression {
+export class TaggedTemplateExpression {
     constructor(tag, quasi) {
-        this.type = syntax_1.Syntax.TaggedTemplateExpression;
+        this.type = Syntax.TaggedTemplateExpression;
         this.tag = tag;
         this.quasi = quasi;
     }
 }
-exports.TaggedTemplateExpression = TaggedTemplateExpression;
-class TemplateElement {
+export class TemplateElement {
     constructor(value, tail) {
-        this.type = syntax_1.Syntax.TemplateElement;
+        this.type = Syntax.TemplateElement;
         this.value = value;
         this.tail = tail;
     }
 }
-exports.TemplateElement = TemplateElement;
-class TemplateLiteral {
+export class TemplateLiteral {
     constructor(quasis, expressions) {
-        this.type = syntax_1.Syntax.TemplateLiteral;
+        this.type = Syntax.TemplateLiteral;
         this.quasis = quasis;
         this.expressions = expressions;
     }
 }
-exports.TemplateLiteral = TemplateLiteral;
-class ThisExpression {
+export class ThisExpression {
     constructor() {
-        this.type = syntax_1.Syntax.ThisExpression;
+        this.type = Syntax.ThisExpression;
     }
 }
-exports.ThisExpression = ThisExpression;
-class ThrowStatement {
+export class ThrowStatement {
     constructor(argument) {
-        this.type = syntax_1.Syntax.ThrowStatement;
+        this.type = Syntax.ThrowStatement;
         this.argument = argument;
     }
 }
-exports.ThrowStatement = ThrowStatement;
-class TryStatement {
+export class TryStatement {
     constructor(block, handler, finalizer) {
-        this.type = syntax_1.Syntax.TryStatement;
+        this.type = Syntax.TryStatement;
         this.block = block;
         this.handler = handler;
         this.finalizer = finalizer;
     }
 }
-exports.TryStatement = TryStatement;
-class UnaryExpression {
+export class UnaryExpression {
     constructor(operator, argument) {
-        this.type = syntax_1.Syntax.UnaryExpression;
+        this.type = Syntax.UnaryExpression;
         this.operator = operator;
         this.argument = argument;
         this.prefix = true;
     }
 }
-exports.UnaryExpression = UnaryExpression;
-class UpdateExpression {
+export class UpdateExpression {
     constructor(operator, argument, prefix) {
-        this.type = syntax_1.Syntax.UpdateExpression;
+        this.type = Syntax.UpdateExpression;
         this.operator = operator;
         this.argument = argument;
         this.prefix = prefix;
     }
 }
-exports.UpdateExpression = UpdateExpression;
-class VariableDeclaration {
+export class VariableDeclaration {
     constructor(declarations, kind) {
-        this.type = syntax_1.Syntax.VariableDeclaration;
+        this.type = Syntax.VariableDeclaration;
         this.declarations = declarations;
         this.kind = kind;
     }
 }
-exports.VariableDeclaration = VariableDeclaration;
-class VariableDeclarator {
+export class VariableDeclarator {
     constructor(id, init) {
-        this.type = syntax_1.Syntax.VariableDeclarator;
+        this.type = Syntax.VariableDeclarator;
         this.id = id;
         this.init = init;
     }
 }
-exports.VariableDeclarator = VariableDeclarator;
-class WhileStatement {
+export class WhileStatement {
     constructor(test, body) {
-        this.type = syntax_1.Syntax.WhileStatement;
+        this.type = Syntax.WhileStatement;
         this.test = test;
         this.body = body;
     }
 }
-exports.WhileStatement = WhileStatement;
-class WithStatement {
+export class WithStatement {
     constructor(object, body) {
-        this.type = syntax_1.Syntax.WithStatement;
+        this.type = Syntax.WithStatement;
         this.object = object;
         this.body = body;
     }
 }
-exports.WithStatement = WithStatement;
-class YieldExpression {
+export class YieldExpression {
     constructor(argument, delegate) {
-        this.type = syntax_1.Syntax.YieldExpression;
+        this.type = Syntax.YieldExpression;
         this.argument = argument;
         this.delegate = delegate;
     }
 }
-exports.YieldExpression = YieldExpression;

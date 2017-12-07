@@ -1,28 +1,26 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const character_1 = require("./character");
-const JSXNode = require("./jsx-nodes");
-const jsx_syntax_1 = require("./jsx-syntax");
-const Node = require("./nodes");
-const parser_1 = require("./parser");
-const token_1 = require("./token");
-const xhtml_entities_1 = require("./xhtml-entities");
-token_1.TokenName[100 /* Identifier */] = 'JSXIdentifier';
-token_1.TokenName[101 /* Text */] = 'JSXText';
+import { Character } from './character';
+import * as JSXNode from './jsx-nodes';
+import { JSXSyntax } from './jsx-syntax';
+import * as Node from './nodes';
+import { Parser } from './parser';
+import { TokenName } from './token';
+import { XHTMLEntities } from './xhtml-entities';
+TokenName[100 /* Identifier */] = 'JSXIdentifier';
+TokenName[101 /* Text */] = 'JSXText';
 // Fully qualified element name, e.g. <svg:path> returns "svg:path"
 function getQualifiedElementName(elementName) {
     let qualifiedName;
     switch (elementName.type) {
-        case jsx_syntax_1.JSXSyntax.JSXIdentifier:
+        case JSXSyntax.JSXIdentifier:
             const id = elementName;
             qualifiedName = id.name;
             break;
-        case jsx_syntax_1.JSXSyntax.JSXNamespacedName:
+        case JSXSyntax.JSXNamespacedName:
             const ns = elementName;
             qualifiedName = getQualifiedElementName(ns.namespace) + ':' +
                 getQualifiedElementName(ns.name);
             break;
-        case jsx_syntax_1.JSXSyntax.JSXMemberExpression:
+        case JSXSyntax.JSXMemberExpression:
             const expr = elementName;
             qualifiedName = getQualifiedElementName(expr.object) + '.' +
                 getQualifiedElementName(expr.property);
@@ -33,7 +31,7 @@ function getQualifiedElementName(elementName) {
     }
     return qualifiedName;
 }
-class JSXParser extends parser_1.Parser {
+export class JSXParser extends Parser {
     constructor(code, options, delegate) {
         super(code, options, delegate);
     }
@@ -97,13 +95,13 @@ class JSXParser extends parser_1.Parser {
                         if (numeric) {
                             // e.g. '&#x41;'
                             hex = (ch === 'x');
-                            valid = hex || character_1.Character.isDecimalDigit(ch.charCodeAt(0));
+                            valid = hex || Character.isDecimalDigit(ch.charCodeAt(0));
                             numeric = numeric && !hex;
                         }
                         break;
                     default:
-                        valid = valid && !(numeric && !character_1.Character.isDecimalDigit(ch.charCodeAt(0)));
-                        valid = valid && !(hex && !character_1.Character.isHexDigit(ch.charCodeAt(0)));
+                        valid = valid && !(numeric && !Character.isDecimalDigit(ch.charCodeAt(0)));
+                        valid = valid && !(hex && !Character.isHexDigit(ch.charCodeAt(0)));
                         break;
                 }
             }
@@ -117,8 +115,8 @@ class JSXParser extends parser_1.Parser {
             else if (hex && str.length > 2) {
                 result = String.fromCharCode(parseInt('0' + str.substr(1), 16));
             }
-            else if (!numeric && !hex && xhtml_entities_1.XHTMLEntities[str]) {
-                result = xhtml_entities_1.XHTMLEntities[str];
+            else if (!numeric && !hex && XHTMLEntities[str]) {
+                result = XHTMLEntities[str];
             }
         }
         return result;
@@ -193,12 +191,12 @@ class JSXParser extends parser_1.Parser {
             };
         }
         // Identifer can not contain backslash (char code 92).
-        if (character_1.Character.isIdentifierStart(cp) && (cp !== 92)) {
+        if (Character.isIdentifierStart(cp) && (cp !== 92)) {
             const start = this.scanner.index;
             ++this.scanner.index;
             while (!this.scanner.eof()) {
                 const ch = this.scanner.source.charCodeAt(this.scanner.index);
-                if (character_1.Character.isIdentifierPart(ch) && (ch !== 92)) {
+                if (Character.isIdentifierPart(ch) && (ch !== 92)) {
                     ++this.scanner.index;
                 }
                 else if (ch === 45) {
@@ -248,7 +246,7 @@ class JSXParser extends parser_1.Parser {
             }
             ++this.scanner.index;
             text += ch;
-            if (character_1.Character.isLineTerminator(ch.charCodeAt(0))) {
+            if (Character.isLineTerminator(ch.charCodeAt(0))) {
                 ++this.scanner.lineNumber;
                 if (ch === '\r' && this.scanner.source[this.scanner.index] === '\n') {
                     ++this.scanner.index;
@@ -465,7 +463,7 @@ class JSXParser extends parser_1.Parser {
             el.children = el.children.concat(this.parseJSXChildren());
             const node = this.createJSXChildNode();
             const element = this.parseJSXBoundaryElement();
-            if (element.type === jsx_syntax_1.JSXSyntax.JSXOpeningElement) {
+            if (element.type === JSXSyntax.JSXOpeningElement) {
                 const opening = element;
                 if (opening.selfClosing) {
                     const child = this.finalize(node, new JSXNode.JSXElement(opening, [], null));
@@ -476,7 +474,7 @@ class JSXParser extends parser_1.Parser {
                     el = { node, opening, closing: null, children: [] };
                 }
             }
-            if (element.type === jsx_syntax_1.JSXSyntax.JSXClosingElement) {
+            if (element.type === JSXSyntax.JSXClosingElement) {
                 el.closing = element;
                 const open = getQualifiedElementName(el.opening.name);
                 const close = getQualifiedElementName(el.closing.name);
@@ -522,4 +520,3 @@ class JSXParser extends parser_1.Parser {
         return super.isStartOfExpression() || this.match('<');
     }
 }
-exports.JSXParser = JSXParser;

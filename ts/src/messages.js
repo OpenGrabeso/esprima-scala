@@ -1,7 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 // Error messages should be identical to V8.
-exports.Messages = {
+export const Messages = {
     BadImportCallArity: 'Unexpected token',
     BadGetterArity: 'Getter must not have any formal parameters',
     BadSetterArity: 'Setter must have exactly one formal parameter',
