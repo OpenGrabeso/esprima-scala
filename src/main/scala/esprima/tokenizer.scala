@@ -48,7 +48,7 @@ class Reader() {
   }
   
   def push(token: RawToken) = {
-    if (token.`type` == 7 || token.`type` == 4) {
+    if (token.`type` == Token(7) || token.`type` == Token(4)) {
       if (token.value === "{") {
         this.curly = this.values.length
       } else if (token.value === "(") {
@@ -135,7 +135,7 @@ class Tokenizer(code: String, config: Parser.Options) {
           }
           entry.loc = loc
         }
-        if (token.`type` == 9) {
+        if (token.`type` == Token(9)) {
           val pattern = token.pattern
           val flags = token.flags
           entry.regex = new RegExp (

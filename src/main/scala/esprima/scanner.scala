@@ -52,8 +52,11 @@ object Scanner {
     def loc: SourceLocation
   }
 
+  type Token = Token.Token
+  import Token._
+
   trait RawToken {
-    var `type`: Int = _
+    var `type`: Token = _
     def value: OrType  = ??? // String | Int
     def pattern: String = ??? // UndefOr
     def flags: String = ??? // UndefOr
@@ -514,22 +517,22 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
   }
   
   def scanIdentifier() = {
-    var `type`: Int = -1
+    var `type`: Token = Token.Undefined
     val start = this.index
     // Backslash (U+005C) starts an escaped character.
     val id = if (this.source.charCodeAt(start) == 0x5C) this.getComplexIdentifier() else this.getIdentifier()
     // There is no keyword or literal with only one character.
     // Thus, it must be an identifier.
     if (id.length == 1) {
-      `type` = 3
+      `type` = Token(3)
     } else if (this.isKeyword(id)) {
-      `type` = 4
+      `type` = Token(4)
     } else if (id == "null") {
-      `type` = 5
+      `type` = Token(5)
     } else if (id == "true" || id == "false") {
-      `type` = 1
+      `type` = Token(1)
     } else {
-      `type` = 3
+      `type` = Token(3)
     }
     if (`type` != 3 && start + id.length != this.index) {
       val restore = this.index
@@ -601,7 +604,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
     val start_ = start
     new RawToken {
-      `type` = 7
+      `type` = Token(7)
       override def value = str
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
@@ -632,7 +635,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
     val start_ = start
     new RawToken {
-      `type` = 6
+      `type` = Token(6)
       override def value = parseInt("0x" + num, 16).toDouble
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
@@ -670,7 +673,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
     val start_ = start
     new RawToken {
-      `type` = 6
+      `type` = Token(6)
       override def value = parseInt(num, 2).toDouble
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
@@ -714,7 +717,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val start_ = start
     val octal_ = octal
     new RawToken {
-      `type` = 6
+      `type` = Token(6)
       override def value = parseInt(num, 8).toDouble
       override def octal = octal_
       override def lineNumber = self.lineNumber
@@ -829,7 +832,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val start_ = start
     new RawToken {
       import OrType._
-      `type` = 6
+      `type` = Token(6)
       override def value = parseFloat(num)
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
@@ -925,7 +928,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val start_ = start
     val octal_ = octal
     new RawToken {
-      `type` = 8
+      `type` = Token(8)
       override def value = str
       override def octal = octal_
       override def lineNumber = self.lineNumber
@@ -1047,7 +1050,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val tail_ = tail
     val cooked_ = cooked
     new RawToken {
-      `type` = 10
+      `type` = Token(10)
       override def value = self.source.slice(start + 1, self.index - rawOffset)
       override def cooked = cooked_
       override def head = head_
@@ -1206,7 +1209,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val value_ = this.testRegExp(pattern_, flags_)
     new RawToken {
       import OrType._
-      `type` = 9
+      `type` = Token(9)
       override def value = ""
       override def pattern = pattern_
       override def flags = flags_
@@ -1222,7 +1225,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (this.eof()) {
       return new RawToken {
         import OrType._
-        `type` = 2
+        `type` = Token(2)
         override def value = ""
         override def lineNumber = self.lineNumber
         override def lineStart = self.lineStart
