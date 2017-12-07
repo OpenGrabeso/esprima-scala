@@ -56,7 +56,7 @@ object Scanner {
   type Token = Token.Token
 
   trait RawToken {
-    override def toString = `type`.toString + " " + value.toString
+    override def toString = `type`.toString + "'" + value.toString
 
     var `type`: Token = _
     def value: OrType  = ??? // String | Int
@@ -638,7 +638,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val start_ = start
     new RawToken {
       `type` = NumericLiteral
-      override def value = parseInt("0x" + num, 16).toDouble
+      override def value = parseInt(num, 16).toDouble
       override def lineNumber = self.lineNumber
       override def lineStart = self.lineStart
       override def start = start_

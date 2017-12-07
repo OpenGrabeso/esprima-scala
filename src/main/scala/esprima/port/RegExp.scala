@@ -5,7 +5,7 @@ package port
 
 
 object RegExp extends Object {
-  def apply(pattern: String, flags: String = ""): RegExp = ???
+  def apply(pattern: String, flags: String = ""): RegExp = new RegExp(pattern, flags)
 
   trait ExecResult {
     var results: Array[String]
@@ -19,13 +19,6 @@ import RegExp._
 
 // simulate JS RegExp using Scala or Java means
 class RegExp(pattern: String, flags: String = "") {
-  var lastIndex = -1
-
-  def exec(input: String): ExecResult = ???
-
-  def strictBind = ???
-
-  def strict = ???
 
   def test(value: String): Boolean = ???
 

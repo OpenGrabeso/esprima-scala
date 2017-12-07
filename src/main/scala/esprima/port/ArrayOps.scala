@@ -48,7 +48,10 @@ trait ArrayOps {
     }
   }
 
-  implicit def bufferToArray[A, B >: A: ClassTag](a: ArrayBuffer[A]): Array[B] = a.toArray[B]
+  implicit def bufferToArray[A, B >: A: ClassTag](a: ArrayBuffer[A]): Array[B] = {
+    if (a != null) a.toArray[B]
+    else null
+  }
 
 
 }

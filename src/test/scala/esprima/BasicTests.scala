@@ -77,4 +77,10 @@ class BasicTests extends FunSuite {
     println(tree)
   }
 
+  val threeSource = scala.io.Source.fromResource("three.js").mkString
+
+  test("Parse three.js") {
+    val tree = parse(threeSource)
+    println(tree)
+  }
 }

@@ -4,7 +4,7 @@ package port
 import scala.language.implicitConversions
 
 trait StringOps {
-  def fromCharCode(char: Int): String = char.toChar.toString
+  def fromCharCode(char: Long): String = char.toChar.toString
 
   case class CharValue(c: Char) {
     override def equals(that: scala.Any) = {
@@ -36,6 +36,6 @@ trait StringOps {
     def substr(from: Int, count: Int): String = s.substring(from, from + count)
   }
 
-  def parseInt(str: String, base: Int): Int = java.lang.Integer.parseInt(str, base)
+  def parseInt(str: String, base: Int): Long = java.lang.Long.parseLong(str, base) // parseInt does not parse ffffffff, Int cannot represent it
   def parseFloat(str: String): Double = java.lang.Double.parseDouble(str)
 }
