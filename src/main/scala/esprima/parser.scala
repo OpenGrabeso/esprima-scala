@@ -32,6 +32,8 @@ object Parser {
     var attachComment: Boolean = false
     var sourceType: String = _
   }
+  object DefaultOptions extends Options
+
   class Config extends Options
 
   trait Context {

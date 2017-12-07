@@ -36,7 +36,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-def parse(code: String, options: Parser.Options, delegate: (Node.Node, Metadata) => Unit) = {
+def parse(code: String, options: Parser.Options = Parser.DefaultOptions, delegate: (Node.Node, Metadata) => Unit = null) = {
   var commentHandler: CommentHandler = null
   def proxyDelegate(node: Node.Node, metadata: Metadata) = {
     if (delegate) {
@@ -87,7 +87,7 @@ def parseScript(code: String, options: Parser.Options, delegate: (Node.Node, Met
   parse(code, parsingOptions, delegate)
 }
 
-def tokenize(code: String, options: Parser.Options, delegate: (TokenEntry) => TokenEntry): (Array[TokenEntry], Array[ErrorHandler.Error]) = {
+def tokenize(code: String, options: Parser.Options = Parser.DefaultOptions, delegate: (TokenEntry) => TokenEntry = null): (Array[TokenEntry], Array[ErrorHandler.Error]) = {
   val tokenizer = new Tokenizer(code, options)
   val tokens = ArrayBuffer.empty[Parser.TokenEntry]
   val errors = ArrayBuffer.empty[ErrorHandler.Error]
