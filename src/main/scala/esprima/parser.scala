@@ -51,9 +51,9 @@ object Parser {
   }
 
   trait Marker {
-    def index: Int
-    def line: Int
-    def column: Int
+    var index: Int
+    var line: Int
+    var column: Int
   }
 
   trait TokenEntry {
@@ -154,18 +154,18 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var strict = false
   }
   var tokens = ArrayBuffer.empty[Parser.TokenEntry]
-  var startMarker = new {
+  var startMarker: Marker = new Marker {
     var index = 0
     var line = scanner.lineNumber
     var column = 0
   }
-  var lastMarker = new {
+  var lastMarker: Marker = new Marker {
     var index = 0
     var line = scanner.lineNumber
     var column = 0
   }
   this.nextToken()
-  lastMarker = new {
+  lastMarker = new Marker {
     var index = scanner.index
     var line = scanner.lineNumber
     var column = scanner.index - scanner.lineStart
@@ -350,7 +350,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   def createNode(): Marker = {
     new Marker {
       var index = self.startMarker.index
-      override def line = self.startMarker.line
+      var line = self.startMarker.line
       var column = self.startMarker.column
     }
   }
