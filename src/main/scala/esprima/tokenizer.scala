@@ -146,7 +146,8 @@ class Tokenizer(code: String, config: Parser.Options) {
         this.buffer.push(entry)
       }
     }
-    this.buffer.shift()
+    if (this.buffer.nonEmpty) this.buffer.shift()
+    else null
   }
   
 }
