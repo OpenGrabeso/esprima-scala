@@ -1143,25 +1143,27 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     assert(this.context.allowIn, "callee of new expression always allow in keyword.")
     val node = this.startNode(this.lookahead)
     var expr = if (this.matchKeyword("super") && this.context.inFunctionBody) this.parseSuper() else this.inheritCoverGrammar(if (this.matchKeyword("new")) this.parseNewExpression else this.parsePrimaryExpression)
-    while (true) {
-      if (this.`match`("[")) {
-        this.context.isBindingElement = false
-        this.context.isAssignmentTarget = true
-        this.expect("[")
-        val property = this.isolateCoverGrammar(this.parseExpression)
-        this.expect("]")
-        expr = this.finalize(node, new Node.ComputedMemberExpression(expr, property))
-      } else if (this.`match`(".")) {
-        this.context.isBindingElement = false
-        this.context.isAssignmentTarget = true
-        this.expect(".")
-        val property = this.parseIdentifierName()
-        expr = this.finalize(node, new Node.StaticMemberExpression(expr, property))
-      } else if (this.lookahead.`type` == 10 && this.lookahead.head) {
-        val quasi = this.parseTemplateLiteral()
-        expr = this.finalize(node, new Node.TaggedTemplateExpression(expr, quasi))
-      } else {
-        /* Unsupported: Break */ break;
+    breakable {
+      while (true) {
+        if (this.`match`("[")) {
+          this.context.isBindingElement = false
+          this.context.isAssignmentTarget = true
+          this.expect("[")
+          val property = this.isolateCoverGrammar(this.parseExpression)
+          this.expect("]")
+          expr = this.finalize(node, new Node.ComputedMemberExpression(expr, property))
+        } else if (this.`match`(".")) {
+          this.context.isBindingElement = false
+          this.context.isAssignmentTarget = true
+          this.expect(".")
+          val property = this.parseIdentifierName()
+          expr = this.finalize(node, new Node.StaticMemberExpression(expr, property))
+        } else if (this.lookahead.`type` == 10 && this.lookahead.head) {
+          val quasi = this.parseTemplateLiteral()
+          expr = this.finalize(node, new Node.TaggedTemplateExpression(expr, quasi))
+        } else {
+          break
+        }
       }
     }
     expr
@@ -1274,26 +1276,28 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       var right = this.isolateCoverGrammar(this.parseExponentiationExpression)
       val stack = ArrayBuffer(left, token.value, right)
       val precedences = ArrayBuffer(prec)
-      while (true) {
-        prec = this.binaryPrecedence(this.lookahead)
-        if (prec <= 0) {
-          /* Unsupported: Break */ break;
+      breakable {
+        while (true) {
+          prec = this.binaryPrecedence(this.lookahead)
+          if (prec <= 0) {
+            break
+          }
+          // Reduce: make a binary expression from the three topmost entries.
+          while (stack.length > 2 && prec <= precedences(precedences.length - 1)) {
+            right = stack.pop().asInstanceOf[Node.Node]
+            val operator = stack.pop().asInstanceOf[String]
+            precedences.pop()
+            left = stack.pop().asInstanceOf[Node.Node]
+            markers.pop()
+            val node = this.startNode(markers(markers.length - 1))
+            stack.push(this.finalize(node, new Node.BinaryExpression(operator, left, right)))
+          }
+          // Shift.
+          stack.push(this.nextToken().value)
+          precedences.push(prec)
+          markers.push(this.lookahead)
+          stack.push(this.isolateCoverGrammar(this.parseExponentiationExpression))
         }
-        // Reduce: make a binary expression from the three topmost entries.
-        while (stack.length > 2 && prec <= precedences(precedences.length - 1)) {
-          right = stack.pop().asInstanceOf[Node.Node]
-          val operator = stack.pop().asInstanceOf[String]
-          precedences.pop()
-          left = stack.pop().asInstanceOf[Node.Node]
-          markers.pop()
-          val node = this.startNode(markers(markers.length - 1))
-          stack.push(this.finalize(node, new Node.BinaryExpression(operator, left, right)))
-        }
-        // Shift.
-        stack.push(this.nextToken().value)
-        precedences.push(prec)
-        markers.push(this.lookahead)
-        stack.push(this.isolateCoverGrammar(this.parseExponentiationExpression))
       }
       // Final reduce to clean-up the stack.
       var i = stack.length - 1
@@ -1510,12 +1514,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     if (this.`match`(",")) {
       val expressions = ArrayBuffer.empty[Node.Node]
       expressions.push(expr)
-      while (this.lookahead.`type` != 2) {
-        if (!this.`match`(",")) {
-          /* Unsupported: Break */ break;
+      breakable {
+        while (this.lookahead.`type` != 2) {
+          if (!this.`match`(",")) {
+            break
+          }
+          this.nextToken()
+          expressions.push(this.isolateCoverGrammar(this.parseAssignmentExpression))
         }
-        this.nextToken()
-        expressions.push(this.isolateCoverGrammar(this.parseAssignmentExpression))
       }
       expr = this.finalize(this.startNode(startToken), new Node.SequenceExpression(expressions))
     }
@@ -1567,11 +1573,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val node = this.createNode()
     this.expect("{")
     val block = ArrayBuffer.empty[Node.Node]
-    while (true) {
-      if (this.`match`("}")) {
-        /* Unsupported: Break */ break;
+    breakable {
+      while (true) {
+        if (this.`match`("}")) {
+          break
+        }
+        block.push(this.parseStatementListItem())
       }
-      block.push(this.parseStatementListItem())
     }
     this.expect("}")
     this.finalize(node, new Node.BlockStatement(block))
@@ -2123,11 +2131,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     this.expect(":")
     val consequent = ArrayBuffer.empty[Node.Node]
-    while (true) {
-      if (this.`match`("}") || this.matchKeyword("default") || this.matchKeyword("case")) {
-        /* Unsupported: Break */ break;
+    breakable {
+      while (true) {
+        if (this.`match`("}") || this.matchKeyword("default") || this.matchKeyword("case")) {
+          break
+        }
+        consequent.push(this.parseStatementListItem())
       }
-      consequent.push(this.parseStatementListItem())
     }
     this.finalize(node, new Node.SwitchCase(test, consequent))
   }
@@ -2333,11 +2343,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.context.inIteration = false
     this.context.inSwitch = false
     this.context.inFunctionBody = true
-    while (this.lookahead.`type` != 2) {
-      if (this.`match`("}")) {
-        /* Unsupported: Break */ break;
+    breakable {
+      while (this.lookahead.`type` != 2) {
+        if (this.`match`("}")) {
+          break
+        }
+        body.push(this.parseStatementListItem())
       }
-      body.push(this.parseStatementListItem())
     }
     this.expect("}")
     this.context.labelSet = previousLabelSet
@@ -2574,7 +2586,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       while (true) {
         val token = this.lookahead
         if (token.`type` != 8) {
-          /* Unsupported: Break */ break;
+          break
         }
         val statement = this.parseDirective()
         body.push(statement)

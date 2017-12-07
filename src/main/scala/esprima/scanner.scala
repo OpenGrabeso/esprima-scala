@@ -413,21 +413,23 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.index += 1
       temp
     }
-    while (!this.eof()) {
-      val ch = this.source.charCodeAt(this.index)
-      if (ch == 0x5C) {
-        // Blackslash (U+005C) marks Unicode escape sequence.
-        this.index = start
-        return this.getComplexIdentifier()
-      } else if (ch >= 0xD800 && ch < 0xDFFF) {
-        // Need to handle surrogate pairs.
-        this.index = start
-        return this.getComplexIdentifier()
-      }
-      if (Character.isIdentifierPart(ch)) {
-        this.index += 1
-      } else {
-        /* Unsupported: Break */ break;
+    breakable {
+      while (!this.eof()) {
+        val ch = this.source.charCodeAt(this.index)
+        if (ch == 0x5C) {
+          // Blackslash (U+005C) marks Unicode escape sequence.
+          this.index = start
+          return this.getComplexIdentifier()
+        } else if (ch >= 0xD800 && ch < 0xDFFF) {
+          // Need to handle surrogate pairs.
+          this.index = start
+          return this.getComplexIdentifier()
+        }
+        if (Character.isIdentifierPart(ch)) {
+          this.index += 1
+        } else {
+          break
+        }
       }
     }
     this.source.slice(start, this.index)
@@ -455,31 +457,33 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       }
       id = ch
     }
-    while (!this.eof()) {
-      cp = this.codePointAt(this.index)
-      if (!Character.isIdentifierPart(cp)) {
-        /* Unsupported: Break */ break;
-      }
-      ch = Character.fromCodePoint(cp)
-      id += ch
-      this.index += ch.length
-      // '\ u' (U+005C, U+0075) denotes an escaped character.
-      if (cp == 0x5C) {
-        id = id.substr(0, id.length - 1)
-        if (this.source.charCodeAt(this.index) != 0x75) {
-          this.throwUnexpectedToken()
+    breakable {
+      while (!this.eof()) {
+        cp = this.codePointAt(this.index)
+        if (!Character.isIdentifierPart(cp)) {
+          break
         }
-        this.index += 1
-        if (this.source(this.index).toString == "{") {
-          this.index += 1
-          ch = this.scanUnicodeCodePointEscape()
-        } else {
-          ch = this.scanHexEscape("u")
-          if (ch == null || ch == "\\" || !Character.isIdentifierPart(ch.charCodeAt(0))) {
+        ch = Character.fromCodePoint(cp)
+        id += ch
+        this.index += ch.length
+        // '\ u' (U+005C, U+0075) denotes an escaped character.
+        if (cp == 0x5C) {
+          id = id.substr(0, id.length - 1)
+          if (this.source.charCodeAt(this.index) != 0x75) {
             this.throwUnexpectedToken()
           }
+          this.index += 1
+          if (this.source(this.index).toString == "{") {
+            this.index += 1
+            ch = this.scanUnicodeCodePointEscape()
+          } else {
+            ch = this.scanHexEscape("u")
+            if (ch == null || ch == "\\" || !Character.isIdentifierPart(ch.charCodeAt(0))) {
+              this.throwUnexpectedToken()
+            }
+          }
+          id += ch
         }
-        id += ch
       }
     }
     id
@@ -841,75 +845,77 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     this.index += 1
     var octal = false
     var str = ""
-    while (!this.eof()) {
-      var ch: String = this.source({
-        val temp = this.index
-        this.index += 1
-        temp
-      })
-      if (ch == quote) {
-        quote = ""
-        /* Unsupported: Break */ break;
-      } else if (ch == "\\") {
-        ch = this.source({
+    breakable {
+      while (!this.eof()) {
+        var ch: String = this.source({
           val temp = this.index
           this.index += 1
           temp
         })
-        if (!ch || !Character.isLineTerminator(ch.charCodeAt(0))) {
-          ch match {
-            case "u" =>
-              if (this.source(this.index).toString == "{") {
-                this.index += 1
-                str += this.scanUnicodeCodePointEscape()
-              } else {
+        if (ch == quote) {
+          quote = ""
+          break
+        } else if (ch == "\\") {
+          ch = this.source({
+            val temp = this.index
+            this.index += 1
+            temp
+          })
+          if (!ch || !Character.isLineTerminator(ch.charCodeAt(0))) {
+            ch match {
+              case "u" =>
+                if (this.source(this.index).toString == "{") {
+                  this.index += 1
+                  str += this.scanUnicodeCodePointEscape()
+                } else {
+                  val unescaped = this.scanHexEscape(ch)
+                  if (unescaped == null) {
+                    this.throwUnexpectedToken()
+                  }
+                  str += unescaped
+                }
+              case "x" =>
                 val unescaped = this.scanHexEscape(ch)
                 if (unescaped == null) {
-                  this.throwUnexpectedToken()
+                  this.throwUnexpectedToken(Messages.InvalidHexEscapeSequence)
                 }
                 str += unescaped
-              }
-            case "x" =>
-              val unescaped = this.scanHexEscape(ch)
-              if (unescaped == null) {
-                this.throwUnexpectedToken(Messages.InvalidHexEscapeSequence)
-              }
-              str += unescaped
-            case "n" =>
-              str += "\n"
-            case "r" =>
-              str += "\r"
-            case "t" =>
-              str += "\t"
-            case "b" =>
-              str += "\b"
-            case "f" =>
-              str += "\f"
-            case "v" =>
-              str += "\013"
-            case "8" | "9" =>
-              str += ch
-              this.tolerateUnexpectedToken()
-            case _ =>
-              if (ch && Character.isOctalDigit(ch.charCodeAt(0))) {
-                val octToDec = this.octalToDecimal(ch)
-                octal = octToDec._2 || octal
-                str += fromCharCode(octToDec._1)
-              } else {
+              case "n" =>
+                str += "\n"
+              case "r" =>
+                str += "\r"
+              case "t" =>
+                str += "\t"
+              case "b" =>
+                str += "\b"
+              case "f" =>
+                str += "\f"
+              case "v" =>
+                str += "\013"
+              case "8" | "9" =>
                 str += ch
-              }
+                this.tolerateUnexpectedToken()
+              case _ =>
+                if (ch && Character.isOctalDigit(ch.charCodeAt(0))) {
+                  val octToDec = this.octalToDecimal(ch)
+                  octal = octToDec._2 || octal
+                  str += fromCharCode(octToDec._1)
+                } else {
+                  str += ch
+                }
+            }
+          } else {
+            this.lineNumber += 1
+            if (ch == "\r" && this.source(this.index).toString == "\n") {
+              this.index += 1
+            }
+            this.lineStart = this.index
           }
+        } else if (Character.isLineTerminator(ch.charCodeAt(0))) {
+          break
         } else {
-          this.lineNumber += 1
-          if (ch == "\r" && this.source(this.index).toString == "\n") {
-            this.index += 1
-          }
-          this.lineStart = this.index
+          str += ch
         }
-      } else if (Character.isLineTerminator(ch.charCodeAt(0))) {
-        /* Unsupported: Break */ break;
-      } else {
-        str += ch
       }
     }
     if (quote != "") {
@@ -1107,36 +1113,38 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     })
     var classMarker = false
     var terminated = false
-    while (!this.eof()) {
-      ch = this.source({
-        val temp = this.index
-        this.index += 1
-        temp
-      })
-      str += ch
-      if (ch == "\\") {
+    breakable {
+      while (!this.eof()) {
         ch = this.source({
           val temp = this.index
           this.index += 1
           temp
         })
-        // https://tc39.github.io/ecma262/#sec-literals-regular-expression-literals
-        if (Character.isLineTerminator(ch.charCodeAt(0))) {
-          this.throwUnexpectedToken(Messages.UnterminatedRegExp)
-        }
         str += ch
-      } else if (Character.isLineTerminator(ch.charCodeAt(0))) {
-        this.throwUnexpectedToken(Messages.UnterminatedRegExp)
-      } else if (classMarker) {
-        if (ch == "]") {
-          classMarker = false
-        }
-      } else {
-        if (ch == "/") {
-          terminated = true
-          /* Unsupported: Break */ break;
-        } else if (ch == "[") {
-          classMarker = true
+        if (ch == "\\") {
+          ch = this.source({
+            val temp = this.index
+            this.index += 1
+            temp
+          })
+          // https://tc39.github.io/ecma262/#sec-literals-regular-expression-literals
+          if (Character.isLineTerminator(ch.charCodeAt(0))) {
+            this.throwUnexpectedToken(Messages.UnterminatedRegExp)
+          }
+          str += ch
+        } else if (Character.isLineTerminator(ch.charCodeAt(0))) {
+          this.throwUnexpectedToken(Messages.UnterminatedRegExp)
+        } else if (classMarker) {
+          if (ch == "]") {
+            classMarker = false
+          }
+        } else {
+          if (ch == "/") {
+            terminated = true
+            break
+          } else if (ch == "[") {
+            classMarker = true
+          }
         }
       }
     }
@@ -1150,40 +1158,42 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
   def scanRegExpFlags() = {
     var str = ""
     var flags = ""
-    while (!this.eof()) {
-      var ch: String = this.source(this.index)
-      if (!Character.isIdentifierPart(ch.charCodeAt(0))) {
-        /* Unsupported: Break */ break;
-      }
-      this.index += 1
-      if (ch == "\\" && !this.eof()) {
-        ch = this.source(this.index)
-        if (ch == "u") {
-          this.index += 1
-          var restore = this.index
-          val char = this.scanHexEscape("u")
-          if (char != null) {
-            flags += char
-            str += "\\u"
-            while (restore < this.index) {
-              {
-                str += this.source(restore)
-              }
-              restore += 1
-            }
-          } else {
-            this.index = restore
-            flags += "u"
-            str += "\\u"
-          }
-          this.tolerateUnexpectedToken()
-        } else {
-          str += "\\"
-          this.tolerateUnexpectedToken()
+    breakable {
+      while (!this.eof()) {
+        var ch: String = this.source(this.index)
+        if (!Character.isIdentifierPart(ch.charCodeAt(0))) {
+          break
         }
-      } else {
-        flags += ch
-        str += ch
+        this.index += 1
+        if (ch == "\\" && !this.eof()) {
+          ch = this.source(this.index)
+          if (ch == "u") {
+            this.index += 1
+            var restore = this.index
+            val char = this.scanHexEscape("u")
+            if (char != null) {
+              flags += char
+              str += "\\u"
+              while (restore < this.index) {
+                {
+                  str += this.source(restore)
+                }
+                restore += 1
+              }
+            } else {
+              this.index = restore
+              flags += "u"
+              str += "\\u"
+            }
+            this.tolerateUnexpectedToken()
+          } else {
+            str += "\\"
+            this.tolerateUnexpectedToken()
+          }
+        } else {
+          flags += ch
+          str += ch
+        }
       }
     }
     flags
