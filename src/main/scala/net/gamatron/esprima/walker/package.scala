@@ -18,32 +18,18 @@ package object walker {
             callback(oMirror.reflectField(term).get.asInstanceOf[Node])
           }
         case NullaryMethodType(resultType) if resultType <:< typeOf[Seq[Node]] =>
-          val tt = resultType
-          println("Seq[Node]" + tt)
-          None
-        case NullaryMethodType(resultType) if resultType <:< typeOf[Array[Node]] =>
-          val tt = resultType
-          println("Array[Node] " + tt)
-          None
-        case NullaryMethodType(resultType) if resultType <:< typeOf[Seq[_]] =>
-          val tt = resultType
-          println("Seq[_] " + tt)
-          println(tt)
-          None
+          Some[TermCallback]{(oMirror, callback) =>
+            oMirror.reflectField(term).get.asInstanceOf[Seq[Node]].foreach(callback)
+          }
         case NullaryMethodType(resultType) if resultType <:< typeOf[Array[_]] =>
           resultType.typeArgs match {
             case at :: Nil if at <:< typeOf[Node] =>
-              println("Array[+Node] " + at)
+              Some[TermCallback]{(oMirror, callback) =>
+                oMirror.reflectField(term).get.asInstanceOf[Array[Node]].foreach(callback)
+              }
             case _ =>
+              None
           }
-          val tt = resultType
-          println(tt)
-          println("Array[_] " + tt)
-          None
-        case t@NullaryMethodType(_) =>
-          val tt = t
-          //println(tt)
-          None
         case  _ =>
           None
       }
