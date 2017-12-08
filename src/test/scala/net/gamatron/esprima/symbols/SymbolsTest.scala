@@ -8,24 +8,32 @@ class SymbolsTest extends FunSuite with TestInputs {
 
   test("Walk with scope tracking ") {
     val ast = parse(es6)
-    var maxDepth = 0
+    var maxScopeDepth = 0
+    var maxNodeDepth = 0
     walk(ast) { (node, context) =>
-      maxDepth = maxDepth max context.scopes.length
+      maxScopeDepth = maxScopeDepth max context.scopes.length
+      maxNodeDepth = maxNodeDepth max context.parents.length
       false
     }
-    println(s"Max depth $maxDepth")
-    assert(maxDepth > 0)
+    println(s"Max scope depth $maxScopeDepth")
+    println(s"Max node depth $maxNodeDepth")
+    assert(maxScopeDepth > 0)
+    assert(maxNodeDepth > 0)
   }
 
   test("Walk three.js with scope tracking ") {
     val ast = parse(threeSource)
-    var maxDepth = 0
+    var maxScopeDepth = 0
+    var maxNodeDepth = 0
     walk(ast) { (node, context) =>
-      maxDepth = maxDepth max context.scopes.length
+      maxScopeDepth = maxScopeDepth max context.scopes.length
+      maxNodeDepth = maxNodeDepth max context.parents.length
       false
     }
-    println(s"Max depth $maxDepth")
-    assert(maxDepth > 0)
+    println(s"Max scope depth $maxScopeDepth")
+    println(s"Max node depth $maxNodeDepth")
+    assert(maxScopeDepth > 0)
+    assert(maxNodeDepth > 0)
   }
 
 }
