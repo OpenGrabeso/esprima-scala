@@ -46,9 +46,9 @@ class WalkerTest extends FunSuite {
     val walkers = createAllWalkers
     assert(walkers.size > 75) // as of Dec 2017 there are 77 classes derived from Node. It is unlikely the number will be ever lower.
     // check that walkers for a few randomly picked up classes exists and is reasonable
-    assert(walkers(classOf[AssignmentExpression]).nonEmpty)
-    assert(walkers(classOf[EmptyStatement]).isEmpty)
-    assert(walkers(classOf[Program]).nonEmpty)
-    assert(walkers(classOf[Module]).nonEmpty)
+    assert(walkers contains classOf[AssignmentExpression])
+    assert(walkers contains classOf[EmptyStatement])
+    assert(walkers contains classOf[Program])
+    assert(walkers contains classOf[Module])
   }
 }

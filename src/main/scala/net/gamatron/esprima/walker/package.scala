@@ -7,7 +7,7 @@ import scala.reflect.runtime.currentMirror
 
 package object walker {
   type TermCallback = (InstanceMirror, (Node) => Unit) => Unit
-  type NodeWalker = Iterable[TermCallback]
+  type NodeWalker = (Node, Node => Unit) => Unit
 
   def createWalkerForNode[T <: Node](tag: TypeTag[T]): NodeWalker = {
     createWalkerForType(typeOf[T](tag))
@@ -40,7 +40,18 @@ package object walker {
       }
     }
 
-    walker
+    if (walker.isEmpty) {
+      // special case optimization: no need to reflect on o when there are no members to dive into
+      (_, _) => {}
+    } else {
+      (o: Node, callback: Node => Unit) => {
+        val oMirror = currentMirror.reflect(o)
+        walker.foreach { w =>
+          // walkNode(w)
+          w(oMirror, callback)
+        }
+      }
+    }
   }
 
   def createAllWalkers: Map[Class[_], NodeWalker] = {
@@ -56,11 +67,26 @@ package object walker {
     nodes.toMap
   }
 
+  def specializedWalkers(walkers: Map[Class[_], NodeWalker]): Map[Class[_], NodeWalker] = {
+    walkers /*+ (classOf[Node.StaticMemberExpression] -> Seq[TermCallback]({
+
+    }))*/
+  }
+
   def walkNode(o: Node, walker: NodeWalker, callback: Node => Unit): Unit = {
-    val oMirror = currentMirror.reflect(o)
-    walker.foreach { w =>
-      // walkNode(w)
-      w(oMirror, callback)
+    walker(o, callback)
+  }
+
+  lazy val allWalkers = specializedWalkers(createAllWalkers)
+
+  /*
+  call callback, if it returns false, descend recursively into children nodes
+  */
+  def walkRecursive(o: Node, callback: Node => Boolean): Unit = {
+    // some fields may be null (e.g FunctionExpression id)
+    if (o && !callback(o)) {
+      val walker = allWalkers(o.getClass)
+      walkNode(o, walker, node => walkRecursive(node, callback))
     }
   }
 
