@@ -27,6 +27,8 @@ object Node {
     def generator: Boolean
   }
 
+  trait IsScope
+
   abstract class CommentNode extends Node {
     var value: String = _
   }
@@ -107,7 +109,7 @@ object Node {
   }
 
 
-  class BlockStatement(var body: Seq[Node]) extends Node {
+  class BlockStatement(var body: Seq[Node]) extends Node with IsScope {
     var `type` = Syntax.BlockStatement
   }
 
@@ -127,7 +129,7 @@ object Node {
   }
 
 
-  class ClassBody(var body: Array[MethodDefinition]) extends Node {
+  class ClassBody(var body: Array[MethodDefinition]) extends Node  with IsScope {
     var `type` = Syntax.ClassBody
   }
 

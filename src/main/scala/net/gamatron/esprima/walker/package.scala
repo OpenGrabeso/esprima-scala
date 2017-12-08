@@ -92,12 +92,20 @@ package object walker {
   /*
   call callback, if it returns false, descend recursively into children nodes
   */
-  def walkRecursive(o: Node, callback: Node => Boolean): Unit = {
+  def walkRecursive(o: Node)(callback: Node => Boolean): Unit = {
     // some fields may be null (e.g FunctionExpression id)
-    if (o && !callback(o)) {
+    if (o != null && !callback(o)) {
       val walker = allWalkers(o.getClass)
-      walkNode(o, walker, node => walkRecursive(node, callback))
+      walkNode(o, walker, node => walkRecursive(node)(callback))
     }
+  }
+
+  def walkInto(o: Node)(callback: Node => Unit): Unit = {
+    if (o != null) {
+      val walker = allWalkers(o.getClass)
+      walkNode(o, walker, callback)
+    }
+
   }
 
 }
