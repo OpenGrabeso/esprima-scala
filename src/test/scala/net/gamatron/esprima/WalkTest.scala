@@ -38,15 +38,20 @@ class WalkTest extends FunSuite with TestInputs {
 
   test("Walk three.js") {
     val ast = parse(threeSource)
-    var countFunctions = 0
-    walk(ast) {
-      case node: FunctionExpression =>
-        countFunctions += 1
-        false
-      case node =>
-        false
+    var count = 0
+    val countNodes = collection.mutable.Map.empty[Class[_], Int].withDefaultValue(0)
+    walk(ast) { node =>
+      count += 1
+      countNodes(node.getClass) += 1
+      false
     }
-    assert(countFunctions >= 1000)
+    // verify node counts are sensible (we are really walking the tree)
+    println(s"Total: $count")
+    println("  " + countNodes.toSeq.map { case (k, v) => k.getSimpleName -> v }.sortBy(_._2).reverse.take(10).mkString("\n  "))
+    assert(countNodes(classOf[Identifier]) >= 50000)
+    assert(countNodes(classOf[StaticMemberExpression]) >= 10000)
+    assert(countNodes(classOf[FunctionExpression]) >= 1000)
+    assert(count >= 100000)
   }
 
   test("transformBefore") {
