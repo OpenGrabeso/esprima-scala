@@ -69,19 +69,17 @@ package object walker {
 
   def specializedWalkers(walkers: Map[Class[_], NodeWalker]): Map[Class[_], NodeWalker] = {
     // optimization: provide statical implementations of frequently used node types
-    val walkStaticMemberExpression: NodeWalker = (node, callback) => {
-      val n = node.asInstanceOf[Node.StaticMemberExpression]
-      callback(n.`object`)
-      callback(n.property)
+    def walkStaticMemberExpression(node: Node.StaticMemberExpression, callback: Node => Unit) = {
+      callback(node.`object`)
+      callback(node.property)
     }
-    val walkExpressionStatement: NodeWalker = (node, callback) => {
-      val n = node.asInstanceOf[Node.ExpressionStatement]
-      callback(n.expression)
+    def walkExpressionStatement(node: Node.ExpressionStatement, callback: Node => Unit) = {
+      callback(node.expression)
     }
 
     walkers ++ Seq(
-      classOf[Node.StaticMemberExpression] -> walkStaticMemberExpression,
-      classOf[Node.ExpressionStatement] -> walkExpressionStatement
+      classOf[Node.StaticMemberExpression] -> (walkStaticMemberExpression _).asInstanceOf[NodeWalker],
+      classOf[Node.ExpressionStatement] -> (walkExpressionStatement _).asInstanceOf[NodeWalker]
     )
   }
 
