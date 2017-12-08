@@ -235,7 +235,7 @@ object Node {
   }
 
 
-  class Identifier(var name: String) extends Node {
+  case class Identifier(var name: String) extends Node {
     var `type` = Syntax.Identifier
   }
 
@@ -289,7 +289,7 @@ object Node {
     var `type` = Syntax.MethodDefinition
   }
 
-  sealed abstract class Program(var body: Seq[Node]) extends Node {
+  sealed abstract class Program(var body: Seq[Node]) extends Node with IsScope {
     var `type` = Syntax.Program
 
     def sourceType: String
@@ -430,7 +430,7 @@ object Node {
   }
 
 
-  class VariableDeclarator(var id: Node, var init: Node) extends Node {
+  case class VariableDeclarator(var id: Node, var init: Node) extends Node {
     var `type` = Syntax.VariableDeclarator
   }
 
