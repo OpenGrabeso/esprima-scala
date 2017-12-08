@@ -1,6 +1,7 @@
 package net.gamatron.esprima
 
-import _root_.esprima.Node.Node
+import _root_.esprima.Node
+import Node.Node
 import scala.reflect.runtime.universe._
 import scala.reflect.runtime.currentMirror
 
@@ -9,7 +10,11 @@ package object walker {
   type NodeWalker = Iterable[TermCallback]
 
   def createWalkerForNode[T <: Node](tag: TypeTag[T]): NodeWalker = {
-    val members = typeOf[T](tag).members.filter(_.isTerm).map(_.asTerm).filter(_.isGetter)
+    createWalkerForType(typeOf[T](tag))
+  }
+
+  def createWalkerForType(t: Type): NodeWalker = {
+    val members = t.members.filter(_.isTerm).map(_.asTerm).filter(_.isGetter)
 
     val walker: Iterable[TermCallback] = members.flatMap { term =>
       term.typeSignature match {
@@ -36,6 +41,19 @@ package object walker {
     }
 
     walker
+  }
+
+  def createAllWalkers: Map[Class[_], NodeWalker] = {
+    // https://stackoverflow.com/questions/27189258/list-all-classes-in-object-using-reflection
+    import scala.reflect.runtime.universe._
+    val mirror = runtimeMirror(this.getClass.getClassLoader)
+    val nodes = typeOf[Node.type].decls.collect {
+      case c: ClassSymbol if c.toType <:< typeOf[Node] =>
+        val t = c.selfType
+        mirror.runtimeClass(t) -> createWalkerForType(t)
+    }
+
+    nodes.toMap
   }
 
   def walkNode(o: Node, walker: NodeWalker, callback: Node => Unit): Unit = {
