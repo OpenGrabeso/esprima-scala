@@ -5,8 +5,6 @@ import Esprima._
 import net.gamatron.esprima.TestInputs
 
 class BasicTests extends FunSuite with TestInputs {
-  //language=JavaScript
-
   test("Tokenizer - simple input") {
     val tokens = tokenize(answer42)
     println(tokens)

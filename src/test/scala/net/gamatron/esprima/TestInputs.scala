@@ -3,6 +3,7 @@ package net.gamatron.esprima
 trait TestInputs {
   val answer42 ="answer = 42"
 
+  //language=JavaScript
   val es6 = """
       class Node {
         type () {return "Node"}
