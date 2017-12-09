@@ -24,8 +24,8 @@ object Parser {
 
   class Options {
 
-    var range: Boolean = false
-    var loc: Boolean = false
+    var range: Boolean = true
+    var loc: Boolean = false // default loc is true because that allows us to perform symbol matching
     var source: String = null
     var tokens: Boolean = false
     var comment: Boolean = false

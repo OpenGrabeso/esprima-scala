@@ -11,10 +11,23 @@ package object symbols {
     var symbols = Set.empty[String] // all symbols defined in the scope
   }
 
+  case class SymId(name: String, scope: Int)
+
   class ScopeContext {
     val parents = ArrayBuffer.empty[Node.Node]
     val scopes =  ArrayBuffer.empty[(Node.Node, ScopeInfo)]
 
+    def getNodeId(n: Node.Node) = {
+      if (n.range != null) n.range._1
+      else System.identityHashCode(n)
+    }
+    def findSymId(sym: String): SymId = {
+      for (i <- scopes.indices.reverse) {
+        if (scopes(i)._2.symbols.contains(sym)) return SymId(sym, getNodeId(scopes(i)._1))
+      }
+      // symbol not found in any scope, consider it a global one
+      SymId(sym, -1)
+    }
   }
 
   /**
@@ -30,7 +43,13 @@ package object symbols {
         if (isScope) {
           context.scopes.push(node -> new ScopeInfo)
         }
-        context.parents.push(node) // TODO: optimize: no push when walkInto is empty
+        context.parents.push(node)
+      }
+      // scan for nodes defining symbols
+      node match {
+        case Node.SymbolDeclaration(id) =>
+          context.scopes.last._2.symbols += id
+        case _ =>
       }
       ret
     }
@@ -47,5 +66,21 @@ package object symbols {
 
     assert(context.scopes.isEmpty)
     assert(context.parents.isEmpty)
+  }
+
+  def listAllSymbols(node: Node): Set[SymId] = {
+    val builder = Set.newBuilder[SymId]
+    walk(node) { (node, context) =>
+      node match {
+        case Identifier(name) =>
+          val symId = context.findSymId(name)
+          builder += symId
+          false
+        case _ =>
+          false
+      }
+
+    }
+    builder.result()
   }
 }

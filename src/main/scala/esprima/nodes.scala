@@ -27,6 +27,26 @@ object Node {
     def generator: Boolean
   }
 
+  trait SymbolDeclaration {
+    def id: Node
+
+    /** default implementation is to read id node
+      * Implementaion can override this even when id has a different meaning
+    */
+    def symbolId: Node = id
+  }
+
+  object SymbolDeclaration {
+    def unapply(decl: SymbolDeclaration): Option[String] = {
+      decl.symbolId match {
+        case Identifier(name) =>
+          Some(name)
+        case _ =>
+          None
+      }
+    }
+  }
+
   trait IsScope
 
   abstract class CommentNode extends Node {
@@ -129,12 +149,12 @@ object Node {
   }
 
 
-  class ClassBody(var body: Array[MethodDefinition]) extends Node  with IsScope {
+  class ClassBody(var body: Array[MethodDefinition]) extends Node with IsScope {
     var `type` = Syntax.ClassBody
   }
 
 
-  class ClassDeclaration(var id: Node, var superClass: Node, var body: Node) extends Node {
+  class ClassDeclaration(var id: Node, var superClass: Node, var body: Node) extends Node with SymbolDeclaration {
     var `type` = Syntax.ClassDeclaration
   }
 
@@ -221,7 +241,7 @@ object Node {
   }
 
 
-  class FunctionDeclaration(var id: Node, var params: Array[Node], var body: Node, var generator: Boolean) extends Node with AFunctionDeclaration {
+  case class FunctionDeclaration(var id: Node, var params: Array[Node], var body: Node, var generator: Boolean) extends Node with AFunctionDeclaration with SymbolDeclaration {
     var `type` = Syntax.FunctionDeclaration
     var expression: Boolean = false
     var async: Boolean = false
@@ -430,7 +450,7 @@ object Node {
   }
 
 
-  case class VariableDeclarator(var id: Node, var init: Node) extends Node {
+  case class VariableDeclarator(var id: Node, var init: Node) extends Node with SymbolDeclaration {
     var `type` = Syntax.VariableDeclarator
   }
 

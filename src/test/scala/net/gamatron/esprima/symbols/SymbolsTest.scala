@@ -36,4 +36,9 @@ class SymbolsTest extends FunSuite with TestInputs {
     assert(maxNodeDepth > 0)
   }
 
+  test("List all symbols") {
+    val ast = parse(es6)
+    val syms = listAllSymbols(ast)
+    println(syms)
+  }
 }
