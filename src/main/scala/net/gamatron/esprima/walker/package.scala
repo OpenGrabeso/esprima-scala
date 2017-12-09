@@ -92,10 +92,11 @@ package object walker {
   /*
   call callback, if it returns false, descend recursively into children nodes
   */
-  def walkRecursive(o: Node)(callback: Node => Boolean): Unit = {
+  def walkRecursive(o: Node)(callback: Node => Boolean)(post: Node => Unit = _ => ()): Unit = {
     // some fields may be null (e.g FunctionExpression id)
     if (o != null && !callback(o)) {
-      walkInto(o)(walkRecursive(_)(callback))
+      walkInto(o)(walkRecursive(_)(callback)(post))
+      post(o)
     }
   }
 

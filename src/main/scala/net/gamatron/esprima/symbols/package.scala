@@ -20,29 +20,32 @@ package object symbols {
   /**
     * Walk while tracking a scope stack and a symbol information
     * */
-  def walk(node: Node, context: ScopeContext = new ScopeContext)(callback: (Node, ScopeContext) => Boolean): Unit = {
+  def walk(node: Node)(callback: (Node, ScopeContext) => Boolean): Unit = {
+    val context = new ScopeContext
 
-    if (node != null && !callback(node, context)) {
+    def callbackWithPrefix(node: Node): Boolean = {
+      val ret = callback(node, context)
+      if (!ret) {
+        val isScope = node.isInstanceOf[IsScope]
+        if (isScope) {
+          context.scopes.push(node -> new ScopeInfo)
+        }
+        context.parents.push(node) // TODO: optimize: no push when walkInto is empty
+      }
+      ret
+    }
+
+    def post(node: Node) = {
       val isScope = node.isInstanceOf[IsScope]
-      if (isScope) {
-        context.scopes.push(node -> new ScopeInfo)
-      }
-      context.parents.push(node) // TODO: optimize: no push when walkInto is empty
-
-      node match {
-        case Node.VariableDeclarator(Node.Identifier(id), _) =>
-          context.scopes.last._2.symbols += id
-        case _ =>
-      }
-
-      walker.walkInto(node)(walk(_, context)(callback))
-
       context.parents.pop()
       if (isScope) {
         context.scopes.pop()
       }
-
     }
-  }
 
+    walker.walkRecursive(node)(callbackWithPrefix)(post)
+
+    assert(context.scopes.isEmpty)
+    assert(context.parents.isEmpty)
+  }
 }
