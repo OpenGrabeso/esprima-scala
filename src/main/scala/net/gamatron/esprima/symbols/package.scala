@@ -35,7 +35,7 @@ package object symbols {
         case _ =>
       }
 
-      walker.walkInto(node)(node => walk(node, context)(callback))
+      walker.walkInto(node)(walk(_, context)(callback))
 
       context.parents.pop()
       if (isScope) {

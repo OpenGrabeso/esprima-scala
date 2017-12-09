@@ -95,8 +95,7 @@ package object walker {
   def walkRecursive(o: Node)(callback: Node => Boolean): Unit = {
     // some fields may be null (e.g FunctionExpression id)
     if (o != null && !callback(o)) {
-      val walker = allWalkers(o.getClass)
-      walkNode(o, walker, node => walkRecursive(node)(callback))
+      walkInto(o)(walkRecursive(_)(callback))
     }
   }
 
