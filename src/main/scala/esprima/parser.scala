@@ -459,7 +459,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     op == "=" || op == "*=" || op == "**=" || op == "/=" || op == "%=" || op == "+=" || op == "-=" || op == "<<=" || op == ">>=" || op == ">>>=" || op == "&=" || op == "^=" || op == "|="
   }
   
-  def isolateCoverGrammar(parseFunction: () => Node.Node): Node.Node = {
+  def isolateCoverGrammar[T <:Node.Node](parseFunction: () => T): T = {
     val previousIsBindingElement = this.context.isBindingElement
     val previousIsAssignmentTarget = this.context.isAssignmentTarget
     val previousFirstCoverInitializedNameError = this.context.firstCoverInitializedNameError
@@ -476,7 +476,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     result
   }
   
-  def inheritCoverGrammar(parseFunction: () => Node.Node): Node.Node = {
+  def inheritCoverGrammar[T <:Node.Node](parseFunction: () => T): T = {
     val previousIsBindingElement = this.context.isBindingElement
     val previousIsAssignmentTarget = this.context.isAssignmentTarget
     val previousFirstCoverInitializedNameError = this.context.firstCoverInitializedNameError
@@ -583,7 +583,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     expr
   }
   
-  def parseSpreadElement() = {
+  def parseSpreadElement(): Node.SpreadElement = {
     val node = this.createNode()
     this.expect("...")
     val arg = this.inheritCoverGrammar(this.parseAssignmentExpression)
@@ -1015,7 +1015,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.throwUnexpectedToken(this.lookahead)
     } else {
       val callee = this.isolateCoverGrammar(this.parseLeftHandSideExpression)
-      val args = if (this.`match`("(")) this.parseArguments() else Array[Node.Node]()
+      val args = if (this.`match`("(")) this.parseArguments() else Array()
       expr = new Node.NewExpression(callee, args)
       this.context.isAssignmentTarget = false
       this.context.isBindingElement = false

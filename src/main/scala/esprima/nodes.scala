@@ -23,6 +23,10 @@ object Node {
     var trailingComments: ArrayBuffer[CommentHandler.Comment] = _
   }
 
+  // export type ArgumentListElement = Expression | SpreadElement;
+  trait ArgumentListElement extends Node
+
+
   trait HasGenerator {
     def generator: Boolean
   }
@@ -140,7 +144,7 @@ object Node {
   }
 
 
-  class CallExpression(var callee: Node, var arguments: Seq[Node]) extends Node {
+  class CallExpression(var callee: Node, var arguments: Seq[ArgumentListElement]) extends Node {
     var `type` = Syntax.CallExpression
   }
 
@@ -377,7 +381,7 @@ object Node {
   }
 
 
-  class SpreadElement(var argument: Node) extends Node {
+  class SpreadElement(var argument: Node) extends Node with ArgumentListElement {
     var `type` = Syntax.SpreadElement
   }
 
