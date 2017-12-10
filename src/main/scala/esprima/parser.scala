@@ -3056,7 +3056,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       exportDeclaration = this.finalize(node, new Node.ExportNamedDeclaration(declaration, Seq(), null))
     } else {
       val specifiers = ArrayBuffer.empty[Node.ExportSpecifier]
-      var source: Node.Node = null
+      var source: Node.Literal = null
       var isExportFromIdentifier = false
       this.expect("{")
       while (!this.`match`("}")) {
