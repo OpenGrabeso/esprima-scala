@@ -18,7 +18,7 @@ object Parser {
   val ArrowParameterPlaceHolder = "ArrowParameterPlaceHolder"
   class ArrowParameterPlaceHolder extends Node.Node {
     var `type` = ArrowParameterPlaceHolder
-    var params: ArrayBuffer[Node.Node] = _
+    var params: Seq[Node.Node] = _
     var async: Boolean = _
   }
 
@@ -948,9 +948,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
                 case _ =>
                   this.reinterpretExpressionAsPattern(expr)
               }
-              val parameters = if (expr.isInstanceOf[Node.SequenceExpression]) expr.asInstanceOf[Node.SequenceExpression].expressions else Array(expr)
+              val parameters = if (expr.isInstanceOf[Node.SequenceExpression]) expr.asInstanceOf[Node.SequenceExpression].expressions else Seq(expr)
               expr = new ArrowParameterPlaceHolder {
-                params = ArrayBuffer(parameters:_*)
+                params = parameters
                 async = false
               }
             }
@@ -1364,7 +1364,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     expr match {
       case expr: Node.Identifier =>
       case expr: ArrowParameterPlaceHolder =>
-        params = expr.params
+        params = ArrayBuffer(expr.params:_*)
         asyncArrow = expr.async
       case _ =>
         return null
@@ -3050,10 +3050,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         case _ =>
           this.throwUnexpectedToken(this.lookahead)
       }
-      exportDeclaration = this.finalize(node, new Node.ExportNamedDeclaration(declaration, Array(), null))
+      exportDeclaration = this.finalize(node, new Node.ExportNamedDeclaration(declaration, Seq(), null))
     } else if (this.matchAsyncFunction()) {
       val declaration = this.parseFunctionDeclaration()
-      exportDeclaration = this.finalize(node, new Node.ExportNamedDeclaration(declaration, Array(), null))
+      exportDeclaration = this.finalize(node, new Node.ExportNamedDeclaration(declaration, Seq(), null))
     } else {
       val specifiers = ArrayBuffer.empty[Node.ExportSpecifier]
       var source: Node.Node = null
