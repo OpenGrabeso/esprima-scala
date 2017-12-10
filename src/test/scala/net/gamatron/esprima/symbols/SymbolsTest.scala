@@ -36,9 +36,13 @@ class SymbolsTest extends FunSuite with TestInputs {
     assert(maxNodeDepth > 0)
   }
 
-  test("List all symbols") {
+  test("Collect all symbols correctly") {
     val ast = parse(es6)
-    val syms = listAllSymbols(ast)
-    println(syms)
+    val symbols = listAllSymbols(ast)
+    val nonGlobalNames = symbols.filter(_.scope >= 0).map(_.name)
+    val known = Set("Identifier", "Literal", "useIfSimple", "key", "value", "i")
+    val unknown = known -- nonGlobalNames
+    assert(unknown.isEmpty)
+    //println(symbols)
   }
 }

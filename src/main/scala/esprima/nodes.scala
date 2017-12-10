@@ -33,17 +33,18 @@ object Node {
     /** default implementation is to read id node
       * Implementaion can override this even when id has a different meaning
     */
-    def symbolId: Node = id
+    def symbolIds: Seq[Node] = Seq(id)
   }
 
   object SymbolDeclaration {
-    def unapply(decl: SymbolDeclaration): Option[String] = {
-      decl.symbolId match {
+    def unapplySeq(decl: SymbolDeclaration): Option[Seq[String]] = {
+      val symbolNames = decl.symbolIds.flatMap {
         case Identifier(name) =>
           Some(name)
         case _ =>
           None
       }
+      Some(symbolNames)
     }
   }
 
@@ -245,13 +246,17 @@ object Node {
     var `type` = Syntax.FunctionDeclaration
     var expression: Boolean = false
     var async: Boolean = false
+
+    override def symbolIds = id +: params
   }
 
 
-  class FunctionExpression(var id: Node, var params: Array[Node], var body: Node, var generator: Boolean) extends Node with HasGenerator {
+  class FunctionExpression(var id: Node, var params: Array[Node], var body: Node, var generator: Boolean) extends Node with HasGenerator with SymbolDeclaration {
     var `type` = Syntax.FunctionExpression
     var expression: Boolean = false
     var async: Boolean = false
+
+    override def symbolIds = params
   }
 
 

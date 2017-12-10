@@ -11,6 +11,7 @@ trait TestInputs {
 
       class Identifier extends Node {
         type () {return Syntax.Identifier}
+        letter(i){return i;}
       }
 
       class Literal extends Node {

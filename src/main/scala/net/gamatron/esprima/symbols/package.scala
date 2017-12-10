@@ -47,8 +47,8 @@ package object symbols {
       }
       // scan for nodes defining symbols
       node match {
-        case Node.SymbolDeclaration(id) =>
-          context.scopes.last._2.symbols += id
+        case Node.SymbolDeclaration(id@_*) =>
+          context.scopes.last._2.symbols ++= id
         case _ =>
       }
       ret
