@@ -815,7 +815,6 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.TemplateLiteral(quasis, expressions))
   }
 
-  // TODO: consider using type classes for improved type safety
   def reinterpretExpressionAsArrayPattern(expr: Node.Node): Node.ArrayPatternElement = {
     // TODO: reallocation needed
     (expr: @unchecked) match {
