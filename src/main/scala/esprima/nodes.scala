@@ -11,7 +11,7 @@ import scala.collection.mutable.ArrayBuffer
 
 object Node {
 
-  trait Node {
+  sealed trait Node {
     override def toString = `type`
 
     var `type`: String
@@ -23,45 +23,58 @@ object Node {
     var trailingComments: ArrayBuffer[CommentHandler.Comment] = _
   }
 
-  trait Expression extends Node with ArgumentListElement with ArrayExpressionElement
-    with ExportableDefaultDeclaration with ExpressionOrImport
+  sealed trait ExpressionOrStatement extends Node
+  sealed trait Expression extends Node with ArgumentListElement with ArrayExpressionElement with ExpressionOrStatement
+    with ExportableDefaultDeclaration with ExpressionOrImport with BlockStatementOrExpression with PropertyValue
   /* ArrayExpression | ArrowFunctionExpression | AssignmentExpression | AsyncArrowFunctionExpression | AsyncFunctionExpression |
     AwaitExpression | BinaryExpression | CallExpression | ClassExpression | ComputedMemberExpression |
     ConditionalExpression | Identifier | FunctionExpression | Literal | NewExpression | ObjectExpression |
     RegexLiteral | SequenceExpression | StaticMemberExpression | TaggedTemplateExpression |
     ThisExpression | UnaryExpression | UpdateExpression | YieldExpression; */
-  trait ArgumentListElement extends Node // Expression | SpreadElement;
-  trait ArrayExpressionElement extends Node // Expression | SpreadElement | null;
-  trait BindingPattern extends Node with ArrayPatternElement with ExportableDefaultDeclaration with FunctionParameter with PropertyValue with BindingIdentifierOrPattern // ArrayPattern | ObjectPattern
-  trait BindingIdentifier extends Node with ArrayPatternElement with ExportableDefaultDeclaration with FunctionParameter with PropertyValue with BindingIdentifierOrPattern // Identifier;
-  trait ArrayPatternElement extends Node // AssignmentPattern | BindingIdentifier | BindingPattern | RestElement | null;
-  trait ExportDeclaration extends Node with Declaration // ExportAllDeclaration | ExportDefaultDeclaration | ExportNamedDeclaration;
-  trait Declaration extends Node with StatementListItem // = AsyncFunctionDeclaration | ClassDeclaration | ExportDeclaration | FunctionDeclaration | ImportDeclaration | VariableDeclaration;
-  trait ExportableDefaultDeclaration extends Node // BindingIdentifier | BindingPattern | ClassDeclaration | Expression | FunctionDeclaration;
-  trait ExportableNamedDeclaration extends Node // AsyncFunctionDeclaration | ClassDeclaration | FunctionDeclaration | VariableDeclaration;
-  trait FunctionParameter extends Node // = AssignmentPattern | BindingIdentifier | BindingPattern;
-  trait ImportDeclarationSpecifier extends Node //= ImportDefaultSpecifier | ImportNamespaceSpecifier | ImportSpecifier;
-  trait ObjectExpressionProperty extends Node //= Property | SpreadElement;
-  trait ObjectPatternProperty extends Node //= Property | RestElement;
-  trait Statement extends Node with StatementListItem
+  sealed trait ArgumentListElement extends Node // Expression | SpreadElement;
+  sealed trait ArrayExpressionElement extends Node // Expression | SpreadElement | null;
+  sealed trait BindingPattern extends Node with ArrayPatternElement with ExportableDefaultDeclaration with FunctionParameter with PropertyValue with BindingIdentifierOrPattern // ArrayPattern | ObjectPattern
+  sealed trait BindingIdentifier extends Node with ArrayPatternElement with ExportableDefaultDeclaration with FunctionParameter with PropertyValue with BindingIdentifierOrPattern // Identifier;
+  sealed trait ArrayPatternElement extends Node // AssignmentPattern | BindingIdentifier | BindingPattern | RestElement | null;
+  sealed trait ExportDeclaration extends Node with Declaration // ExportAllDeclaration | ExportDefaultDeclaration | ExportNamedDeclaration;
+  sealed trait Declaration extends Node with StatementListItem // = AsyncFunctionDeclaration | ClassDeclaration | ExportDeclaration | FunctionDeclaration | ImportDeclaration | VariableDeclaration;
+  sealed trait ExportableDefaultDeclaration extends Node // BindingIdentifier | BindingPattern | ClassDeclaration | Expression | FunctionDeclaration;
+  sealed trait ExportableNamedDeclaration extends Node // AsyncFunctionDeclaration | ClassDeclaration | FunctionDeclaration | VariableDeclaration;
+  sealed trait FunctionParameter extends Node // = AssignmentPattern | BindingIdentifier | BindingPattern;
+  sealed trait ImportDeclarationSpecifier extends Node //= ImportDefaultSpecifier | ImportNamespaceSpecifier | ImportSpecifier;
+  sealed trait ObjectExpressionProperty extends Node //= Property | SpreadElement;
+  sealed trait ObjectPatternProperty extends Node with BindingIdentifierOrPattern //= Property | RestElement;
+  sealed trait Statement extends Node with StatementListItem with ExpressionOrStatement
   /*= AsyncFunctionDeclaration | BreakStatement | ContinueStatement | DebuggerStatement | DoWhileStatement |
     EmptyStatement | ExpressionStatement | Directive | ForStatement | ForInStatement | ForOfStatement |
     FunctionDeclaration | IfStatement | ReturnStatement | SwitchStatement | ThrowStatement |
     TryStatement | VariableDeclaration | WhileStatement | WithStatement;*/
-  trait PropertyKey extends Node //= Identifier | Literal;
-  trait PropertyValue extends Node //= AssignmentPattern | AsyncFunctionExpression | BindingIdentifier | BindingPattern | FunctionExpression;
-  trait StatementListItem extends Node //= Declaration | Statement;
+  sealed trait PropertyKey extends Node //= Identifier | Literal;
+  sealed trait PropertyValue extends Node //= AssignmentPattern | AsyncFunctionExpression | BindingIdentifier | BindingPattern | FunctionExpression;
+  sealed trait StatementListItem extends Node with ExportableNamedDeclaration //= Declaration | Statement;
 
-  trait BindingIdentifierOrPattern extends Node // BindingIdentifier | BindingPattern
+  sealed trait BindingIdentifierOrPattern extends Node // BindingIdentifier | BindingPattern
 
-  trait ExpressionOrImport extends Node // Expression | Import
+  sealed trait ExpressionOrImport extends Node // Expression | Import
+
+  sealed trait BlockStatementOrExpression extends Node // BlockStatement | Expression
+
+  sealed trait ClassBodyElement extends Node
+
+  val ArrowParameterPlaceHolder = "ArrowParameterPlaceHolder"
+
+  class ArrowParameterPlaceHolder extends Node.Node with Node.Expression with Node.FunctionParameter {
+    var `type` = ArrowParameterPlaceHolder
+    var params: Seq[Node.ArgumentListElement] = _
+    var async: Boolean = _
+  }
 
 
-  trait HasGenerator {
+  sealed trait HasGenerator {
     def generator: Boolean
   }
 
-  trait SymbolDeclaration {
+  sealed trait SymbolDeclaration {
     def id: Node
 
     /** default implementation is to read id node
@@ -93,11 +106,10 @@ object Node {
   }
 
 
-  class ArrayPattern(var elements: Array[ArrayPatternElement]) extends Node with BindingPattern {
+  class ArrayPattern(var elements: Seq[ArrayPatternElement]) extends Node with BindingPattern {
     var `type` = Syntax.ArrayPattern
   }
 
-  trait BlockStatementOrExpression extends Node // BlockStatement | Expression
 
   class ArrowFunctionExpression(var params: Seq[FunctionParameter], var body: BlockStatementOrExpression, var expression: Boolean) extends Node with HasGenerator with Expression {
     var `type` = Syntax.ArrowFunctionExpression
@@ -111,8 +123,9 @@ object Node {
     var `type` = Syntax.AssignmentExpression
   }
 
+  /* ported: added ObjectPatternProperty because of reinterpretExpressionAsObjectPattern */
   class AssignmentPattern(var left: BindingIdentifierOrPattern, var right: Expression) extends Node
-    with ArrayPatternElement with FunctionParameter with PropertyValue {
+    with ArrayPatternElement with FunctionParameter with PropertyValue with ObjectPatternProperty {
     var `type` = Syntax.AssignmentPattern
   }
 
@@ -125,7 +138,8 @@ object Node {
     var async: Boolean = true
   }
 
-  trait AFunctionDeclaration extends Node with HasGenerator
+  /* ported: added StatementListItem because of parseFunctionDeclaration, Statement because of parseLabelledStatement */
+  trait AFunctionDeclaration extends Node with HasGenerator with StatementListItem with Statement with ExportableNamedDeclaration with ExportableDefaultDeclaration
 
   class AsyncFunctionDeclaration(var id: Identifier, var params: Seq[FunctionParameter], var body: BlockStatement) extends Node
     with AFunctionDeclaration with Declaration with ExportableNamedDeclaration with Statement {
@@ -168,7 +182,8 @@ object Node {
   }
 
 
-  class BlockStatement(var body: Seq[Statement]) extends Node with IsScope with Statement {
+  /* ported: type adjusted */
+  class BlockStatement(var body: Seq[StatementListItem]) extends Node with IsScope with Statement with BlockStatementOrExpression {
     var `type` = Syntax.BlockStatement
   }
 
@@ -188,13 +203,14 @@ object Node {
   }
 
   // actually MethodDefinition seems to work
-  class ClassBody(var body: Seq[Property]) extends Node with IsScope {
+  class ClassBody(var body: Seq[ClassBodyElement]) extends Node with IsScope {
     var `type` = Syntax.ClassBody
   }
 
 
+  // ported: added Statement because of parseLabelledStatement
   class ClassDeclaration(var id: Identifier, var superClass: Identifier, var body: ClassBody) extends Node
-    with SymbolDeclaration with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration {
+    with SymbolDeclaration with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration with Statement {
     var `type` = Syntax.ClassDeclaration
   }
 
@@ -204,7 +220,8 @@ object Node {
   }
 
 
-  class ComputedMemberExpression(var `object`: Expression, var property: Expression) extends Node with Expression {
+  /* ported: added ArrayPatternElement because of reinterpretExpressionAsArrayPattern */
+  class ComputedMemberExpression(var `object`: Expression, var property: Expression) extends Node with Expression with ArrayPatternElement {
     var `type` = Syntax.MemberExpression
     var computed: Boolean = true
   }
@@ -260,23 +277,23 @@ object Node {
   }
 
 
-  class ExpressionStatement(var Expression: Node) extends Node with Statement {
+  class ExpressionStatement(var expression: Expression) extends Node with Statement {
     var `type` = Syntax.ExpressionStatement
   }
 
 
-  class ForInStatement(var left: Expression, var right: Expression, var body: Statement) extends Node with Statement {
+  class ForInStatement(var left: ExpressionOrStatement, var right: Expression, var body: Statement) extends Node with Statement {
     var `type` = Syntax.ForInStatement
     var each: Boolean = false
   }
 
 
-  class ForOfStatement(var left: Expression, var right: Expression, var body: Statement) extends Node with Statement {
+  class ForOfStatement(var left: ExpressionOrStatement, var right: Expression, var body: Statement) extends Node with Statement {
     var `type` = Syntax.ForOfStatement
   }
 
 
-  class ForStatement(var init: Expression, var test: Expression, var update: Expression, var body: Statement) extends Node with Statement {
+  class ForStatement(var init: ExpressionOrStatement, var test: Expression, var update: Expression, var body: Statement) extends Node with Statement {
     var `type` = Syntax.ForStatement
   }
 
@@ -336,7 +353,7 @@ object Node {
   }
 
 
-  class LabeledStatement(var label: Identifier, var body: Statement) extends Node {
+  class LabeledStatement(var label: Identifier, var body: Statement) extends Node with Statement {
     var `type` = Syntax.LabeledStatement
   }
 
@@ -346,13 +363,14 @@ object Node {
   }
 
 
-  class MetaProperty(var meta: Identifier, var property: Identifier) extends Node {
+  /* ported: added Expression because of parseNewExpression */
+  class MetaProperty(var meta: Identifier, var property: Identifier) extends Node with Expression {
     var `type` = Syntax.MetaProperty
   }
 
   trait AFunctionExpression extends Node // AsyncFunctionExpression | FunctionExpression
 
-  class MethodDefinition(var key: PropertyKey, var computed: Boolean, var value: PropertyValue, var kind: Boolean, var static: Boolean) extends Node {
+  class MethodDefinition(var key: PropertyKey, var computed: Boolean, var value: PropertyValue, var kind: Boolean, var static: Boolean) extends Node with ClassBodyElement {
     var `type` = Syntax.MethodDefinition
   }
 
@@ -381,7 +399,8 @@ object Node {
   }
 
 
-  class ObjectPattern(var properties: Seq[ObjectPatternProperty]) extends Node with BindingPattern {
+  /* ported: added ObjectPatternProperty because of reinterpretExpressionAsObjectPattern */
+  class ObjectPattern(var properties: Seq[ObjectPatternProperty]) extends Node with BindingPattern with ObjectPatternProperty {
     var `type` = Syntax.ObjectPattern
   }
 
@@ -401,7 +420,8 @@ object Node {
   }
 
 
-  class RestElement(var argument: BindingIdentifierOrPattern) extends Node with ArrayPatternElement with ObjectPatternProperty {
+  /* ported: added ArgumentListElement because of parseGroupExpression */
+  class RestElement(var argument: BindingIdentifierOrPattern) extends Node with ArrayPatternElement with ObjectPatternProperty with ArgumentListElement {
     var `type` = Syntax.RestElement
   }
 
@@ -425,7 +445,7 @@ object Node {
   }
 
 
-  class StaticMemberExpression(var `object`: Expression, var property: Expression) extends Node with Expression {
+  class StaticMemberExpression(var `object`: Expression, var property: Expression) extends Node with Expression with ArrayPatternElement {
     var `type` = Syntax.MemberExpression
     var computed: Boolean = false
   }
@@ -461,7 +481,8 @@ object Node {
   }
 
 
-  class TemplateLiteral(var quasis: Seq[TemplateElement], var expressions: Seq[Node]) extends Node {
+  /* ported: added Expression because of parsePrimaryExpression */
+  class TemplateLiteral(var quasis: Seq[TemplateElement], var expressions: Seq[Expression]) extends Node with Expression {
     var `type` = Syntax.TemplateLiteral
   }
 
@@ -492,7 +513,8 @@ object Node {
   }
 
 
-  class VariableDeclaration(var declarations: Seq[VariableDeclarator], var kind: String) extends Node with Declaration with ExportableNamedDeclaration with Statement {
+  class VariableDeclaration(var declarations: Seq[VariableDeclarator], var kind: String) extends Node
+    with Declaration with ExportableNamedDeclaration with Statement with ExportableDefaultDeclaration {
     var `type` = Syntax.VariableDeclaration
   }
 
