@@ -11,6 +11,7 @@ trait TestInputs {
 
       class Identifier extends Node {
         type () {return Syntax.Identifier}
+        letter(i){return i;}
       }
 
       class Literal extends Node {
@@ -56,4 +57,5 @@ trait TestInputs {
 
   lazy val threeSource = scala.io.Source.fromResource("three.js").mkString
 
+  lazy val esprimaSource = scala.io.Source.fromResource("esprima.js").mkString
 }

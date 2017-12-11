@@ -5,7 +5,23 @@ import esprima.Node
 import esprima.Node._
 import org.scalatest.FunSuite
 
+import scala.collection.mutable
+
 class WalkTest extends FunSuite with TestInputs {
+
+  def countASTNodes(ast: Node): (Int, mutable.Map[Class[_], Int]) = {
+    var count = 0
+    val countNodes = collection.mutable.Map.empty[Class[_], Int].withDefaultValue(0)
+    walk(ast) { node =>
+      count += 1
+      countNodes(node.getClass) += 1
+      false
+    }
+    println(s"Total: $count")
+    println("  " + countNodes.toSeq.map { case (k, v) => k.getSimpleName -> v }.sortBy(_._2).reverse.take(10).mkString("\n  "))
+    (count, countNodes)
+  }
+
 
   test("Walk simple expression") {
     val ast = parse(answer42)
@@ -36,18 +52,20 @@ class WalkTest extends FunSuite with TestInputs {
     assert(countOther >= 100)
   }
 
+  test("Walk esprima.js") {
+    val ast = parse(esprimaSource)
+    var (count, countNodes) = countASTNodes(ast)
+    // verify node counts are sensible (we are really walking the tree)
+    assert(countNodes(classOf[Identifier]) >= 10000)
+    assert(countNodes(classOf[StaticMemberExpression]) >= 5000)
+    assert(countNodes(classOf[FunctionExpression]) >= 100)
+    assert(count >= 25000)
+  }
+
   test("Walk three.js") {
     val ast = parse(threeSource)
-    var count = 0
-    val countNodes = collection.mutable.Map.empty[Class[_], Int].withDefaultValue(0)
-    walk(ast) { node =>
-      count += 1
-      countNodes(node.getClass) += 1
-      false
-    }
+    var (count, countNodes) = countASTNodes(ast)
     // verify node counts are sensible (we are really walking the tree)
-    println(s"Total: $count")
-    println("  " + countNodes.toSeq.map { case (k, v) => k.getSimpleName -> v }.sortBy(_._2).reverse.take(10).mkString("\n  "))
     assert(countNodes(classOf[Identifier]) >= 50000)
     assert(countNodes(classOf[StaticMemberExpression]) >= 10000)
     assert(countNodes(classOf[FunctionExpression]) >= 1000)

@@ -27,11 +27,34 @@ object Node {
     def generator: Boolean
   }
 
+  trait SymbolDeclaration {
+    def id: Node
+
+    /** default implementation is to read id node
+      * Implementaion can override this even when id has a different meaning
+    */
+    def symbolIds: Seq[Node] = Seq(id)
+  }
+
+  object SymbolDeclaration {
+    def unapplySeq(decl: SymbolDeclaration): Option[Seq[String]] = {
+      val symbolNames = decl.symbolIds.flatMap {
+        case Identifier(name) =>
+          Some(name)
+        case _ =>
+          None
+      }
+      Some(symbolNames)
+    }
+  }
+
+  trait IsScope
+
   abstract class CommentNode extends Node {
     var value: String = _
   }
 
-  class ArrayExpression(var elements: Array[Node]) extends Node {
+  class ArrayExpression(var elements: Seq[Node]) extends Node {
     var `type` = Syntax.ArrayExpression
   }
 
@@ -41,7 +64,7 @@ object Node {
   }
 
 
-  class ArrowFunctionExpression(var params: Array[Node], var body: Node, var expression: Boolean) extends Node with HasGenerator {
+  class ArrowFunctionExpression(var params: Seq[Node], var body: Node, var expression: Boolean) extends Node with HasGenerator {
     var `type` = Syntax.ArrowFunctionExpression
     var id = null
     var generator: Boolean = false
@@ -59,7 +82,7 @@ object Node {
   }
 
 
-  class AsyncArrowFunctionExpression(var params: Array[Node], var body: Node, var expression: Boolean) extends Node with HasGenerator {
+  class AsyncArrowFunctionExpression(var params: Seq[Node], var body: Node, var expression: Boolean) extends Node with HasGenerator {
     var `type` = Syntax.ArrowFunctionExpression
     var id = null
     var generator: Boolean = false
@@ -68,7 +91,7 @@ object Node {
 
   trait AFunctionDeclaration extends Node with HasGenerator
 
-  class AsyncFunctionDeclaration(var id: Node, var params: Array[Node], var body: Node) extends AFunctionDeclaration {
+  class AsyncFunctionDeclaration(var id: Node, var params: Seq[Node], var body: Node) extends AFunctionDeclaration {
     var `type` = Syntax.FunctionDeclaration
     var generator: Boolean = false
     var expression: Boolean = false
@@ -76,7 +99,7 @@ object Node {
   }
 
 
-  class AsyncFunctionExpression(var id: Node, var params: Array[Node], var body: Node) extends Node with HasGenerator {
+  class AsyncFunctionExpression(var id: Node, var params: Seq[Node], var body: Node) extends Node with HasGenerator {
     var `type` = Syntax.FunctionExpression
     var generator: Boolean = false
     var expression: Boolean = false
@@ -107,7 +130,7 @@ object Node {
   }
 
 
-  class BlockStatement(var body: Seq[Node]) extends Node {
+  class BlockStatement(var body: Seq[Node]) extends Node with IsScope {
     var `type` = Syntax.BlockStatement
   }
 
@@ -117,7 +140,7 @@ object Node {
   }
 
 
-  class CallExpression(var callee: Node, var arguments: Array[Node]) extends Node {
+  class CallExpression(var callee: Node, var arguments: Seq[Node]) extends Node {
     var `type` = Syntax.CallExpression
   }
 
@@ -127,12 +150,12 @@ object Node {
   }
 
 
-  class ClassBody(var body: Array[MethodDefinition]) extends Node {
+  class ClassBody(var body: Seq[MethodDefinition]) extends Node with IsScope {
     var `type` = Syntax.ClassBody
   }
 
 
-  class ClassDeclaration(var id: Node, var superClass: Node, var body: Node) extends Node {
+  class ClassDeclaration(var id: Node, var superClass: Node, var body: Node) extends Node with SymbolDeclaration {
     var `type` = Syntax.ClassDeclaration
   }
 
@@ -188,7 +211,7 @@ object Node {
   }
 
 
-  class ExportNamedDeclaration(var declaration: Node, var specifiers: Array[Node], var source: Node) extends Node {
+  class ExportNamedDeclaration(var declaration: Node, var specifiers: Seq[Node], var source: Node) extends Node {
     var `type` = Syntax.ExportNamedDeclaration
   }
 
@@ -219,21 +242,25 @@ object Node {
   }
 
 
-  class FunctionDeclaration(var id: Node, var params: Array[Node], var body: Node, var generator: Boolean) extends Node with AFunctionDeclaration {
+  case class FunctionDeclaration(var id: Node, var params: Seq[Node], var body: Node, var generator: Boolean) extends Node with AFunctionDeclaration with SymbolDeclaration {
     var `type` = Syntax.FunctionDeclaration
     var expression: Boolean = false
     var async: Boolean = false
+
+    override def symbolIds = id +: params
   }
 
 
-  class FunctionExpression(var id: Node, var params: Array[Node], var body: Node, var generator: Boolean) extends Node with HasGenerator {
+  class FunctionExpression(var id: Node, var params: Seq[Node], var body: Node, var generator: Boolean) extends Node with HasGenerator with SymbolDeclaration {
     var `type` = Syntax.FunctionExpression
     var expression: Boolean = false
     var async: Boolean = false
+
+    override def symbolIds = params
   }
 
 
-  class Identifier(var name: String) extends Node {
+  case class Identifier(var name: String) extends Node {
     var `type` = Syntax.Identifier
   }
 
@@ -248,7 +275,7 @@ object Node {
   }
 
 
-  class ImportDeclaration(var specifiers: Array[Node], var source: Node) extends Node {
+  class ImportDeclaration(var specifiers: Seq[Node], var source: Node) extends Node {
     var `type` = Syntax.ImportDeclaration
   }
 
@@ -287,7 +314,7 @@ object Node {
     var `type` = Syntax.MethodDefinition
   }
 
-  sealed abstract class Program(var body: Seq[Node]) extends Node {
+  sealed abstract class Program(var body: Seq[Node]) extends Node with IsScope {
     var `type` = Syntax.Program
 
     def sourceType: String
@@ -302,17 +329,17 @@ object Node {
     def sourceType: String = "module"
   }
 
-  class NewExpression(var callee: Node, var arguments: Array[Node]) extends Node {
+  class NewExpression(var callee: Node, var arguments: Seq[Node]) extends Node {
     var `type` = Syntax.NewExpression
   }
 
 
-  class ObjectExpression(var properties: Array[Node]) extends Node {
+  class ObjectExpression(var properties: Seq[Node]) extends Node {
     var `type` = Syntax.ObjectExpression
   }
 
 
-  class ObjectPattern(var properties: Array[Node]) extends Node {
+  class ObjectPattern(var properties: Seq[Node]) extends Node {
     var `type` = Syntax.ObjectPattern
   }
 
@@ -345,7 +372,7 @@ object Node {
     def sourceType: String = "script"
   }
 
-  class SequenceExpression(var expressions: Array[Node]) extends Node {
+  class SequenceExpression(var expressions: Seq[Node]) extends Node {
     var `type` = Syntax.SequenceExpression
   }
 
@@ -366,12 +393,12 @@ object Node {
   }
 
 
-  class SwitchCase(var test: Node, var consequent: Array[Node]) extends Node {
+  class SwitchCase(var test: Node, var consequent: Seq[Node]) extends Node {
     var `type` = Syntax.SwitchCase
   }
 
 
-  class SwitchStatement(var discriminant: Node, var cases: Array[SwitchCase]) extends Node {
+  class SwitchStatement(var discriminant: Node, var cases: Seq[SwitchCase]) extends Node {
     var `type` = Syntax.SwitchStatement
   }
 
@@ -392,7 +419,7 @@ object Node {
   }
 
 
-  class TemplateLiteral(var quasis: Array[Node], var expressions: Array[Node]) extends Node {
+  class TemplateLiteral(var quasis: Seq[Node], var expressions: Seq[Node]) extends Node {
     var `type` = Syntax.TemplateLiteral
   }
 
@@ -428,7 +455,7 @@ object Node {
   }
 
 
-  class VariableDeclarator(var id: Node, var init: Node) extends Node {
+  case class VariableDeclarator(var id: Node, var init: Node) extends Node with SymbolDeclaration {
     var `type` = Syntax.VariableDeclarator
   }
 
