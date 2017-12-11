@@ -11,7 +11,7 @@ import scala.collection.mutable.ArrayBuffer
 
 object Node {
 
-  trait Node {
+  sealed trait Node {
     override def toString = `type`
 
     var `type`: String
@@ -23,11 +23,58 @@ object Node {
     var trailingComments: ArrayBuffer[CommentHandler.Comment] = _
   }
 
-  trait HasGenerator {
+  sealed trait ExpressionOrStatement extends Node
+  sealed trait Expression extends Node with ArgumentListElement with ArrayExpressionElement with ExpressionOrStatement
+    with ExportableDefaultDeclaration with ExpressionOrImport with BlockStatementOrExpression with PropertyValue
+  /* ArrayExpression | ArrowFunctionExpression | AssignmentExpression | AsyncArrowFunctionExpression | AsyncFunctionExpression |
+    AwaitExpression | BinaryExpression | CallExpression | ClassExpression | ComputedMemberExpression |
+    ConditionalExpression | Identifier | FunctionExpression | Literal | NewExpression | ObjectExpression |
+    RegexLiteral | SequenceExpression | StaticMemberExpression | TaggedTemplateExpression |
+    ThisExpression | UnaryExpression | UpdateExpression | YieldExpression; */
+  sealed trait ArgumentListElement extends Node // Expression | SpreadElement;
+  sealed trait ArrayExpressionElement extends Node // Expression | SpreadElement | null;
+  sealed trait BindingPattern extends Node with ArrayPatternElement with ExportableDefaultDeclaration with FunctionParameter with PropertyValue with BindingIdentifierOrPattern // ArrayPattern | ObjectPattern
+  sealed trait BindingIdentifier extends Node with ArrayPatternElement with ExportableDefaultDeclaration with FunctionParameter with PropertyValue with BindingIdentifierOrPattern // Identifier;
+  sealed trait ArrayPatternElement extends Node // AssignmentPattern | BindingIdentifier | BindingPattern | RestElement | null;
+  sealed trait ExportDeclaration extends Node with Declaration // ExportAllDeclaration | ExportDefaultDeclaration | ExportNamedDeclaration;
+  sealed trait Declaration extends Node with StatementListItem // = AsyncFunctionDeclaration | ClassDeclaration | ExportDeclaration | FunctionDeclaration | ImportDeclaration | VariableDeclaration;
+  sealed trait ExportableDefaultDeclaration extends Node // BindingIdentifier | BindingPattern | ClassDeclaration | Expression | FunctionDeclaration;
+  sealed trait ExportableNamedDeclaration extends Node // AsyncFunctionDeclaration | ClassDeclaration | FunctionDeclaration | VariableDeclaration;
+  sealed trait FunctionParameter extends Node // = AssignmentPattern | BindingIdentifier | BindingPattern;
+  sealed trait ImportDeclarationSpecifier extends Node //= ImportDefaultSpecifier | ImportNamespaceSpecifier | ImportSpecifier;
+  sealed trait ObjectExpressionProperty extends Node //= Property | SpreadElement;
+  sealed trait ObjectPatternProperty extends Node with BindingIdentifierOrPattern //= Property | RestElement;
+  sealed trait Statement extends Node with StatementListItem with ExpressionOrStatement
+  /*= AsyncFunctionDeclaration | BreakStatement | ContinueStatement | DebuggerStatement | DoWhileStatement |
+    EmptyStatement | ExpressionStatement | Directive | ForStatement | ForInStatement | ForOfStatement |
+    FunctionDeclaration | IfStatement | ReturnStatement | SwitchStatement | ThrowStatement |
+    TryStatement | VariableDeclaration | WhileStatement | WithStatement;*/
+  sealed trait PropertyKey extends Node //= Identifier | Literal;
+  sealed trait PropertyValue extends Node //= AssignmentPattern | AsyncFunctionExpression | BindingIdentifier | BindingPattern | FunctionExpression;
+  sealed trait StatementListItem extends Node with ExportableNamedDeclaration //= Declaration | Statement;
+
+  sealed trait BindingIdentifierOrPattern extends Node // BindingIdentifier | BindingPattern
+
+  sealed trait ExpressionOrImport extends Node // Expression | Import
+
+  sealed trait BlockStatementOrExpression extends Node // BlockStatement | Expression
+
+  sealed trait ClassBodyElement extends Node
+
+  val ArrowParameterPlaceHolder = "ArrowParameterPlaceHolder"
+
+  class ArrowParameterPlaceHolder extends Node.Node with Node.Expression with Node.FunctionParameter {
+    var `type` = ArrowParameterPlaceHolder
+    var params: Seq[Node.ArgumentListElement] = _
+    var async: Boolean = _
+  }
+
+
+  sealed trait HasGenerator {
     def generator: Boolean
   }
 
-  trait SymbolDeclaration {
+  sealed trait SymbolDeclaration {
     def id: Node
 
     /** default implementation is to read id node
@@ -54,17 +101,17 @@ object Node {
     var value: String = _
   }
 
-  class ArrayExpression(var elements: Seq[Node]) extends Node {
+  class ArrayExpression(var elements: Seq[ArrayExpressionElement]) extends Node with Expression {
     var `type` = Syntax.ArrayExpression
   }
 
 
-  class ArrayPattern(var elements: Array[Node]) extends Node {
+  class ArrayPattern(var elements: Seq[ArrayPatternElement]) extends Node with BindingPattern {
     var `type` = Syntax.ArrayPattern
   }
 
 
-  class ArrowFunctionExpression(var params: Seq[Node], var body: Node, var expression: Boolean) extends Node with HasGenerator {
+  class ArrowFunctionExpression(var params: Seq[FunctionParameter], var body: BlockStatementOrExpression, var expression: Boolean) extends Node with HasGenerator with Expression {
     var `type` = Syntax.ArrowFunctionExpression
     var id = null
     var generator: Boolean = false
@@ -72,26 +119,30 @@ object Node {
   }
 
 
-  class AssignmentExpression(var operator: String, var left: Node, var right: Node) extends Node {
+  class AssignmentExpression(var operator: String, var left: Expression, var right: Expression) extends Node with Expression {
     var `type` = Syntax.AssignmentExpression
   }
 
-
-  class AssignmentPattern(var left: Node, var right: Node) extends Node {
+  /* ported: added ObjectPatternProperty because of reinterpretExpressionAsObjectPattern */
+  class AssignmentPattern(var left: BindingIdentifierOrPattern, var right: Expression) extends Node
+    with ArrayPatternElement with FunctionParameter with PropertyValue with ObjectPatternProperty {
     var `type` = Syntax.AssignmentPattern
   }
 
 
-  class AsyncArrowFunctionExpression(var params: Seq[Node], var body: Node, var expression: Boolean) extends Node with HasGenerator {
+  class AsyncArrowFunctionExpression(var params: Seq[FunctionParameter], var body: BlockStatementOrExpression, var expression: Boolean) extends Node
+    with HasGenerator with Expression {
     var `type` = Syntax.ArrowFunctionExpression
     var id = null
     var generator: Boolean = false
     var async: Boolean = true
   }
 
-  trait AFunctionDeclaration extends Node with HasGenerator
+  /* ported: added StatementListItem because of parseFunctionDeclaration, Statement because of parseLabelledStatement */
+  trait AFunctionDeclaration extends Node with HasGenerator with StatementListItem with Statement with ExportableNamedDeclaration with ExportableDefaultDeclaration
 
-  class AsyncFunctionDeclaration(var id: Node, var params: Seq[Node], var body: Node) extends AFunctionDeclaration {
+  class AsyncFunctionDeclaration(var id: Identifier, var params: Seq[FunctionParameter], var body: BlockStatement) extends Node
+    with AFunctionDeclaration with Declaration with ExportableNamedDeclaration with Statement {
     var `type` = Syntax.FunctionDeclaration
     var generator: Boolean = false
     var expression: Boolean = false
@@ -99,7 +150,8 @@ object Node {
   }
 
 
-  class AsyncFunctionExpression(var id: Node, var params: Seq[Node], var body: Node) extends Node with HasGenerator {
+  class AsyncFunctionExpression(var id: Identifier, var params: Seq[FunctionParameter], var body: BlockStatement) extends Node
+    with HasGenerator with Expression with PropertyValue {
     var `type` = Syntax.FunctionExpression
     var generator: Boolean = false
     var expression: Boolean = false
@@ -107,19 +159,19 @@ object Node {
   }
 
 
-  class AwaitExpression(var argument: Node) extends Node {
+  class AwaitExpression(var argument: Expression) extends Node with Expression {
     var `type` = Syntax.AwaitExpression
   }
 
 
-  class BinaryExpression(operator_par: String, left_par: Node, right_par: Node) extends Node {
+  class BinaryExpression(operator_par: String, left_par: Expression, right_par: Expression) extends Node with Expression {
     var `type`: String = _
     var operator: String = _
-    var left: Node = _
-    var right: Node = _
+    var left: Expression = _
+    var right: Expression = _
     this.constructor(operator_par, left_par, right_par)
 
-    def constructor(operator: String, left: Node, right: Node) = {
+    def constructor(operator: String, left: Expression, right: Expression) = {
       val logical = operator == "||" || operator == "&&"
       this.`type` = if (logical) Syntax.LogicalExpression else Syntax.BinaryExpression
       this.operator = operator
@@ -130,119 +182,124 @@ object Node {
   }
 
 
-  class BlockStatement(var body: Seq[Node]) extends Node with IsScope {
+  /* ported: type adjusted */
+  class BlockStatement(var body: Seq[StatementListItem]) extends Node with IsScope with Statement with BlockStatementOrExpression {
     var `type` = Syntax.BlockStatement
   }
 
 
-  class BreakStatement(var label: Node) extends Node {
+  class BreakStatement(var label: Identifier) extends Node with Statement {
     var `type` = Syntax.BreakStatement
   }
 
 
-  class CallExpression(var callee: Node, var arguments: Seq[Node]) extends Node {
+  class CallExpression(var callee: ExpressionOrImport, var arguments: Seq[ArgumentListElement]) extends Node with Expression {
     var `type` = Syntax.CallExpression
   }
 
 
-  class CatchClause(var param: Node, var body: Node) extends Node {
+  class CatchClause(var param: BindingIdentifierOrPattern, var body: BlockStatement) extends Node {
     var `type` = Syntax.CatchClause
   }
 
-
-  class ClassBody(var body: Seq[MethodDefinition]) extends Node with IsScope {
+  // actually MethodDefinition seems to work
+  class ClassBody(var body: Seq[ClassBodyElement]) extends Node with IsScope {
     var `type` = Syntax.ClassBody
   }
 
 
-  class ClassDeclaration(var id: Node, var superClass: Node, var body: Node) extends Node with SymbolDeclaration {
+  // ported: added Statement because of parseLabelledStatement
+  class ClassDeclaration(var id: Identifier, var superClass: Identifier, var body: ClassBody) extends Node
+    with SymbolDeclaration with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration with Statement {
     var `type` = Syntax.ClassDeclaration
   }
 
 
-  class ClassExpression(var id: Node, var superClass: Node, var body: Node) extends Node {
+  class ClassExpression(var id: Identifier, var superClass: Identifier, var body: ClassBody) extends Node with Expression {
     var `type` = Syntax.ClassExpression
   }
 
 
-  class ComputedMemberExpression(var `object`: Node, var property: Node) extends Node {
+  /* ported: added ArrayPatternElement because of reinterpretExpressionAsArrayPattern */
+  class ComputedMemberExpression(var `object`: Expression, var property: Expression) extends Node with Expression with ArrayPatternElement {
     var `type` = Syntax.MemberExpression
     var computed: Boolean = true
   }
 
 
-  class ConditionalExpression(var test: Node, var consequent: Node, var alternate: Node) extends Node {
+  class ConditionalExpression(var test: Expression, var consequent: Expression, var alternate: Expression) extends Node with Expression {
     var `type` = Syntax.ConditionalExpression
   }
 
 
-  class ContinueStatement(var label: Node) extends Node {
+  class ContinueStatement(var label: Identifier) extends Node with Statement {
     var `type` = Syntax.ContinueStatement
   }
 
 
-  class DebuggerStatement() extends Node {
+  class DebuggerStatement() extends Node with Statement {
     var `type` = Syntax.DebuggerStatement
   }
 
 
-  class Directive(var expression: Node, var directive: String) extends Node {
+  class Directive(var expression: Expression, var directive: String) extends Node with Statement {
     var `type` = Syntax.ExpressionStatement
   }
 
 
-  class DoWhileStatement(var body: Node, var test: Node) extends Node {
+  class DoWhileStatement(var body: Statement, var test: Expression) extends Node with Statement {
     var `type` = Syntax.DoWhileStatement
   }
 
 
-  class EmptyStatement() extends Node {
+  class EmptyStatement() extends Node with Statement {
     var `type` = Syntax.EmptyStatement
   }
 
 
-  class ExportAllDeclaration(var source: Node) extends Node {
+  class ExportAllDeclaration(var source: Literal) extends Node with ExportDeclaration {
     var `type` = Syntax.ExportAllDeclaration
   }
 
 
-  class ExportDefaultDeclaration(var declaration: Node) extends Node {
+  class ExportDefaultDeclaration(var declaration: ExportableDefaultDeclaration) extends Node with ExportDeclaration {
     var `type` = Syntax.ExportDefaultDeclaration
   }
 
 
-  class ExportNamedDeclaration(var declaration: Node, var specifiers: Seq[Node], var source: Node) extends Node {
+  class ExportNamedDeclaration(var declaration: ExportableNamedDeclaration, var specifiers: Seq[ExportSpecifier], var source: Literal) extends Node with ExportDeclaration {
     var `type` = Syntax.ExportNamedDeclaration
   }
 
 
-  class ExportSpecifier(var local: Node, var exported: Node) extends Node {
+  class ExportSpecifier(var local: Identifier, var exported: Identifier) extends Node {
     var `type` = Syntax.ExportSpecifier
   }
 
 
-  class ExpressionStatement(var expression: Node) extends Node {
+  class ExpressionStatement(var expression: Expression) extends Node with Statement {
     var `type` = Syntax.ExpressionStatement
   }
 
 
-  class ForInStatement(var left: Node, var right: Node, var body: Node) extends Node {
+  class ForInStatement(var left: ExpressionOrStatement, var right: Expression, var body: Statement) extends Node with Statement {
     var `type` = Syntax.ForInStatement
     var each: Boolean = false
   }
 
 
-  class ForOfStatement(var left: Node, var right: Node, var body: Node) extends Node {
+  class ForOfStatement(var left: ExpressionOrStatement, var right: Expression, var body: Statement) extends Node with Statement {
     var `type` = Syntax.ForOfStatement
   }
 
 
-  class ForStatement(var init: Node, var test: Node, var update: Node, var body: Node) extends Node {
+  class ForStatement(var init: ExpressionOrStatement, var test: Expression, var update: Expression, var body: Statement) extends Node with Statement {
     var `type` = Syntax.ForStatement
   }
 
 
-  case class FunctionDeclaration(var id: Node, var params: Seq[Node], var body: Node, var generator: Boolean) extends Node with AFunctionDeclaration with SymbolDeclaration {
+  case class FunctionDeclaration(var id: Identifier, var params: Seq[FunctionParameter], var body: BlockStatement, var generator: Boolean) extends Node
+    with AFunctionDeclaration with SymbolDeclaration with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration with Statement {
     var `type` = Syntax.FunctionDeclaration
     var expression: Boolean = false
     var async: Boolean = false
@@ -251,7 +308,8 @@ object Node {
   }
 
 
-  class FunctionExpression(var id: Node, var params: Seq[Node], var body: Node, var generator: Boolean) extends Node with HasGenerator with SymbolDeclaration {
+  class FunctionExpression(var id: Identifier, var params: Seq[FunctionParameter], var body: BlockStatement, var generator: Boolean) extends Node
+    with HasGenerator with SymbolDeclaration with Expression with PropertyValue {
     var `type` = Syntax.FunctionExpression
     var expression: Boolean = false
     var async: Boolean = false
@@ -260,61 +318,63 @@ object Node {
   }
 
 
-  case class Identifier(var name: String) extends Node {
+  case class Identifier(var name: String) extends Node with Expression with BindingIdentifier with PropertyKey {
     var `type` = Syntax.Identifier
   }
 
 
-  class IfStatement(var test: Node, var consequent: Node, var alternate: Node) extends Node {
+  class IfStatement(var test: Expression, var consequent: Statement, var alternate: Statement) extends Node with Statement {
     var `type` = Syntax.IfStatement
   }
 
 
-  class Import() extends Node {
+  class Import() extends Node with ExpressionOrImport {
     var `type` = Syntax.Import
   }
 
 
-  class ImportDeclaration(var specifiers: Seq[Node], var source: Node) extends Node {
+  class ImportDeclaration(var specifiers: Seq[ImportDeclarationSpecifier], var source: Literal) extends Node with Declaration {
     var `type` = Syntax.ImportDeclaration
   }
 
 
-  class ImportDefaultSpecifier(var local: Node) extends Node {
+  class ImportDefaultSpecifier(var local: Identifier) extends Node with ImportDeclarationSpecifier {
     var `type` = Syntax.ImportDefaultSpecifier
   }
 
 
-  class ImportNamespaceSpecifier(var local: Node) extends Node {
+  class ImportNamespaceSpecifier(var local: Identifier) extends Node with ImportDeclarationSpecifier {
     var `type` = Syntax.ImportNamespaceSpecifier
   }
 
 
-  class ImportSpecifier(var local: Node, var imported: Node) extends Node {
+  class ImportSpecifier(var local: Identifier, var imported: Identifier) extends Node with ImportDeclarationSpecifier {
     var `type` = Syntax.ImportSpecifier
   }
 
 
-  class LabeledStatement(var label: Node, var body: Node) extends Node {
+  class LabeledStatement(var label: Identifier, var body: Statement) extends Node with Statement {
     var `type` = Syntax.LabeledStatement
   }
 
 
-  class Literal(var value: OrType, var raw: String) extends Node {
+  class Literal(var value: OrType, var raw: String) extends Node with Expression with PropertyKey {
     var `type` = Syntax.Literal
   }
 
 
-  class MetaProperty(var meta: Node, var property: Node) extends Node {
+  /* ported: added Expression because of parseNewExpression */
+  class MetaProperty(var meta: Identifier, var property: Identifier) extends Node with Expression {
     var `type` = Syntax.MetaProperty
   }
 
+  trait AFunctionExpression extends Node // AsyncFunctionExpression | FunctionExpression
 
-  class MethodDefinition(var key: Node, var computed: Boolean, var value: Node, var kind: Boolean, var static: Boolean) extends Node {
+  class MethodDefinition(var key: PropertyKey, var computed: Boolean, var value: PropertyValue, var kind: Boolean, var static: Boolean) extends Node with ClassBodyElement {
     var `type` = Syntax.MethodDefinition
   }
 
-  sealed abstract class Program(var body: Seq[Node]) extends Node with IsScope {
+  sealed abstract class Program(var body: Seq[StatementListItem]) extends Node with IsScope {
     var `type` = Syntax.Program
 
     def sourceType: String
@@ -325,31 +385,33 @@ object Node {
 
   }
 
-  class Module(body: Seq[Node]) extends Program(body) {
+  class Module(body: Seq[StatementListItem]) extends Program(body) {
     def sourceType: String = "module"
   }
 
-  class NewExpression(var callee: Node, var arguments: Seq[Node]) extends Node {
+  class NewExpression(var callee: Expression, var arguments: Seq[ArgumentListElement]) extends Node with Expression {
     var `type` = Syntax.NewExpression
   }
 
 
-  class ObjectExpression(var properties: Seq[Node]) extends Node {
+  class ObjectExpression(var properties: Seq[ObjectExpressionProperty]) extends Node with Expression {
     var `type` = Syntax.ObjectExpression
   }
 
 
-  class ObjectPattern(var properties: Seq[Node]) extends Node {
+  /* ported: added ObjectPatternProperty because of reinterpretExpressionAsObjectPattern */
+  class ObjectPattern(var properties: Seq[ObjectPatternProperty]) extends Node with BindingPattern with ObjectPatternProperty {
     var `type` = Syntax.ObjectPattern
   }
 
 
-  class Property(var kind: String, var key: Node, var computed: Boolean, var value: Node, var method: Boolean, var shorthand: Boolean) extends Node {
+  class Property(var kind: String, var key: PropertyKey, var computed: Boolean, var value: PropertyValue, var method: Boolean, var shorthand: Boolean) extends Node
+    with ObjectExpressionProperty with ObjectPatternProperty {
     var `type` = Syntax.Property
   }
 
 
-  class RegexLiteral(var value: RegExp, var raw: String, pattern: String, flags: String) extends Node {
+  class RegexLiteral(var value: RegExp, var raw: String, pattern: String, flags: String) extends Node with Expression {
     var `type` = Syntax.Literal
     var regex = new RegExp(
       pattern = pattern,
@@ -358,59 +420,59 @@ object Node {
   }
 
 
-  class RestElement(var argument: Node) extends Node {
+  /* ported: added ArgumentListElement because of parseGroupExpression */
+  class RestElement(var argument: BindingIdentifierOrPattern) extends Node with ArrayPatternElement with ObjectPatternProperty with ArgumentListElement {
     var `type` = Syntax.RestElement
   }
 
 
-  class ReturnStatement(var argument: Node) extends Node {
+  class ReturnStatement(var argument: Expression) extends Node with Statement {
     var `type` = Syntax.ReturnStatement
   }
 
 
-  class Script(body: Seq[Node]) extends Program(body) {
+  class Script(body: Seq[StatementListItem]) extends Program(body) {
     def sourceType: String = "script"
   }
 
-  class SequenceExpression(var expressions: Seq[Node]) extends Node {
+  class SequenceExpression(var expressions: Seq[Expression]) extends Node with Expression {
     var `type` = Syntax.SequenceExpression
   }
 
 
-  class SpreadElement(var argument: Node) extends Node {
+  class SpreadElement(var argument: Expression) extends Node with ArgumentListElement with ArrayExpressionElement with ObjectExpressionProperty {
     var `type` = Syntax.SpreadElement
   }
 
 
-  class StaticMemberExpression(var `object`: Node, var property: Node) extends Node {
+  class StaticMemberExpression(var `object`: Expression, var property: Expression) extends Node with Expression with ArrayPatternElement {
     var `type` = Syntax.MemberExpression
     var computed: Boolean = false
   }
 
 
-  class Super() extends Node {
+  class Super() extends Node with Expression {
     var `type` = Syntax.Super
   }
 
 
-  class SwitchCase(var test: Node, var consequent: Seq[Node]) extends Node {
+  class SwitchCase(var test: Expression, var consequent: Seq[Statement]) extends Node {
     var `type` = Syntax.SwitchCase
   }
 
 
-  class SwitchStatement(var discriminant: Node, var cases: Seq[SwitchCase]) extends Node {
+  class SwitchStatement(var discriminant: Expression, var cases: Seq[SwitchCase]) extends Node with Statement {
     var `type` = Syntax.SwitchStatement
   }
 
 
-  class TaggedTemplateExpression(var tag: Node, var quasi: Node) extends Node {
+  class TaggedTemplateExpression(var tag: Expression, var quasi: TemplateLiteral) extends Node with Expression {
     var `type` = Syntax.TaggedTemplateExpression
   }
 
 
   trait TemplateElementValue {
     def cooked: String
-
     def raw: String
   }
 
@@ -419,58 +481,60 @@ object Node {
   }
 
 
-  class TemplateLiteral(var quasis: Seq[Node], var expressions: Seq[Node]) extends Node {
+  /* ported: added Expression because of parsePrimaryExpression */
+  class TemplateLiteral(var quasis: Seq[TemplateElement], var expressions: Seq[Expression]) extends Node with Expression {
     var `type` = Syntax.TemplateLiteral
   }
 
 
-  class ThisExpression() extends Node {
+  class ThisExpression() extends Node with Expression {
     var `type` = Syntax.ThisExpression
   }
 
 
-  class ThrowStatement(var argument: Node) extends Node {
+  class ThrowStatement(var argument: Expression) extends Node with Statement {
     var `type` = Syntax.ThrowStatement
   }
 
 
-  class TryStatement(var block: Node, var handler: Node, var finalizer: Node) extends Node {
+  class TryStatement(var block: BlockStatement, var handler: CatchClause, var finalizer: BlockStatement) extends Node with Statement {
     var `type` = Syntax.TryStatement
   }
 
 
-  class UnaryExpression(var operator: String, var argument: Node) extends Node {
+  class UnaryExpression(var operator: String, var argument: Expression) extends Node with Expression {
     var `type` = Syntax.UnaryExpression
     var prefix: Boolean = true
   }
 
 
-  class UpdateExpression(var operator: String, var argument: Node, var prefix: Boolean) extends Node {
+  class UpdateExpression(var operator: String, var argument: Expression, var prefix: Boolean) extends Node with Expression {
     var `type` = Syntax.UpdateExpression
   }
 
 
-  class VariableDeclaration(var declarations: Seq[VariableDeclarator], var kind: String) extends Node {
+  class VariableDeclaration(var declarations: Seq[VariableDeclarator], var kind: String) extends Node
+    with Declaration with ExportableNamedDeclaration with Statement with ExportableDefaultDeclaration {
     var `type` = Syntax.VariableDeclaration
   }
 
 
-  case class VariableDeclarator(var id: Node, var init: Node) extends Node with SymbolDeclaration {
+  case class VariableDeclarator(var id: BindingIdentifierOrPattern, var init: Expression) extends Node with SymbolDeclaration {
     var `type` = Syntax.VariableDeclarator
   }
 
 
-  class WhileStatement(var test: Node, var body: Node) extends Node {
+  class WhileStatement(var test: Expression, var body: Statement) extends Node with Statement {
     var `type` = Syntax.WhileStatement
   }
 
 
-  class WithStatement(var `object`: Node, var body: Node) extends Node {
+  class WithStatement(var `object`: Expression, var body: Statement) extends Node with Statement {
     var `type` = Syntax.WithStatement
   }
 
 
-  class YieldExpression(var argument: Node, var delegate: Boolean) extends Node {
+  class YieldExpression(var argument: Expression, var delegate: Boolean) extends Node with Expression {
     var `type` = Syntax.YieldExpression
   }
 
