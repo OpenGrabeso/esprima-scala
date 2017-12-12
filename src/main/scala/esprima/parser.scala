@@ -817,7 +817,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
 
   def reinterpretExpressionAsArrayPattern(expr: Node.Node): Node.ArrayPatternElement = {
     // TODO: reallocation needed
-    expr match {
+    (expr: @unchecked) match {
       case ex: Node.Identifier => ex
       case ex: Node.ComputedMemberExpression => ex
       case ex: Node.RestElement => ex
@@ -843,7 +843,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
 
   def reinterpretExpressionAsObjectPattern(expr: Node.Node): Node.ObjectPatternProperty = {
     // TODO: reallocation needed
-    expr match {
+    (expr: @unchecked) match {
       case expr: Node.SpreadElement =>
 
         new RestElement(this.reinterpretExpressionAsObjectPattern(expr.argument))
@@ -1382,7 +1382,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     for (i <- paramsSource.indices) {
       val param = paramsSource(i)
-      val paramReinterpreted = param match {
+      val paramReinterpreted = (param: @unchecked) match {
         case param_cast: Node.AssignmentPattern =>
           if (param_cast.right.isInstanceOf[Node.YieldExpression]) {
             val right_cast = param_cast.right.asInstanceOf[Node.YieldExpression]

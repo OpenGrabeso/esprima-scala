@@ -14,6 +14,7 @@ trait OrTypes {
     implicit def orTypeAsNumber(src: OrType): Double = src.get[Int]
     implicit def orTypeAsString(src: OrType): String = src.get[String]
 
+    implicit def orTypeFromInt(src: Int): OrType = OrType(src.toDouble)
     implicit def orTypeFromNumber(src: Double): OrType = OrType(src)
     implicit def orTypeFromString(src: String): OrType = OrType(src)
     implicit def orTypeFromBoolean(src: Boolean): OrType = OrType(src)
