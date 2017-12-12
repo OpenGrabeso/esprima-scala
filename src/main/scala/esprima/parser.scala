@@ -13,7 +13,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.Breaks._
 import Token._
-import esprima.Node.{ArrayPattern, RestElement}
+import esprima.Node.{ArrayPattern, AssignmentPattern, RestElement}
 
 object Parser {
 
@@ -824,8 +824,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       case ex: Node.AssignmentPattern => ex
 
       case expr: Node.SpreadElement =>
-        expr.`type` = Syntax.RestElement
-        this.reinterpretExpressionAsArrayPattern(expr.argument)
+        val retypedArg =this.reinterpretExpressionAsArrayPattern(expr.argument)
+        new Node.RestElement(retypedArg.asInstanceOf[Node.BindingIdentifierOrPattern])
       case expr: Node.ArrayExpression =>
         val elementsResult = expr.elements.flatMap { i =>
           Option(i).map { i =>
@@ -834,9 +834,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         }
         new ArrayPattern(elementsResult)
       case expr: Node.AssignmentExpression =>
-        expr.`type` = Syntax.AssignmentPattern
-        expr.operator = null
-        this.reinterpretExpressionAsArrayPattern(expr.left)
+        new AssignmentPattern (this.reinterpretExpressionAsArrayPattern(expr.left).asInstanceOf[Node.BindingIdentifierOrPattern], expr.right)
       case expr: Node.ArrayPatternElement =>
         expr
     }

@@ -165,7 +165,7 @@ class CommentHandler() {
       if (node.loc) {
         entry.comment.loc = node.loc
       }
-      node.`type` = `type_`
+      //node.`type` = `type_` // PORT: Node type changed. Why?
       this.leading.push(entry)
       this.trailing.push(entry)
     }
