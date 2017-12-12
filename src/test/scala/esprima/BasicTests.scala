@@ -25,6 +25,11 @@ class BasicTests extends FunSuite with TestInputs {
     println(tree)
   }
 
+  test("Parse esprima.js") {
+    val tree = parse(esprimaSource)
+    println(tree)
+  }
+
   test("Parse three.js") {
     val tree = parse(threeSource)
     println(tree)
