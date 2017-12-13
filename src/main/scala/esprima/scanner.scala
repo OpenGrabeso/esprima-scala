@@ -63,7 +63,7 @@ object Scanner {
     def pattern: String = ??? // UndefOr
     def flags: String = ??? // UndefOr
     def regex: RegExp = ??? // UndefOr
-    def octal: Boolean = ??? // UndefOr
+    def octal: Boolean = false // UndefOr
     def cooked: String = ??? // UndefOr
     def head: Boolean = ??? // UndefOr
     def tail: Boolean = ??? // UndefOr
