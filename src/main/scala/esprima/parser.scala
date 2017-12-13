@@ -815,6 +815,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.TemplateLiteral(quasis, expressions))
   }
 
+  // TODO: consider using type classes for improved type safety
   def reinterpretExpressionAsArrayPattern(expr: Node.Node): Node.ArrayPatternElement = {
     // TODO: reallocation needed
     (expr: @unchecked) match {
@@ -825,7 +826,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
 
       case expr: Node.SpreadElement =>
         val retypedArg =this.reinterpretExpressionAsArrayPattern(expr.argument)
-        new Node.RestElement(retypedArg.asInstanceOf[Node.BindingIdentifierOrPattern])
+        new Node.RestElement(retypedArg)
       case expr: Node.ArrayExpression =>
         val elementsResult = expr.elements.flatMap { i =>
           Option(i).map { i =>
@@ -901,12 +902,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
               this.nextToken()
               if (this.`match`(")")) {
                 this.nextToken()
-                for (i <- expressions) {
-                  this.reinterpretExpressionAsArrayPattern(i)
+                val expressionsRe = for (i <- expressions) yield {
+                  this.reinterpretExpressionAsArrayPattern(i).asInstanceOf[Node.ArgumentListElement]
                 }
                 arrow = true
                 expr = new Node.ArrowParameterPlaceHolder {
-                  params = expressions
+                  params = expressionsRe
                   async = false
                 }
               } else if (this.`match`("...")) {
@@ -919,12 +920,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
                   this.expect("=>")
                 }
                 this.context.isBindingElement = false
-                for (i <- expressions) {
-                  this.reinterpretExpressionAsArrayPattern(i)
+                val expressionsRe = for (i <- expressions) yield {
+                  this.reinterpretExpressionAsArrayPattern(i).asInstanceOf[Node.ArgumentListElement]
                 }
                 arrow = true
                 expr = new Node.ArrowParameterPlaceHolder {
-                  params = expressions
+                  params = expressionsRe
                   async = false
                 }
               } else {
@@ -954,15 +955,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
               if (!this.context.isBindingElement) {
                 this.throwUnexpectedToken(this.lookahead)
               }
-              expr match {
+              val parameters = expr match {
                 case expr_cast: Node.SequenceExpression =>
-                  for (i <- expr_cast.expressions) {
-                    this.reinterpretExpressionAsArrayPattern(i)
+                  for (i <- expr_cast.expressions) yield {
+                    this.reinterpretExpressionAsArrayPattern(i).asInstanceOf[Node.ArgumentListElement]
                   }
                 case _ =>
-                  this.reinterpretExpressionAsArrayPattern(expr)
+                  Seq(this.reinterpretExpressionAsArrayPattern(expr).asInstanceOf[Node.ArgumentListElement])
               }
-              val parameters = if (expr.isInstanceOf[Node.SequenceExpression]) expr.asInstanceOf[Node.SequenceExpression].expressions else Seq(expr)
               expr = new Node.ArrowParameterPlaceHolder {
                 params = parameters
                 async = false
@@ -2016,7 +2016,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
             this.tolerateError(Messages.InvalidLHSInForIn)
           }
           this.nextToken()
-          this.reinterpretExpressionAsArrayPattern(initNode)
+          initNode = this.reinterpretExpressionAsArrayPattern(initNode).asInstanceOf[Node.ExpressionOrStatement]
           left = initNode
           right = this.parseExpression()
           init = null
@@ -2025,7 +2025,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
             this.tolerateError(Messages.InvalidLHSInForLoop)
           }
           this.nextToken()
-          this.reinterpretExpressionAsArrayPattern(initNode)
+          initNode = this.reinterpretExpressionAsArrayPattern(initNode).asInstanceOf[Node.ExpressionOrStatement]
           left = initNode
           right = this.parseAssignmentExpression()
           init = null
