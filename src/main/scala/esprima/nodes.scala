@@ -438,7 +438,7 @@ object Node {
     def unapply(arg: Program): Option[Seq[StatementListItem]] = Some(arg.body)
   }
 
-  class Module(body: Seq[StatementListItem]) extends Program(body) {
+  class Module(bodyInit: Seq[StatementListItem]) extends Program(bodyInit) {
     def sourceType: String = "module"
     override def clone = new Module(body).copyNode(this)
   }
@@ -488,7 +488,7 @@ object Node {
   }
 
 
-  class Script(body: Seq[StatementListItem]) extends Program(body) {
+  class Script(bodyInit: Seq[StatementListItem]) extends Program(bodyInit) {
     def sourceType: String = "script"
     override def clone = new Script(body).copyNode(this)
   }
