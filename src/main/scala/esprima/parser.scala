@@ -129,11 +129,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   var lookahead: RawToken = new RawToken {
     import OrType._
     `type` = EOF
-    override def value = ""
-    override def lineNumber = scanner.lineNumber
-    override def lineStart = 0
-    override def start = 0
-    override def end = 0
+    override val value = ""
+    override val lineNumber = scanner.lineNumber
+    override val lineStart = 0
+    override val start = 0
+    override val end = 0
   }
   var hasLineTerminator: Boolean = false
   var context: Context = new Context {
