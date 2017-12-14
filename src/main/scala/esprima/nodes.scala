@@ -11,7 +11,7 @@ import scala.collection.mutable.ArrayBuffer
 
 object Node {
 
-  sealed trait Node {
+  trait Node {
     override def toString = `type`
 
     def `type`: String
@@ -33,43 +33,43 @@ object Node {
     override def clone: Node = ???
   }
 
-  sealed trait ExpressionOrStatement extends Node
-  sealed trait Expression extends Node with ArgumentListElement with ArrayExpressionElement with ExpressionOrStatement
+  trait ExpressionOrStatement extends Node
+  trait Expression extends Node with ArgumentListElement with ArrayExpressionElement with ExpressionOrStatement
     with ExportableDefaultDeclaration with ExpressionOrImport with BlockStatementOrExpression with PropertyValue
   /* ArrayExpression | ArrowFunctionExpression | AssignmentExpression | AsyncArrowFunctionExpression | AsyncFunctionExpression |
     AwaitExpression | BinaryExpression | CallExpression | ClassExpression | ComputedMemberExpression |
     ConditionalExpression | Identifier | FunctionExpression | Literal | NewExpression | ObjectExpression |
     RegexLiteral | SequenceExpression | StaticMemberExpression | TaggedTemplateExpression |
     ThisExpression | UnaryExpression | UpdateExpression | YieldExpression; */
-  sealed trait ArgumentListElement extends Node // Expression | SpreadElement;
-  sealed trait ArrayExpressionElement extends Node // Expression | SpreadElement | null;
-  sealed trait BindingPattern extends Node with ArrayPatternElement with ExportableDefaultDeclaration with FunctionParameter with PropertyValue with BindingIdentifierOrPattern // ArrayPattern | ObjectPattern
-  sealed trait BindingIdentifier extends Node with ArrayPatternElement with ExportableDefaultDeclaration with FunctionParameter with PropertyValue with BindingIdentifierOrPattern // Identifier;
-  sealed trait ArrayPatternElement extends Node with BindingIdentifierOrPattern // AssignmentPattern | BindingIdentifier | BindingPattern | RestElement | null;
-  sealed trait ExportDeclaration extends Node with Declaration // ExportAllDeclaration | ExportDefaultDeclaration | ExportNamedDeclaration;
-  sealed trait Declaration extends Node with StatementListItem // = AsyncFunctionDeclaration | ClassDeclaration | ExportDeclaration | FunctionDeclaration | ImportDeclaration | VariableDeclaration;
-  sealed trait ExportableDefaultDeclaration extends Node // BindingIdentifier | BindingPattern | ClassDeclaration | Expression | FunctionDeclaration;
-  sealed trait ExportableNamedDeclaration extends Node // AsyncFunctionDeclaration | ClassDeclaration | FunctionDeclaration | VariableDeclaration;
-  sealed trait FunctionParameter extends Node // = AssignmentPattern | BindingIdentifier | BindingPattern;
-  sealed trait ImportDeclarationSpecifier extends Node //= ImportDefaultSpecifier | ImportNamespaceSpecifier | ImportSpecifier;
-  sealed trait ObjectExpressionProperty extends Node //= Property | SpreadElement;
-  sealed trait ObjectPatternProperty extends Node with BindingIdentifierOrPattern //= Property | RestElement;
-  sealed trait Statement extends Node with StatementListItem with ExpressionOrStatement
+  trait ArgumentListElement extends Node // Expression | SpreadElement;
+  trait ArrayExpressionElement extends Node // Expression | SpreadElement | null;
+  trait BindingPattern extends Node with ArrayPatternElement with ExportableDefaultDeclaration with FunctionParameter with PropertyValue with BindingIdentifierOrPattern // ArrayPattern | ObjectPattern
+  trait BindingIdentifier extends Node with ArrayPatternElement with ExportableDefaultDeclaration with FunctionParameter with PropertyValue with BindingIdentifierOrPattern // Identifier;
+  trait ArrayPatternElement extends Node with BindingIdentifierOrPattern // AssignmentPattern | BindingIdentifier | BindingPattern | RestElement | null;
+  trait ExportDeclaration extends Node with Declaration // ExportAllDeclaration | ExportDefaultDeclaration | ExportNamedDeclaration;
+  trait Declaration extends Node with StatementListItem // = AsyncFunctionDeclaration | ClassDeclaration | ExportDeclaration | FunctionDeclaration | ImportDeclaration | VariableDeclaration;
+  trait ExportableDefaultDeclaration extends Node // BindingIdentifier | BindingPattern | ClassDeclaration | Expression | FunctionDeclaration;
+  trait ExportableNamedDeclaration extends Node // AsyncFunctionDeclaration | ClassDeclaration | FunctionDeclaration | VariableDeclaration;
+  trait FunctionParameter extends Node // = AssignmentPattern | BindingIdentifier | BindingPattern;
+  trait ImportDeclarationSpecifier extends Node //= ImportDefaultSpecifier | ImportNamespaceSpecifier | ImportSpecifier;
+  trait ObjectExpressionProperty extends Node //= Property | SpreadElement;
+  trait ObjectPatternProperty extends Node with BindingIdentifierOrPattern //= Property | RestElement;
+  trait Statement extends Node with StatementListItem with ExpressionOrStatement
   /*= AsyncFunctionDeclaration | BreakStatement | ContinueStatement | DebuggerStatement | DoWhileStatement |
     EmptyStatement | ExpressionStatement | Directive | ForStatement | ForInStatement | ForOfStatement |
     FunctionDeclaration | IfStatement | ReturnStatement | SwitchStatement | ThrowStatement |
     TryStatement | VariableDeclaration | WhileStatement | WithStatement;*/
-  sealed trait PropertyKey extends Node //= Identifier | Literal;
-  sealed trait PropertyValue extends Node //= AssignmentPattern | AsyncFunctionExpression | BindingIdentifier | BindingPattern | FunctionExpression;
-  sealed trait StatementListItem extends Node with ExportableNamedDeclaration //= Declaration | Statement;
+  trait PropertyKey extends Node //= Identifier | Literal;
+  trait PropertyValue extends Node //= AssignmentPattern | AsyncFunctionExpression | BindingIdentifier | BindingPattern | FunctionExpression;
+  trait StatementListItem extends Node with ExportableNamedDeclaration //= Declaration | Statement;
 
-  sealed trait BindingIdentifierOrPattern extends Node // BindingIdentifier | BindingPattern
+  trait BindingIdentifierOrPattern extends Node // BindingIdentifier | BindingPattern
 
-  sealed trait ExpressionOrImport extends Node // Expression | Import
+  trait ExpressionOrImport extends Node // Expression | Import
 
-  sealed trait BlockStatementOrExpression extends Node // BlockStatement | Expression
+  trait BlockStatementOrExpression extends Node // BlockStatement | Expression
 
-  sealed trait ClassBodyElement extends Node
+  trait ClassBodyElement extends Node
 
   val ArrowParameterPlaceHolder = "ArrowParameterPlaceHolder"
 
@@ -81,11 +81,11 @@ object Node {
   }
 
 
-  sealed trait HasGenerator {
+  trait HasGenerator {
     def generator: Boolean
   }
 
-  sealed trait SymbolDeclaration {
+  trait SymbolDeclaration {
     def id: Node
 
     /** default implementation is to read id node
@@ -417,7 +417,7 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
-  sealed abstract class Program(var body: Seq[StatementListItem]) extends Node with IsScope {
+  abstract class Program(var body: Seq[StatementListItem]) extends Node with IsScope {
     def `type` = Syntax.Program
 
     def sourceType: String
