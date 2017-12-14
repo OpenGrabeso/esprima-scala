@@ -1,37 +1,44 @@
 package esprima
 
-import org.scalatest.FunSuite
+import org.scalatest.{FlatSpec, FunSuite}
 import Esprima._
 import net.gamatron.esprima.TestInputs
 
-class BasicTests extends FunSuite with TestInputs {
-  test("Tokenizer - simple input") {
+class BasicTests extends FlatSpec with TestInputs {
+  "Tokenizer" should "process simple input" in {
     val tokens = tokenize(answer42)
     println(tokens)
   }
 
-  test("Parser - simple input") {
-    val tree = parse(answer42)
-    println(tree)
-  }
-
-  test("Tokenizer - more complex es6 input") {
+  it should "process more complex es6 input" in {
     val tokens = tokenize(es6)
     println(tokens)
   }
 
-  test("Parser - more complex es6 input") {
+  "Parser" should "process simple input" in {
+    val tree = parse(answer42)
+    println(tree)
+  }
+
+  it should "process more complex es6 input" in {
     val tree = parse(es6)
     println(tree)
   }
 
-  test("Parse esprima.js") {
+  it should "process esprima.js" in {
     val tree = parse(esprimaSource)
     println(tree)
   }
 
-  test("Parse three.js") {
+  it should "process three.js" in {
     val tree = parse(threeSource)
     println(tree)
   }
+
+  behavior of "Parser"
+
+  it should "parse inputs known to cause issues" in {
+    parse("a++") // was throwing index out of range
+  }
+
 }

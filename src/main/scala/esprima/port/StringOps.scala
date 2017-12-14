@@ -33,7 +33,17 @@ trait StringOps {
     def charCodeAt(i: Int): CharValue = if (i < s.length) CharValue(s(i)) else CharValue(0)
     // TODO: merge with charCodeAt
     def getChar(i: Int): Char = if (i < s.length) s(i) else 0
-    def substr(from: Int, count: Int): String = s.substring(from, from + count)
+    def substr(from: Int, count: Int = s.length): String = {
+      // https://developer.mozilla.org/cs/docs/Web/JavaScript/Reference/Global_Objects/String/substr
+
+      if (count <= 0 ) {
+        ""  // If length is 0 or a negative number, an empty string is returned.
+      } else {
+        // collects length characters (unless it reaches the end of the string first, in which case it will return fewer).
+        val clampedEnd = from + count min s.length
+        s.substring(from, clampedEnd)
+      }
+    }
   }
 
   def parseInt(str: String, base: Int): Long = java.lang.Long.parseLong(str, base) // parseInt does not parse ffffffff, Int cannot represent it
