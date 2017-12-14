@@ -104,7 +104,7 @@ object Node {
     }
   }
 
-  trait IsScope
+  trait IsScope extends Node
 
   abstract class CommentNode extends Node {
     var value: String = _
