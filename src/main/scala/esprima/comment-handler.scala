@@ -141,7 +141,7 @@ class CommentHandler() {
   }
   
   def visitComment(node: Node.CommentNode, metadata: Metadata) = {
-    val `type_` = if (node.`type`(0).toString == "L") "Line" else "Block"
+    val `type_` = if (!node.multiline) "Line" else "Block"
     object comment extends Comment {
       var `type` = `type_`
       var value = node.value
@@ -172,12 +172,11 @@ class CommentHandler() {
   }
   
   def visit(node: Node.Node, metadata: Metadata) = {
-    if (node.`type` == "LineComment") {
-      this.visitComment(node.asInstanceOf[Node.CommentNode], metadata)
-    } else if (node.`type` == "BlockComment") {
-      this.visitComment(node.asInstanceOf[Node.CommentNode], metadata)
-    } else if (this.attach) {
-      this.visitNode(node, metadata)
+    node match {
+      case node: Node.CommentNode  =>
+        this.visitComment(node, metadata)
+      case _ =>
+        this.visitNode(node, metadata)
     }
   }
   

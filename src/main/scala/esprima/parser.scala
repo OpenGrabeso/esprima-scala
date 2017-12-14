@@ -243,7 +243,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       if (comments.length > 0 && this.delegate) {
         for (e <- comments) {
           object node extends Node.CommentNode {
-            var `type` = if (e.multiLine) "BlockComment" else "LineComment"
+            val multiline = e.multiLine
             value = self.scanner.source.slice(e.slice._1, e.slice._2)
           }
           if (this.config.range) {
@@ -1252,7 +1252,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   def parseExponentiationExpression(): Node.Expression = {
     val startToken = this.lookahead
     var expr = this.inheritCoverGrammar(this.parseUnaryExpression)
-    if (expr.`type` != Syntax.UnaryExpression && this.`match`("**")) {
+    if (!expr.isInstanceOf[Node.UnaryExpression] && this.`match`("**")) {
       this.nextToken()
       this.context.isAssignmentTarget = false
       this.context.isBindingElement = false
@@ -1474,7 +1474,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           } else {
             body = this.isolateCoverGrammar(this.parseAssignmentExpression)
           }
-          val expression = body.`type` != Syntax.BlockStatement
+          val expression = !body.isInstanceOf[Node.BlockStatement]
           if (this.context.strict && list.firstRestricted) {
             this.throwUnexpectedToken(list.firstRestricted, list.message)
           }
@@ -1619,7 +1619,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           this.throwError(Messages.DeclarationMissingInitializer, "const")
         }
       }
-    } else if (!options.inFor && id.`type` != Syntax.Identifier || this.`match`("=")) {
+    } else if (!options.inFor && !id.isInstanceOf[Node.Identifier] || this.`match`("=")) {
       this.expect("=")
       init = this.isolateCoverGrammar(this.parseAssignmentExpression)
     }
@@ -1814,7 +1814,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     if (this.`match`("=")) {
       this.nextToken()
       init = this.isolateCoverGrammar(this.parseAssignmentExpression)
-    } else if (id.`type` != Syntax.Identifier && !options.inFor) {
+    } else if (!id.isInstanceOf[Node.Identifier] && !options.inFor) {
       this.expect("=")
     }
     this.finalize(node, new Node.VariableDeclarator(id, init))
