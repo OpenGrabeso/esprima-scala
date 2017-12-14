@@ -55,7 +55,11 @@ trait TestInputs {
       }
       """
 
-  lazy val threeSource = scala.io.Source.fromResource("three.js").mkString
+  def fromResource(str: String): String = {
+    scala.io.Source.fromInputStream(getClass.getResourceAsStream("/" + str)).mkString
+  }
 
-  lazy val esprimaSource = scala.io.Source.fromResource("esprima.js").mkString
+  lazy val threeSource = fromResource("three.js")
+
+  lazy val esprimaSource = fromResource("esprima.js")
 }

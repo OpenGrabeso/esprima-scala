@@ -243,7 +243,11 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     this.tolerateUnexpectedToken()
     comments
   }
-  
+
+  // needed for Scala 2.11
+  implicit def charValueFromChar(c: Char): CharValue = CharValue(c)
+  implicit def charValueToInt(c: CharValue): Int = c.c.toInt
+
   def scanComments() = {
     var comments: ArrayBuffer[Comment] = null
     if (this.trackComment) {
@@ -546,7 +550,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val _start = start
     new RawToken {
       `type` = `_type`
-      override val value = id
+      override val value = OrType(id)
       override val lineNumber = self.lineNumber
       override val lineStart = self.lineStart
       override val start = _start
@@ -607,7 +611,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val start_ = start
     new RawToken {
       `type` = Punctuator
-      override val value = str
+      override val value = OrType(str)
       override val lineNumber = self.lineNumber
       override val lineStart = self.lineStart
       override val start = start_
@@ -638,7 +642,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val start_ = start
     new RawToken {
       `type` = NumericLiteral
-      override val value = parseInt(num, 16).toDouble
+      override val value = OrType(parseInt(num, 16).toDouble)
       override val lineNumber = self.lineNumber
       override val lineStart = self.lineStart
       override val start = start_
@@ -676,7 +680,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val start_ = start
     new RawToken {
       `type` = NumericLiteral
-      override val value = parseInt(num, 2).toDouble
+      override val value = OrType(parseInt(num, 2).toDouble)
       override val lineNumber = self.lineNumber
       override val lineStart = self.lineStart
       override val start = start_
@@ -720,7 +724,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val octal_ = octal
     new RawToken {
       `type` = NumericLiteral
-      override val value = parseInt(num, 8).toDouble
+      override val value = OrType(parseInt(num, 8).toDouble)
       override val octal = octal_
       override val lineNumber = self.lineNumber
       override val lineStart = self.lineStart
@@ -835,7 +839,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     new RawToken {
       import OrType._
       `type` = NumericLiteral
-      override val value = parseFloat(num)
+      override val value = OrType(parseFloat(num))
       override val lineNumber = self.lineNumber
       override val lineStart = self.lineStart
       override val start = start_
@@ -931,7 +935,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val octal_ = octal
     new RawToken {
       `type` = StringLiteral
-      override val value = str
+      override val value = OrType(str)
       override val octal = octal_
       override val lineNumber = self.lineNumber
       override val lineStart = self.lineStart
@@ -1053,7 +1057,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val cooked_ = cooked
     new RawToken {
       `type` = Template
-      override val value = self.source.slice(start + 1, self.index - rawOffset)
+      override val value = OrType(self.source.slice(start_ + 1, self.index - rawOffset))
       override val cooked = cooked_
       override val head = head_
       override val tail = tail_
@@ -1212,7 +1216,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     new RawToken {
       import OrType._
       `type` = RegularExpression
-      override val value = ""
+      override val value = OrType("")
       override val pattern = pattern_
       override val flags = flags_
       override val regex = value_
@@ -1228,7 +1232,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       return new RawToken {
         import OrType._
         `type` = EOF
-        override val value = ""
+        override val value = OrType("")
         override val lineNumber = self.lineNumber
         override val lineStart = self.lineStart
         override val start = self.index

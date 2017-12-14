@@ -129,7 +129,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   var lookahead: RawToken = new RawToken {
     import OrType._
     `type` = EOF
-    override val value = ""
+    override val value = OrType("")
     override val lineNumber = scanner.lineNumber
     override val lineStart = 0
     override val start = 0
@@ -148,7 +148,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var inFunctionBody = false
     var inIteration = false
     var inSwitch = false
-    var labelSet = mutable.Map.empty
+    var labelSet = mutable.Map.empty[String, Boolean]
     var strict = false
   }
   var tokens = ArrayBuffer.empty[Parser.TokenEntry]
@@ -782,7 +782,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val raw_ = token.value
     val cooked_ = token.cooked
     this.finalize(node, new Node.TemplateElement(new Node.TemplateElementValue {
-      var raw = raw_
+      var raw = raw_.get[String]
       var cooked = cooked_
     }, token.tail))
   }
@@ -796,7 +796,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val raw_ = token.value
     val cooked_ = token.cooked
     this.finalize(node, new Node.TemplateElement(new Node.TemplateElementValue {
-      var raw = raw_
+      var raw = raw_.get[String]
       var cooked = cooked_
     }, token.tail))
   }
