@@ -86,8 +86,6 @@ object Node {
     def generator: Boolean
   }
 
-  trait IsScope extends Node
-
   abstract class CommentNode extends Node {
     var value: String = _
     def multiline: Boolean
@@ -172,7 +170,7 @@ object Node {
 
 
   /* ported: type adjusted */
-  case class BlockStatement(var body: Seq[StatementListItem]) extends Node with IsScope with Statement with BlockStatementOrExpression {
+  case class BlockStatement(var body: Seq[StatementListItem]) extends Node with Statement with BlockStatementOrExpression {
 
     override def clone = copy().copyNode(this)
   }
@@ -196,7 +194,7 @@ object Node {
   }
 
   // actually MethodDefinition seems to work
-  case class ClassBody(var body: Seq[ClassBodyElement]) extends Node with IsScope {
+  case class ClassBody(var body: Seq[ClassBodyElement]) extends Node {
 
     override def clone = copy().copyNode(this)
   }
@@ -394,7 +392,7 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
-  abstract class Program(var body: Seq[StatementListItem]) extends Node with IsScope {
+  abstract class Program(var body: Seq[StatementListItem]) extends Node {
 
 
     def sourceType: String
