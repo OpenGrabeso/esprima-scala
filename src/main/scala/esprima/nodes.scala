@@ -86,27 +86,6 @@ object Node {
     def generator: Boolean
   }
 
-  trait SymbolDeclaration {
-    def id: Node
-
-    /** default implementation is to read id node
-      * Implementaion can override this even when id has a different meaning
-    */
-    def symbolIds: Seq[Node] = Seq(id)
-  }
-
-  object SymbolDeclaration {
-    def unapplySeq(decl: SymbolDeclaration): Option[Seq[String]] = {
-      val symbolNames = decl.symbolIds.flatMap {
-        case Identifier(name) =>
-          Some(name)
-        case _ =>
-          None
-      }
-      Some(symbolNames)
-    }
-  }
-
   trait IsScope extends Node
 
   abstract class CommentNode extends Node {
@@ -225,7 +204,7 @@ object Node {
 
   // ported: added Statement because of parseLabelledStatement
   case class ClassDeclaration(var id: Identifier, var superClass: Identifier, var body: ClassBody) extends Node
-    with SymbolDeclaration with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration with Statement {
+    with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration with Statement {
 
     override def clone = copy().copyNode(this)
   }
@@ -331,24 +310,20 @@ object Node {
 
 
   case class FunctionDeclaration(var id: Identifier, var params: Seq[FunctionParameter], var body: BlockStatement, var generator: Boolean) extends Node
-    with AFunctionDeclaration with SymbolDeclaration with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration with Statement {
+    with AFunctionDeclaration with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration with Statement {
 
     override def clone = copy().copyNode(this)
     var expression: Boolean = false
     var async: Boolean = false
-
-    override def symbolIds = id +: params
   }
 
 
   case class FunctionExpression(var id: Identifier, var params: Seq[FunctionParameter], var body: BlockStatement, var generator: Boolean) extends Node
-    with HasGenerator with SymbolDeclaration with Expression with PropertyValue {
+    with HasGenerator with Expression with PropertyValue {
 
     override def clone = copy().copyNode(this)
     var expression: Boolean = false
     var async: Boolean = false
-
-    override def symbolIds = params
   }
 
 
@@ -595,7 +570,7 @@ object Node {
   }
 
 
-  case class VariableDeclarator(var id: BindingIdentifierOrPattern, var init: Expression) extends Node with SymbolDeclaration {
+  case class VariableDeclarator(var id: BindingIdentifierOrPattern, var init: Expression) extends Node {
 
     override def clone = copy().copyNode(this)
   }
