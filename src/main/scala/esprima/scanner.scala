@@ -125,10 +125,11 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (this.trackComment) {
       comments = ArrayBuffer()
       start = this.index - offset
+      val offset_ = offset
       loc = new SourceLocation {
         var start: Position = new Position {
           var line = self.lineNumber
-          var column = self.index - self.lineStart - offset
+          var column = self.index - self.lineStart - offset_
         }
         var end: Position = null
       }

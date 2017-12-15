@@ -71,12 +71,14 @@ class CommentHandler() {
       this.trailing.setLength = 0
       return trailingComments
     }
-    val entry = this.stack(this.stack.length - 1)
-    if (entry && entry.node.trailingComments) {
-      val firstComment = entry.node.trailingComments(0)
-      if (firstComment && firstComment.range._1 >= metadata.end.offset) {
-        trailingComments = entry.node.trailingComments
-        entry.node.trailingComments = null
+    if (this.stack.length > 0) {
+      val entry = this.stack(this.stack.length - 1)
+      if (entry && entry.node.trailingComments) {
+        val firstComment = entry.node.trailingComments(0)
+        if (firstComment && firstComment.range._1 >= metadata.end.offset) {
+          trailingComments = entry.node.trailingComments
+          entry.node.trailingComments = null
+        }
       }
     }
     trailingComments

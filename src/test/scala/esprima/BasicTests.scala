@@ -37,8 +37,19 @@ class BasicTests extends FlatSpec with TestInputs {
 
   behavior of "Parser"
 
-  it should "parse inputs known to cause issues" in {
+  it should "parse end of file a++" in {
     parse("a++") // was throwing index out of range
+  }
+
+  it should "parse inputs with single line comments" in {
+    object EnableComments extends Parser.Options {
+      range = true
+      attachComment = true
+    }
+    parse("""
+    var i; // assigned once
+    var ii; // assigned multiple times,
+    """, EnableComments)
   }
 
 }

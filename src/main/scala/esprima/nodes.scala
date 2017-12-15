@@ -12,7 +12,10 @@ import scala.collection.mutable.ArrayBuffer
 object Node {
 
   trait Node {
-    override def toString = getClass.getSimpleName
+    override def toString = {
+      // getSimpleName is nice, but sometimes throws InternalError("Malformed class name")
+      getClass.getSimpleName
+    }
 
     var range: (Int, Int) = _
     var loc: Scanner.SourceLocation = _
