@@ -1028,7 +1028,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.throwUnexpectedToken(this.lookahead)
     } else {
       val callee = this.isolateCoverGrammar(this.parseLeftHandSideExpression)
-      val args = if (this.`match`("(")) this.parseArguments() else Array()
+      val args = if (this.`match`("(")) this.parseArguments() else Array[Node.ArgumentListElement]()
       expr = new Node.NewExpression(callee, args)
       this.context.isAssignmentTarget = false
       this.context.isBindingElement = false
