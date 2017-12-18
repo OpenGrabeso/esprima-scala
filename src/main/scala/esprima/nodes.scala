@@ -12,9 +12,10 @@ import scala.collection.mutable.ArrayBuffer
 object Node {
 
   trait Node {
-    override def toString = {
+    def simpleName: String = {
       // getSimpleName is nice, but sometimes throws InternalError("Malformed class name")
-      getClass.getSimpleName
+      val pos = Option(range).fold("")(_.toString)
+      getClass.getSimpleName + "-" + System.identityHashCode(this).toString
     }
 
     var range: (Int, Int) = _
@@ -76,6 +77,7 @@ object Node {
   val ArrowParameterPlaceHolder = "ArrowParameterPlaceHolder"
 
   class ArrowParameterPlaceHolder extends Node.Node with Node.Expression with Node.FunctionParameter {
+    override def toString = simpleName
 
     var params: Seq[Node.ArgumentListElement] = _
     var async: Boolean = _
