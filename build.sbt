@@ -21,11 +21,13 @@ publishArtifact in (Compile, packageDoc) := false
 publish := (publish dependsOn (test in Test)).value
 
 publishTo := {
-  val nexus = "https://www.gamatron.net/nexus/"
+  val sonatype = "https://oss.sonatype.org/"
   if (isSnapshot.value)
-    Some("Gamatron Snapshots Nexus" at nexus + "repository/maven-snapshots")
+    Some("Gamatron Snapshots Nexus" at sonatype + "content/repositories/snapshots")
   else
-    Some("Gamatron Releases Nexus"  at nexus + "repository/maven-releases")
+    Some("Gamatron Releases Nexus"  at sonatype + "service/local/staging/deploy/maven2")
 }
 
-credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
+credentials += Credentials(Path.userHome / ".ivy2" / "oss.credentials")
+
+// use %userprofile%/.ivy2 to access the folder in Windows run command
