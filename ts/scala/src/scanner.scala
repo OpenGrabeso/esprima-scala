@@ -3,7 +3,7 @@ ScalaFromJS: 2017-12-06 21:28:23.723
 scanner.js
 */
 
-package esprima
+package com.github.opengrabeso.esprima
 "use strict"
 Object.defineProperty(exports, "__esModule", new {
   var value = true

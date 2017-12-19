@@ -4,7 +4,14 @@ esprima.js
 */
 
 package com.github.opengrabeso.esprima
-"use strict"
+
+import Parser.TokenEntry
+import Scanner.Metadata
+
+import scala.collection.mutable.ArrayBuffer
+import scala.util.control.Breaks._
+
+object Esprima {
 /*
 Copyright JS Foundation and other contributors, https://js.foundation/
 
@@ -28,17 +35,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
-val comment_handler_1 = require("./comment-handler")
-val jsx_parser_1 = require("./jsx-parser")
-val parser_1 = require("./parser")
-val tokenizer_1 = require("./tokenizer")
 
-def parse(code: Any, options: Script, delegate: (Unit, Unit) => Any) = {
-  var commentHandler = null
-  val proxyDelegate = (node, metadata) => {
+def parse(code: String, options: Parser.Options = Parser.DefaultOptions, delegate: (Node.Node, Metadata) => Unit = null) = {
+  var commentHandler: CommentHandler = null
+  def proxyDelegate(node: Node.Node, metadata: Metadata) = {
     if (delegate) {
       delegate(node, metadata)
     }
@@ -46,28 +46,21 @@ def parse(code: Any, options: Script, delegate: (Unit, Unit) => Any) = {
       commentHandler.visit(node, metadata)
     }
   }
-  var parserDelegate = if (delegate.getClass == "function") proxyDelegate else null
+  var parserDelegate = if (delegate != null) proxyDelegate _ else null
   var collectComment = false
   if (options) {
-    collectComment = options.comment.getClass == "boolean" && options.comment
-    val attachComment = options.attachComment.getClass == "boolean" && options.attachComment
+    collectComment = options.comment
+    val attachComment = options.attachComment
     if (collectComment || attachComment) {
-      commentHandler = new comment_handler_1.CommentHandler()
+      commentHandler = new CommentHandler()
       commentHandler.attach = attachComment
       options.comment = true
       parserDelegate = proxyDelegate
     }
   }
-  var isModule = false
-  if (options && options.sourceType.getClass == "string") {
-    isModule = options.sourceType == "module"
-  }
-  var parser: Any = _
-  if (options && options.jsx.getClass == "boolean" && options.jsx) {
-    parser = new jsx_parser_1.JSXParser(code, options, parserDelegate)
-  } else {
-    parser = new parser_1.Parser(code, options, parserDelegate)
-  }
+  var isModule = options.sourceType == "module"
+
+  var parser = new Parser(code, options, parserDelegate)
   val program = if (isModule) parser.parseModule() else parser.parseScript()
   val ast = program
   if (collectComment && commentHandler) {
@@ -81,47 +74,45 @@ def parse(code: Any, options: Script, delegate: (Unit, Unit) => Any) = {
   }
   ast
 }
-exports.parse = parse
 
-def parseModule(code: Any, options: Any, delegate: (Unit, Unit) => Any) = {
-  val parsingOptions = options || new {}
+def parseModule(code: String, options: Parser.Options, delegate: (Node.Node, Metadata) => Unit) = {
+  val parsingOptions = options
   parsingOptions.sourceType = "module"
   parse(code, parsingOptions, delegate)
 }
-exports.parseModule = parseModule
 
-def parseScript(code: Any, options: Any, delegate: (Unit, Unit) => Any) = {
-  val parsingOptions = options || new {}
+def parseScript(code: String, options: Parser.Options, delegate: (Node.Node, Metadata) => Unit) = {
+  val parsingOptions = options
   parsingOptions.sourceType = "script"
   parse(code, parsingOptions, delegate)
 }
-exports.parseScript = parseScript
 
-def tokenize(code: Any, options: Any, delegate: (Unit) => Any) = {
-  val tokenizer = new tokenizer_1.Tokenizer(code, options)
-  val tokens = Array.empty[Unit]
+def tokenize(code: String, options: Parser.Options = Parser.DefaultOptions, delegate: (TokenEntry) => TokenEntry = null): (Array[TokenEntry], Array[ErrorHandler.Error]) = {
+  val tokenizer = new Tokenizer(code, options)
+  val tokens = ArrayBuffer.empty[Parser.TokenEntry]
+  val errors = ArrayBuffer.empty[ErrorHandler.Error]
   try {
-    while (true) {
-      var token = tokenizer.getNextToken()
-      if (!token) {
-        /* Unsupported: Break */ break;
+    breakable {
+      while (true) {
+        var token = tokenizer.getNextToken()
+        if (!token) {
+          break
+        }
+        if (delegate) {
+          token = delegate(token)
+        }
+        tokens.push(token)
       }
-      if (delegate) {
-        token = delegate(token)
-      }
-      tokens.push(token)
     }
   } catch {
-    case e =>
+    case e: ErrorHandler.Error =>
       tokenizer.errorHandler.tolerate(e)
   }
   if (tokenizer.errorHandler.tolerant) {
-    tokens.errors = tokenizer.errors()
+    errors ++= tokenizer.errors()
   }
-  tokens
+  tokens.toArray -> errors.toArray
 }
-exports.tokenize = tokenize
-val syntax_1 = require("./syntax")
-exports.Syntax = syntax_1.Syntax
-// Sync with *.json manifests.
-exports.version = "4.0.0-dev"
+val version = "4.0.0-dev"
+
+}

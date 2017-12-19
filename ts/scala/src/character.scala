@@ -3,7 +3,7 @@ ScalaFromJS: 2017-12-05 14:48:54.460
 character.js
 */
 
-package esprima
+package com.github.opengrabeso.esprima
 "use strict"
 Object.defineProperty(exports, "__esModule", new {
   var value = true

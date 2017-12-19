@@ -4,12 +4,9 @@ messages.js
 */
 
 package com.github.opengrabeso.esprima
-"use strict"
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
+
 // Error messages should be identical to V8.
-exports.Messages = new {
+object Messages {
   var BadImportCallArity = "Unexpected token"
   var BadGetterArity = "Getter must not have any formal parameters"
   var BadSetterArity = "Setter must have exactly one formal parameter"

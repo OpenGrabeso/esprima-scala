@@ -3,7 +3,7 @@ ScalaFromJS: 2017-12-06 21:18:26.753
 esprima-convert.js
 */
 
-package esprima-convert.js
+package com.github.opengrabeso.esprima-convert.js
 /* export * from "src/assert" */
 /* export * from "src/character" */
 /* export * from "src/comment-handler" */

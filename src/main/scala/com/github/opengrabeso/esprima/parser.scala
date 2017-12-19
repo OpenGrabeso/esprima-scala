@@ -4,109 +4,174 @@ parser.js
 */
 
 package com.github.opengrabeso.esprima
-"use strict"
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
-val assert_1 = require("./assert")
-val error_handler_1 = require("./error-handler")
-val messages_1 = require("./messages")
-val Node = require("./nodes")
-val scanner_1 = require("./scanner")
-val syntax_1 = require("./syntax")
-val token_1 = require("./token")
-val ArrowParameterPlaceHolder = "ArrowParameterPlaceHolder"
 
-class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
-  var config = new {
-    var range = options.range.getClass == "boolean" && options.range
-    var loc = options.loc.getClass == "boolean" && options.loc
-    var source = null
-    var tokens = options.tokens.getClass == "boolean" && options.tokens
-    var comment = options.comment.getClass == "boolean" && options.comment
-    var tolerant = options.tolerant.getClass == "boolean" && options.tolerant
+import Parser._
+import Scanner.{Position, RawToken, SourceLocation}
+import port.RegExp
+
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+import scala.util.control.Breaks._
+import Token._
+import Node.{ArrayPattern, AssignmentPattern, RestElement}
+
+object Parser {
+
+  class Options {
+
+    var range: Boolean = true
+    var loc: Boolean = false // default loc is true because that allows us to perform symbol matching
+    var source: String = null
+    var tokens: Boolean = false
+    var comment: Boolean = false
+    var tolerant : Boolean = false
+    var attachComment: Boolean = false
+    var sourceType: String = _
+  }
+  object DefaultOptions extends Options
+
+  class Config extends Options
+
+  trait Context {
+    var isModule: Boolean
+    var allowIn: Boolean
+    var allowStrictDirective: Boolean
+    var allowYield: Boolean
+    var await: Boolean
+    var firstCoverInitializedNameError: RawToken
+    var isAssignmentTarget: Boolean
+    var isBindingElement: Boolean
+    var inFunctionBody: Boolean
+    var inIteration: Boolean
+    var inSwitch: Boolean
+    var labelSet: mutable.Map[String, Boolean]
+    var strict: Boolean
+  }
+
+  trait Marker {
+    var index: Int
+    var line: Int
+    var column: Int
+  }
+
+  trait TokenEntry {
+    def `type`: String
+    def value: String
+    var regex: RegExp = _
+    var range: (Int, Int) = _
+    var loc: SourceLocation = _
+  }
+
+  trait ParameterOptions {
+    var simple: Boolean = _
+    var params: ArrayBuffer[Node.FunctionParameter] = _
+    var paramSet: mutable.Map[String, Boolean] = _
+    var stricted: RawToken = _
+    var firstRestricted: RawToken = _
+    var message: String = _
+  }
+
+  trait VariableOptions {
+    var inFor: Boolean = _
+  }
+
+}
+
+class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.Metadata) => Unit) {
+  self =>
+  var config = new Config {
+    range = options.range
+    loc = options.loc
+    source = null
+    tokens = options.tokens
+    comment = options.comment
+    tolerant = options.tolerant
   }
   if (config.loc && options.source && options.source != null) {
-    config.source = String(options.source)
+    config.source = options.source
   }
-  var errorHandler: ErrorHandler = new error_handler_1.ErrorHandler()
+  var errorHandler: ErrorHandler = new ErrorHandler()
   errorHandler.tolerant = config.tolerant
-  var scanner: Scanner = new scanner_1.Scanner(code, this.errorHandler)
+  var scanner: Scanner = new Scanner(code, this.errorHandler)
   scanner.trackComment = config.comment
-  var operatorPrecedence = new {
-    var ) = 0
-    var ; = 0
-    var , = 0
-    var = = 0
-    var ] = 0
-    var || = 1
-    var && = 2
-    var | = 3
-    var ^ = 4
-    var & = 5
-    var == = 6
-    var != = 6
-    var === = 6
-    var !== = 6
-    var < = 7
-    var > = 7
-    var <= = 7
-    var >= = 7
-    var << = 8
-    var >> = 8
-    var >>> = 8
-    var + = 9
-    var - = 9
-    var * = 11
-    var / = 11
-    var % = 11
+  object operatorPrecedence {
+    object list {
+      var `)` = 0
+      var `;` = 0
+      var `,` = 0
+      var `=` = 0
+      var `]` = 0
+      var || = 1
+      var && = 2
+      var | = 3
+      var ^ = 4
+      var & = 5
+      var == = 6
+      var != = 6
+      var === = 6
+      var !== = 6
+      var < = 7
+      var > = 7
+      var <= = 7
+      var >= = 7
+      var << = 8
+      var >> = 8
+      var >>> = 8
+      var + = 9
+      var - = 9
+      var * = 11
+      var / = 11
+      var % = 11
+    }
+    val map = port.MapFromObject.mapFromObject[Int](list)
+    def apply(op: String): Int = map.getOrElse(op, 0)
   }
-  var lookahead = new {
-    var `type` = 2
-    var value = ""
-    var lineNumber = scanner.lineNumber
-    var lineStart = 0
-    var start = 0
-    var end = 0
+  var lookahead: RawToken = new RawToken {
+    import OrType._
+    `type` = EOF
+    override val value = OrType("")
+    override val lineNumber = scanner.lineNumber
+    override val lineStart = 0
+    override val start = 0
+    override val end = 0
   }
   var hasLineTerminator: Boolean = false
-  var context = new {
+  var context: Context = new Context {
     var isModule = false
     var await = false
     var allowIn = true
     var allowStrictDirective = true
     var allowYield = true
-    var firstCoverInitializedNameError = null
+    var firstCoverInitializedNameError: RawToken = null
     var isAssignmentTarget = false
     var isBindingElement = false
     var inFunctionBody = false
     var inIteration = false
     var inSwitch = false
-    var labelSet = new {}
+    var labelSet = mutable.Map.empty[String, Boolean]
     var strict = false
   }
-  var tokens = Array.empty[Any]
-  var startMarker = new {
+  var tokens = ArrayBuffer.empty[Parser.TokenEntry]
+  var startMarker: Marker = new Marker {
     var index = 0
     var line = scanner.lineNumber
     var column = 0
   }
-  var lastMarker = new {
+  var lastMarker: Marker = new Marker {
     var index = 0
     var line = scanner.lineNumber
     var column = 0
   }
   this.nextToken()
-  lastMarker = new {
+  lastMarker = new Marker {
     var index = scanner.index
     var line = scanner.lineNumber
     var column = scanner.index - scanner.lineStart
   }
-  def throwError(messageFormat: Any, /* Unsupported: Expansion */ ...
-  : Any) = {
-    val args = Array.prototype.slice.call(arguments, 1)
-    val msg = messageFormat.replace("/%(\d)/g".r, (whole, idx) => {
-      assert_1.assert(idx < args.length, "Message reference must be in range")
+  def throwError(messageFormat: String, args: String*) = {
+    val msg = "%(\\d)".r.replaceAllIn(messageFormat, m => {
+      val idx = m.source.toString.toInt
+      assert(idx < args.length, "Message reference must be in range")
       args(idx)
     }
     )
@@ -116,11 +181,10 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     throw this.errorHandler.createError(index, line, column, msg)
   }
   
-  def tolerateError(messageFormat: Any, /* Unsupported: Expansion */ ...
-  : Any) = {
-    val args = Array.prototype.slice.call(arguments, 1)
-    val msg = messageFormat.replace("/%(\d)/g".r, (whole, idx) => {
-      assert_1.assert(idx < args.length, "Message reference must be in range")
+  def tolerateError(messageFormat: String, args: String*) = {
+    val msg = "%(\\d)".r.replaceAllIn(messageFormat, m => {
+      val idx = m.source.toString.toInt
+      assert(idx < args.length, "Message reference must be in range")
       args(idx)
     }
     )
@@ -130,17 +194,17 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.errorHandler.tolerateError(index, line, column, msg)
   }
   
-  def unexpectedTokenError(token: Any, message: Any) = {
-    var msg = message || messages_1.Messages.UnexpectedToken
-    var value: String = _
+  def unexpectedTokenError(token: RawToken, message: String = null) = {
+    var msg = message || Messages.UnexpectedToken
+    var value: String = null
     if (token) {
       if (!message) {
-        msg = if (token.`type` == 2) messages_1.Messages.UnexpectedEOS else if (token.`type` == 3) messages_1.Messages.UnexpectedIdentifier else if (token.`type` == 6) messages_1.Messages.UnexpectedNumber else if (token.`type` == 8) messages_1.Messages.UnexpectedString else if (token.`type` == 10) messages_1.Messages.UnexpectedTemplate else messages_1.Messages.UnexpectedToken
-        if (token.`type` == 4) {
+        msg = if (token.`type` == EOF) Messages.UnexpectedEOS else if (token.`type` == Identifier) Messages.UnexpectedIdentifier else if (token.`type` == NumericLiteral) Messages.UnexpectedNumber else if (token.`type` == StringLiteral) Messages.UnexpectedString else if (token.`type` == Template) Messages.UnexpectedTemplate else Messages.UnexpectedToken
+        if (token.`type` == Keyword) {
           if (this.scanner.isFutureReservedWord(token.value)) {
-            msg = messages_1.Messages.UnexpectedReserved
+            msg = Messages.UnexpectedReserved
           } else if (this.context.strict && this.scanner.isStrictModeReservedWord(token.value)) {
-            msg = messages_1.Messages.StrictReservedWord
+            msg = Messages.StrictReservedWord
           }
         }
       }
@@ -149,7 +213,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       value = "ILLEGAL"
     }
     msg = msg.replace("%0", value)
-    if (token && token.lineNumber.getClass == "number") {
+    if (token && token.lineNumber >= 0) {
       val index = token.start
       val line = token.lineNumber
       val lastMarkerLineStart = this.lastMarker.index - this.lastMarker.column
@@ -163,11 +227,11 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     }
   }
   
-  def throwUnexpectedToken(token: Any, message: Any) = {
+  def throwUnexpectedToken(token: RawToken, message: String = null) = {
     throw this.unexpectedTokenError(token, message)
   }
   
-  def tolerateUnexpectedToken(token: Any, message: Any) = {
+  def tolerateUnexpectedToken(token: RawToken, message: String = null) = {
     this.errorHandler.tolerate(this.unexpectedTokenError(token, message))
   }
   
@@ -178,9 +242,9 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       val comments = this.scanner.scanComments()
       if (comments.length > 0 && this.delegate) {
         for (e <- comments) {
-          object node {
-            var `type` = if (e.multiLine) "BlockComment" else "LineComment"
-            var value = this.scanner.source.slice(e.slice(0), e.slice(1))
+          object node extends Node.CommentNode {
+            val multiline = e.multiLine
+            value = self.scanner.source.slice(e.slice._1, e.slice._2)
           }
           if (this.config.range) {
             node.range = e.range
@@ -188,16 +252,16 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
           if (this.config.loc) {
             node.loc = e.loc
           }
-          object metadata {
-            var start = new {
-              var line = e.loc.start.line
-              var column = e.loc.start.column
-              var offset = e.range(0)
+          object metadata extends Scanner.Metadata {
+            var start: Position = new Position {
+              override def line = e.loc.start.line
+              override def column = e.loc.start.column
+              override def offset = e.range._1
             }
-            var end = new {
-              var line = e.loc.end.line
-              var column = e.loc.end.column
-              var offset = e.range(1)
+            var end: Position = new Position {
+              override def line = e.loc.end.line
+              override def column = e.loc.end.column
+              override def offset = e.range._2
             }
           }
           this.delegate(node, metadata)
@@ -206,37 +270,37 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     }
   }
   
-  def getTokenRaw(token: Any) = {
+  def getTokenRaw(token: RawToken): String = {
     this.scanner.source.slice(token.start, token.end)
   }
   
-  def convertToken(token: Any) = {
-    object t {
-      var `type` = token_1.TokenName(token.`type`)
-      var value = this.getTokenRaw(token)
+  def convertToken(token: RawToken): TokenEntry = {
+    object t extends TokenEntry {
+      var `type` = TokenName(token.`type`)
+      var value = self.getTokenRaw(token)
     }
     if (this.config.range) {
-      t.range = Array(token.start, token.end)
+      t.range = (token.start, token.end)
     }
     if (this.config.loc) {
-      t.loc = new {
-        var start = new {
-          var line = this.startMarker.line
-          var column = this.startMarker.column
+      t.loc = new SourceLocation {
+        var start: Position = new Position {
+          override def line = self.startMarker.line
+          override def column = self.startMarker.column
         }
-        var end = new {
-          var line = this.scanner.lineNumber
-          var column = this.scanner.index - this.scanner.lineStart
+        var end: Position = new Position {
+          override def line = self.scanner.lineNumber
+          override def column = self.scanner.index - self.scanner.lineStart
         }
       }
     }
-    if (token.`type` == 9) {
+    if (token.`type` == RegularExpression) {
       val pattern = token.pattern
       val flags = token.flags
-      t.regex = new {
-        var pattern = pattern
-        var flags = flags
-      }
+      t.regex = new RegExp (
+        pattern = pattern,
+        flags = flags
+      )
     }
     t
   }
@@ -254,13 +318,13 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     }
     val next = this.scanner.lex()
     this.hasLineTerminator = token.lineNumber != next.lineNumber
-    if (next && this.context.strict && next.`type` == 3) {
+    if (next && this.context.strict && next.`type` == Identifier) {
       if (this.scanner.isStrictModeReservedWord(next.value)) {
-        next.`type` = 4
+        next.`type` = Keyword
       }
     }
     this.lookahead = next
-    if (this.config.tokens && next.`type` != 2) {
+    if (this.config.tokens && next.`type` != EOF) {
       this.tokens.push(this.convertToken(next))
     }
     token
@@ -281,41 +345,41 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     token
   }
   
-  def createNode() = {
-    new {
-      var index = this.startMarker.index
-      var line = this.startMarker.line
-      var column = this.startMarker.column
+  def createNode(): Marker = {
+    new Marker {
+      var index = self.startMarker.index
+      var line = self.startMarker.line
+      var column = self.startMarker.column
     }
   }
   
-  def startNode(token: Any, lastLineStart: Double = 0) = {
-    var column = token.start - token.lineStart
-    var line = token.lineNumber
-    if (column < 0) {
-      column += lastLineStart
-      line -= 1
+  def startNode(token: RawToken, lastLineStart: Int = 0): Marker = {
+    var column_ = token.start - token.lineStart
+    var line_ = token.lineNumber
+    if (column_ < 0) {
+      column_ += lastLineStart
+      line_ -= 1
     }
-    new {
+    new Marker {
       var index = token.start
-      var line = line
-      var column = column
+      var line = line_
+      var column = column_
     }
   }
   
-  def finalize(marker: Any, node: Any) = {
+  def finalize[T <: Node.Node](marker: Marker, node: T): T = {
     if (this.config.range) {
-      node.range = Array(marker.index, this.lastMarker.index)
+      node.range = (marker.index, this.lastMarker.index)
     }
     if (this.config.loc) {
-      node.loc = new {
-        var start = new {
-          var line = marker.line
-          var column = marker.column
+      node.loc = new SourceLocation {
+        var start: Position = new Position {
+          override def line = marker.line
+          override def column = marker.column
         }
-        var end = new {
-          var line = this.lastMarker.line
-          var column = this.lastMarker.column
+        var end: Position = new Position {
+          override def line = self.lastMarker.line
+          override def column = self.lastMarker.column
         }
       }
       if (this.config.source) {
@@ -323,16 +387,16 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       }
     }
     if (this.delegate) {
-      object metadata {
-        var start = new {
-          var line = marker.line
-          var column = marker.column
-          var offset = marker.index
+      object metadata extends Scanner.Metadata {
+        var start: Position = new Position {
+          override def line = marker.line
+          override def column = marker.column
+          override def offset = marker.index
         }
-        var end = new {
-          var line = this.lastMarker.line
-          var column = this.lastMarker.column
-          var offset = this.lastMarker.index
+        var end: Position = new Position {
+          override def line = self.lastMarker.line
+          override def column = self.lastMarker.column
+          override def offset = self.lastMarker.index
         }
       }
       this.delegate(node, metadata)
@@ -342,7 +406,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   
   def expect(value: String) = {
     val token = this.nextToken()
-    if (token.`type` != 7 || token.value != value) {
+    if (token.`type` != Punctuator || (token.value !== value)) {
       this.throwUnexpectedToken(token)
     }
   }
@@ -350,13 +414,13 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   def expectCommaSeparator() = {
     if (this.config.tolerant) {
       val token = this.lookahead
-      if (token.`type` == 7 && token.value == ",") {
+      if (token.`type` == Punctuator && token.value === ",") {
         this.nextToken()
-      } else if (token.`type` == 7 && token.value == ";") {
+      } else if (token.`type` == Punctuator && token.value === ";") {
         this.nextToken()
         this.tolerateUnexpectedToken(token)
       } else {
-        this.tolerateUnexpectedToken(token, messages_1.Messages.UnexpectedToken)
+        this.tolerateUnexpectedToken(token, Messages.UnexpectedToken)
       }
     } else {
       this.expect(",")
@@ -365,39 +429,39 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   
   def expectKeyword(keyword: String) = {
     val token = this.nextToken()
-    if (token.`type` != 4 || token.value != keyword) {
+    if (token.`type` != Keyword || (token.value !== keyword)) {
       this.throwUnexpectedToken(token)
     }
   }
   
   def `match`(value: String) = {
-    this.lookahead.`type` == 7 && this.lookahead.value == value
+    this.lookahead.`type` == Punctuator && this.lookahead.value === value
   }
   
   def matchKeyword(keyword: String) = {
-    this.lookahead.`type` == 4 && this.lookahead.value == keyword
+    this.lookahead.`type` == Keyword && this.lookahead.value === keyword
   }
   
   def matchContextualKeyword(keyword: String) = {
-    this.lookahead.`type` == 3 && this.lookahead.value == keyword
+    this.lookahead.`type` == Identifier && this.lookahead.value === keyword
   }
   
-  def matchAssign() = {
-    if (this.lookahead.`type` != 7) {
+  def matchAssign(): Boolean = {
+    if (this.lookahead.`type` != Punctuator) {
       return false
     }
-    val op = this.lookahead.value
+    val op: String = this.lookahead.value
     op == "=" || op == "*=" || op == "**=" || op == "/=" || op == "%=" || op == "+=" || op == "-=" || op == "<<=" || op == ">>=" || op == ">>>=" || op == "&=" || op == "^=" || op == "|="
   }
   
-  def isolateCoverGrammar(parseFunction: () => Any) = {
+  def isolateCoverGrammar[T <:Node.Node](parseFunction: () => T): T = {
     val previousIsBindingElement = this.context.isBindingElement
     val previousIsAssignmentTarget = this.context.isAssignmentTarget
     val previousFirstCoverInitializedNameError = this.context.firstCoverInitializedNameError
     this.context.isBindingElement = true
     this.context.isAssignmentTarget = true
     this.context.firstCoverInitializedNameError = null
-    val result = parseFunction.call(this)
+    val result = parseFunction()
     if (this.context.firstCoverInitializedNameError != null) {
       this.throwUnexpectedToken(this.context.firstCoverInitializedNameError)
     }
@@ -407,14 +471,14 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     result
   }
   
-  def inheritCoverGrammar(parseFunction: () => Identifier) = {
+  def inheritCoverGrammar[T <:Node.Node](parseFunction: () => T): T = {
     val previousIsBindingElement = this.context.isBindingElement
     val previousIsAssignmentTarget = this.context.isAssignmentTarget
     val previousFirstCoverInitializedNameError = this.context.firstCoverInitializedNameError
     this.context.isBindingElement = true
     this.context.isAssignmentTarget = true
     this.context.firstCoverInitializedNameError = null
-    val result = parseFunction.call(this)
+    val result = parseFunction()
     this.context.isBindingElement = this.context.isBindingElement && previousIsBindingElement
     this.context.isAssignmentTarget = this.context.isAssignmentTarget && previousIsAssignmentTarget
     this.context.firstCoverInitializedNameError = previousFirstCoverInitializedNameError || this.context.firstCoverInitializedNameError
@@ -425,7 +489,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     if (this.`match`(";")) {
       this.nextToken()
     } else if (!this.hasLineTerminator) {
-      if (this.lookahead.`type` != 2 && !this.`match`("}")) {
+      if (this.lookahead.`type` != EOF && !this.`match`("}")) {
         this.throwUnexpectedToken(this.lookahead)
       }
       this.lastMarker.index = this.startMarker.index
@@ -434,42 +498,42 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     }
   }
   
-  def parsePrimaryExpression() = {
+  def parsePrimaryExpression(): Node.Expression = {
     val node = this.createNode()
-    var expr = _
-    var token = new {}
-    var raw = _
+    var expr: Node.Expression = null
+    var token: RawToken = null
+    var raw: String = null
     this.lookahead.`type` match {
-      case 3 =>
-        if ((this.context.isModule || this.context.await) && this.lookahead.value == "await") {
+      case Identifier =>
+        if ((this.context.isModule || this.context.await) && this.lookahead.value === "await") {
           this.tolerateUnexpectedToken(this.lookahead)
         }
         expr = if (this.matchAsyncFunction()) this.parseFunctionExpression() else this.finalize(node, new Node.Identifier(this.nextToken().value))
-      case 6 | 8 =>
+      case NumericLiteral | StringLiteral =>
         if (this.context.strict && this.lookahead.octal) {
-          this.tolerateUnexpectedToken(this.lookahead, messages_1.Messages.StrictOctalLiteral)
+          this.tolerateUnexpectedToken(this.lookahead, Messages.StrictOctalLiteral)
         }
         this.context.isAssignmentTarget = false
         this.context.isBindingElement = false
         token = this.nextToken()
         raw = this.getTokenRaw(token)
         expr = this.finalize(node, new Node.Literal(token.value, raw))
-      case 1 =>
+      case BooleanLiteral =>
         this.context.isAssignmentTarget = false
         this.context.isBindingElement = false
         token = this.nextToken()
         raw = this.getTokenRaw(token)
-        expr = this.finalize(node, new Node.Literal(token.value == "true", raw))
-      case 5 =>
+        expr = this.finalize(node, new Node.Literal(token.value === "true", raw))
+      case NullLiteral =>
         this.context.isAssignmentTarget = false
         this.context.isBindingElement = false
         token = this.nextToken()
         raw = this.getTokenRaw(token)
         expr = this.finalize(node, new Node.Literal(null, raw))
-      case 10 =>
+      case Template =>
         expr = this.parseTemplateLiteral()
-      case 7 =>
-        this.lookahead.value match {
+      case Punctuator =>
+        this.lookahead.value.get[String] match {
           case "(" =>
             this.context.isBindingElement = false
             expr = this.inheritCoverGrammar(this.parseGroupExpression)
@@ -487,7 +551,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
           case _ =>
             expr = this.throwUnexpectedToken(this.nextToken())
         }
-      case 4 =>
+      case Keyword =>
         if (!this.context.strict && this.context.allowYield && this.matchKeyword("yield")) {
           expr = this.parseIdentifierName()
         } else if (!this.context.strict && this.matchKeyword("let")) {
@@ -503,7 +567,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
           } else if (this.matchKeyword("class")) {
             expr = this.parseClassExpression()
           } else if (this.matchImportCall()) {
-            expr = this.parseImportCall()
+            expr = this.parseImportCall().asInstanceOf[Node.Expression] // PORT: fix incorrect type
           } else {
             expr = this.throwUnexpectedToken(this.nextToken())
           }
@@ -514,7 +578,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     expr
   }
   
-  def parseSpreadElement() = {
+  def parseSpreadElement(): Node.SpreadElement = {
     val node = this.createNode()
     this.expect("...")
     val arg = this.inheritCoverGrammar(this.parseAssignmentExpression)
@@ -523,7 +587,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   
   def parseArrayInitializer() = {
     val node = this.createNode()
-    val elements = Array.empty[Any]
+    val elements = ArrayBuffer.empty[Node.ArrayExpressionElement]
     this.expect("[")
     while (!this.`match`("]")) {
       if (this.`match`(",")) {
@@ -548,7 +612,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.ArrayExpression(elements))
   }
   
-  def parsePropertyMethod(params: Any) = {
+  def parsePropertyMethod(params: ParameterOptions) = {
     this.context.isAssignmentTarget = false
     this.context.isBindingElement = false
     val previousStrict = this.context.strict
@@ -590,22 +654,22 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.AsyncFunctionExpression(null, params.params, method))
   }
   
-  def parseObjectPropertyKey() = {
+  def parseObjectPropertyKey(): Node.PropertyKey = {
     val node = this.createNode()
     val token = this.nextToken()
-    var key = _
+    var key: Node.PropertyKey = null
     token.`type` match {
-      case 8 | 6 =>
+      case StringLiteral | NumericLiteral =>
         if (this.context.strict && token.octal) {
-          this.tolerateUnexpectedToken(token, messages_1.Messages.StrictOctalLiteral)
+          this.tolerateUnexpectedToken(token, Messages.StrictOctalLiteral)
         }
         val raw = this.getTokenRaw(token)
         key = this.finalize(node, new Node.Literal(token.value, raw))
-      case 3 | 1 | 5 | 4 =>
+      case Identifier | BooleanLiteral | NullLiteral | Keyword =>
         key = this.finalize(node, new Node.Identifier(token.value))
-      case 7 =>
-        if (token.value == "[") {
-          key = this.isolateCoverGrammar(this.parseAssignmentExpression)
+      case Punctuator =>
+        if (token.value === "[") {
+          key = this.isolateCoverGrammar(this.parseAssignmentExpression).asInstanceOf[Node.PropertyKey] // PORT: fix incorrect type
           this.expect("]")
         } else {
           key = this.throwUnexpectedToken(token)
@@ -616,22 +680,22 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     key
   }
   
-  def isPropertyKey(key: Any, value: String) = {
-    key.isInstanceOf[Identifier] && key.asInstanceOf[Identifier].name == value || key.isInstanceOf[Literal] && key.asInstanceOf[Literal].value == value
+  def isPropertyKey(key: Node.Node, value: String) = {
+    key.isInstanceOf[Node.Identifier] && key.asInstanceOf[Node.Identifier].name == value || key.isInstanceOf[Node.Literal] && key.asInstanceOf[Node.Literal].value === value
   }
   
-  def parseObjectProperty(hasProto: Any) = {
+  def parseObjectProperty(hasProto: ByRef[Boolean]): Node.Property = {
     val node = this.createNode()
     val token = this.lookahead
-    var kind: String = _
-    var key = null
-    var value = null
+    var kind: String = ""
+    var key: Node.PropertyKey = null
+    var value: Node.PropertyValue = null
     var computed = false
     var method = false
     var shorthand = false
     var isAsync = false
-    if (token.`type` == 3) {
-      val id = token.value
+    if (token.`type` == Identifier) {
+      val id: String = token.value
       this.nextToken()
       computed = this.`match`("[")
       isAsync = !this.hasLineTerminator && id == "async" && !this.`match`(":") && !this.`match`("(") && !this.`match`("*") && !this.`match`(",")
@@ -643,18 +707,18 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       key = this.parseObjectPropertyKey()
     }
     val lookaheadPropertyKey = this.qualifiedPropertyName(this.lookahead)
-    if (token.`type` == 3 && !isAsync && token.value == "get" && lookaheadPropertyKey) {
+    if (token.`type` == Identifier && !isAsync && token.value === "get" && lookaheadPropertyKey) {
       kind = "get"
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
       this.context.allowYield = false
       value = this.parseGetterMethod()
-    } else if (token.`type` == 3 && !isAsync && token.value == "set" && lookaheadPropertyKey) {
+    } else if (token.`type` == Identifier && !isAsync && token.value === "set" && lookaheadPropertyKey) {
       kind = "set"
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
       value = this.parseSetterMethod()
-    } else if (token.`type` == 7 && token.value == "*" && lookaheadPropertyKey) {
+    } else if (token.`type` == Punctuator && token.value === "*" && lookaheadPropertyKey) {
       kind = "init"
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
@@ -668,7 +732,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       if (this.`match`(":") && !isAsync) {
         if (!computed && this.isPropertyKey(key, "__proto__")) {
           if (hasProto.value) {
-            this.tolerateError(messages_1.Messages.DuplicateProtoProperty)
+            this.tolerateError(Messages.DuplicateProtoProperty)
           }
           hasProto.value = true
         }
@@ -677,7 +741,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       } else if (this.`match`("(")) {
         value = if (isAsync) this.parsePropertyMethodAsyncFunction() else this.parsePropertyMethodFunction()
         method = true
-      } else if (token.`type` == 3) {
+      } else if (token.`type` == Identifier) {
         val id = this.finalize(node, new Node.Identifier(token.value))
         if (this.`match`("=")) {
           this.context.firstCoverInitializedNameError = this.lookahead
@@ -699,10 +763,8 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   def parseObjectInitializer() = {
     val node = this.createNode()
     this.expect("{")
-    val properties = Array.empty[Any]
-    object hasProto extends Resource {
-      var value = false
-    }
+    val properties = ArrayBuffer.empty[Node.ObjectExpressionProperty]
+    object hasProto extends ByRef[Boolean](false)
     while (!this.`match`("}")) {
       properties.push(if (this.`match`("...")) this.parseSpreadElement() else this.parseObjectProperty(hasProto))
       if (!this.`match`("}")) {
@@ -713,36 +775,36 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.ObjectExpression(properties))
   }
   
-  def parseTemplateHead() = {
-    assert_1.assert(this.lookahead.head, "Template literal must start with a template head")
+  def parseTemplateHead(): Node.TemplateElement = {
+    assert(this.lookahead.head, "Template literal must start with a template head")
     val node = this.createNode()
     val token = this.nextToken()
-    val raw = token.value
-    val cooked = token.cooked
-    this.finalize(node, new Node.TemplateElement(new {
-      var raw = raw
-      var cooked = cooked
+    val raw_ = token.value
+    val cooked_ = token.cooked
+    this.finalize(node, new Node.TemplateElement(new Node.TemplateElementValue {
+      var raw = raw_.get[String]
+      var cooked = cooked_
     }, token.tail))
   }
   
   def parseTemplateElement() = {
-    if (this.lookahead.`type` != 10) {
-      this.throwUnexpectedToken()
+    if (this.lookahead.`type` != Template) {
+      this.throwUnexpectedToken(this.lookahead)
     }
     val node = this.createNode()
     val token = this.nextToken()
-    val raw = token.value
-    val cooked = token.cooked
-    this.finalize(node, new Node.TemplateElement(new {
-      var raw = raw
-      var cooked = cooked
+    val raw_ = token.value
+    val cooked_ = token.cooked
+    this.finalize(node, new Node.TemplateElement(new Node.TemplateElementValue {
+      var raw = raw_.get[String]
+      var cooked = cooked_
     }, token.tail))
   }
   
-  def parseTemplateLiteral() = {
+  def parseTemplateLiteral(): Node.TemplateLiteral = {
     val node = this.createNode()
-    val expressions = Array.empty[Any]
-    val quasis = Array.empty[TemplateElement]
+    val expressions = ArrayBuffer.empty[Node.Expression]
+    val quasis = ArrayBuffer.empty[Node.TemplateElement]
     var quasi = this.parseTemplateHead()
     quasis.push(quasi)
     while (!quasi.tail) {
@@ -752,143 +814,157 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     }
     this.finalize(node, new Node.TemplateLiteral(quasis, expressions))
   }
-  
-  def reinterpretExpressionAsPattern(expr: Any) = {
-    expr.`type` match {
-      case syntax_1.Syntax.Identifier | syntax_1.Syntax.MemberExpression | syntax_1.Syntax.RestElement | syntax_1.Syntax.AssignmentPattern =>
-      case syntax_1.Syntax.SpreadElement =>
-        expr.`type` = syntax_1.Syntax.RestElement
-        this.reinterpretExpressionAsPattern(expr.argument)
-      case syntax_1.Syntax.ArrayExpression =>
-        expr.`type` = syntax_1.Syntax.ArrayPattern
-        for (i <- expr.elements) {
-          if (i != null) {
-            this.reinterpretExpressionAsPattern(i)
+
+  def reinterpretExpressionAsArrayPattern(expr: Node.Node): Node.ArrayPatternElement = {
+    // TODO: reallocation needed
+    (expr: @unchecked) match {
+      case ex: Node.Identifier => ex
+      case ex: Node.ComputedMemberExpression => ex
+      case ex: Node.RestElement => ex
+      case ex: Node.AssignmentPattern => ex
+
+      case expr: Node.SpreadElement =>
+        val retypedArg =this.reinterpretExpressionAsArrayPattern(expr.argument)
+        new Node.RestElement(retypedArg)
+      case expr: Node.ArrayExpression =>
+        val elementsResult = expr.elements.flatMap { i =>
+          Option(i).map { i =>
+            this.reinterpretExpressionAsArrayPattern(i)
           }
         }
-      case syntax_1.Syntax.ObjectExpression =>
-        expr.`type` = syntax_1.Syntax.ObjectPattern
-        for (property <- expr.properties) {
-          this.reinterpretExpressionAsPattern(if (property.isInstanceOf[SpreadElement]) property else property.value)
+        new ArrayPattern(elementsResult)
+      case expr: Node.AssignmentExpression =>
+        new AssignmentPattern (this.reinterpretExpressionAsArrayPattern(expr.left).asInstanceOf[Node.BindingIdentifierOrPattern], expr.right)
+      case expr: Node.ArrayPatternElement =>
+        expr
+    }
+  }
+
+
+  def reinterpretExpressionAsObjectPattern(expr: Node.Node): Node.ObjectPatternProperty = {
+    // TODO: reallocation needed
+    (expr: @unchecked) match {
+      case expr: Node.SpreadElement =>
+
+        new RestElement(this.reinterpretExpressionAsObjectPattern(expr.argument))
+
+      case expr: Node.ObjectExpression =>
+        val elementsResult = for (property <- expr.properties) yield {
+          this.reinterpretExpressionAsObjectPattern(if (property.isInstanceOf[Node.SpreadElement]) property else property.asInstanceOf[Node.Property].value)
         }
-      case syntax_1.Syntax.AssignmentExpression =>
-        expr.`type` = syntax_1.Syntax.AssignmentPattern
-        delete expr.operator
-        this.reinterpretExpressionAsPattern(expr.left)
-      case _ =>
+        new Node.ObjectPattern(elementsResult)
+      case expr: Node.AssignmentExpression =>
+        new Node.AssignmentPattern(this.reinterpretExpressionAsObjectPattern(expr.left), expr.right)
+      case expr: Node.ObjectPatternProperty =>
+        expr
     }
   }
   
   def parseGroupExpression() = {
-    var expr = new {}
+    var expr: Node.Expression = null
     this.expect("(")
     if (this.`match`(")")) {
       this.nextToken()
       if (!this.`match`("=>")) {
         this.expect("=>")
       }
-      expr = new {
-        var `type` = ArrowParameterPlaceHolder
-        var params = Array()
-        var async = false
+      expr = new Node.ArrowParameterPlaceHolder {
+        params = ArrayBuffer()
+        async = false
       }
     } else {
       val startToken = this.lookahead
-      val params = Array.empty[Any]
+      val params = ArrayBuffer.empty[Scanner.RawToken]
       if (this.`match`("...")) {
-        expr = this.parseRestElement(params)
+        val exprP = this.parseRestElement(params)
         this.expect(")")
         if (!this.`match`("=>")) {
           this.expect("=>")
         }
-        expr = new {
-          var `type` = ArrowParameterPlaceHolder
-          var params = Array(expr)
-          var async = false
+        expr = new Node.ArrowParameterPlaceHolder {
+          params = ArrayBuffer(exprP)
+          async = false
         }
       } else {
         var arrow = false
         this.context.isBindingElement = true
         expr = this.inheritCoverGrammar(this.parseAssignmentExpression)
         if (this.`match`(",")) {
-          val expressions = Array.empty[Any]
+          val expressions = ArrayBuffer.empty[Node.ArgumentListElement]
           this.context.isAssignmentTarget = false
           expressions.push(expr)
-          while (this.lookahead.`type` != 2) {
-            if (!this.`match`(",")) {
-              /* Unsupported: Break */ break;
-            }
-            this.nextToken()
-            if (this.`match`(")")) {
+          breakable {
+            while (this.lookahead.`type` != EOF) {
+              if (!this.`match`(",")) {
+                break
+              }
               this.nextToken()
-              for (i <- expressions) {
-                this.reinterpretExpressionAsPattern(i)
+              if (this.`match`(")")) {
+                this.nextToken()
+                val expressionsRe = for (i <- expressions) yield {
+                  this.reinterpretExpressionAsArrayPattern(i).asInstanceOf[Node.ArgumentListElement]
+                }
+                arrow = true
+                expr = new Node.ArrowParameterPlaceHolder {
+                  params = expressionsRe
+                  async = false
+                }
+              } else if (this.`match`("...")) {
+                if (!this.context.isBindingElement) {
+                  this.throwUnexpectedToken(this.lookahead)
+                }
+                expressions.push(this.parseRestElement(params))
+                this.expect(")")
+                if (!this.`match`("=>")) {
+                  this.expect("=>")
+                }
+                this.context.isBindingElement = false
+                val expressionsRe = for (i <- expressions) yield {
+                  this.reinterpretExpressionAsArrayPattern(i).asInstanceOf[Node.ArgumentListElement]
+                }
+                arrow = true
+                expr = new Node.ArrowParameterPlaceHolder {
+                  params = expressionsRe
+                  async = false
+                }
+              } else {
+                expressions.push(this.inheritCoverGrammar(this.parseAssignmentExpression))
               }
-              arrow = true
-              expr = new {
-                var `type` = ArrowParameterPlaceHolder
-                var params = expressions
-                var async = false
+              if (arrow) {
+                break
               }
-            } else if (this.`match`("...")) {
-              if (!this.context.isBindingElement) {
-                this.throwUnexpectedToken(this.lookahead)
-              }
-              expressions.push(this.parseRestElement(params))
-              this.expect(")")
-              if (!this.`match`("=>")) {
-                this.expect("=>")
-              }
-              this.context.isBindingElement = false
-              for (i <- expressions) {
-                this.reinterpretExpressionAsPattern(i)
-              }
-              arrow = true
-              expr = new {
-                var `type` = ArrowParameterPlaceHolder
-                var params = expressions
-                var async = false
-              }
-            } else {
-              expressions.push(this.inheritCoverGrammar(this.parseAssignmentExpression))
-            }
-            if (arrow) {
-              /* Unsupported: Break */ break;
             }
           }
           if (!arrow) {
-            expr = this.finalize(this.startNode(startToken), new Node.SequenceExpression(expressions))
+            expr = this.finalize(this.startNode(startToken), new Node.SequenceExpression(expressions.asInstanceOf[Seq[Node.Expression]]))
           }
         }
         if (!arrow) {
           this.expect(")")
           if (this.`match`("=>")) {
-            if (expr.isInstanceOf[Identifier] && expr.asInstanceOf[Identifier].name == "yield") {
-              var expr_cast = expr.asInstanceOf[Identifier]
+            if (expr.isInstanceOf[Node.Identifier] && expr.asInstanceOf[Node.Identifier].name == "yield") {
+              var expr_cast = expr.asInstanceOf[Node.Identifier]
               arrow = true
-              expr_cast = new {
-                var `type` = ArrowParameterPlaceHolder
-                var params = Array(expr_cast)
-                var async = false
+              expr = new Node.ArrowParameterPlaceHolder {
+                params = ArrayBuffer(expr_cast)
+                async = false
               }
             }
             if (!arrow) {
               if (!this.context.isBindingElement) {
                 this.throwUnexpectedToken(this.lookahead)
               }
-              expr match {
-                case expr_cast: SequenceExpression =>
-                  for (i <- expr_cast.expressions) {
-                    this.reinterpretExpressionAsPattern(i)
+              val parameters = expr match {
+                case expr_cast: Node.SequenceExpression =>
+                  for (i <- expr_cast.expressions) yield {
+                    this.reinterpretExpressionAsArrayPattern(i).asInstanceOf[Node.ArgumentListElement]
                   }
                 case _ =>
-                  this.reinterpretExpressionAsPattern(expr)
+                  Seq(this.reinterpretExpressionAsArrayPattern(expr).asInstanceOf[Node.ArgumentListElement])
               }
-              val parameters = if (expr.isInstanceOf[SequenceExpression]) expr.expressions else Array(expr)
-              expr = new {
-                var `type` = ArrowParameterPlaceHolder
-                var params = parameters
-                var async = false
+              expr = new Node.ArrowParameterPlaceHolder {
+                params = parameters
+                async = false
               }
             }
           }
@@ -899,19 +975,21 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     expr
   }
   
-  def parseArguments() = {
+  def parseArguments(): Array[Node.ArgumentListElement] = {
     this.expect("(")
-    val args = Array.empty[Unit]
+    val args = ArrayBuffer.empty[Node.ArgumentListElement]
     if (!this.`match`(")")) {
-      while (true) {
-        val expr = if (this.`match`("...")) this.parseSpreadElement() else this.isolateCoverGrammar(this.parseAssignmentExpression)
-        args.push(expr)
-        if (this.`match`(")")) {
-          /* Unsupported: Break */ break;
-        }
-        this.expectCommaSeparator()
-        if (this.`match`(")")) {
-          /* Unsupported: Break */ break;
+      breakable {
+        while (true) {
+          val expr = if (this.`match`("...")) this.parseSpreadElement() else this.isolateCoverGrammar(this.parseAssignmentExpression)
+          args.push(expr)
+          if (this.`match`(")")) {
+            break
+          }
+          this.expectCommaSeparator()
+          if (this.`match`(")")) {
+            break
+          }
         }
       }
     }
@@ -919,8 +997,8 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     args
   }
   
-  def isIdentifierName(token: Any) = {
-    token.`type` == 3 || token.`type` == 4 || token.`type` == 1 || token.`type` == 5
+  def isIdentifierName(token: RawToken) = {
+    token.`type` == Identifier || token.`type` == Keyword || token.`type` == BooleanLiteral || token.`type` == NullLiteral
   }
   
   def parseIdentifierName() = {
@@ -929,17 +1007,18 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     if (!this.isIdentifierName(token)) {
       this.throwUnexpectedToken(token)
     }
+    import OrType._
     this.finalize(node, new Node.Identifier(token.value))
   }
   
-  def parseNewExpression() = {
+  def parseNewExpression(): Node.Expression = {
     val node = this.createNode()
     val id = this.parseIdentifierName()
-    assert_1.assert(id.name == "new", "New expression must start with `new`")
-    var expr: Any = _
+    assert(id.name == "new", "New expression must start with `new`")
+    var expr: Node.Expression = null
     if (this.`match`(".")) {
       this.nextToken()
-      if (this.lookahead.`type` == 3 && this.context.inFunctionBody && this.lookahead.value == "target") {
+      if (this.lookahead.`type` == Identifier && this.context.inFunctionBody && this.lookahead.value === "target") {
         val property = this.parseIdentifierName()
         expr = new Node.MetaProperty(id, property)
       } else {
@@ -949,7 +1028,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       this.throwUnexpectedToken(this.lookahead)
     } else {
       val callee = this.isolateCoverGrammar(this.parseLeftHandSideExpression)
-      val args = if (this.`match`("(")) this.parseArguments() else Array()
+      val args = if (this.`match`("(")) this.parseArguments() else Array[Node.ArgumentListElement]()
       expr = new Node.NewExpression(callee, args)
       this.context.isAssignmentTarget = false
       this.context.isBindingElement = false
@@ -957,25 +1036,27 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.finalize(node, expr)
   }
   
-  def parseAsyncArgument() = {
+  def parseAsyncArgument(): Node.ArgumentListElement = {
     val arg = this.parseAssignmentExpression()
     this.context.firstCoverInitializedNameError = null
     arg
   }
   
-  def parseAsyncArguments() = {
+  def parseAsyncArguments(): Array[Node.ArgumentListElement] = {
     this.expect("(")
-    val args = Array.empty[Unit]
+    val args = ArrayBuffer.empty[Node.ArgumentListElement]
     if (!this.`match`(")")) {
-      while (true) {
-        val expr = if (this.`match`("...")) this.parseSpreadElement() else this.isolateCoverGrammar(this.parseAsyncArgument)
-        args.push(expr)
-        if (this.`match`(")")) {
-          /* Unsupported: Break */ break;
-        }
-        this.expectCommaSeparator()
-        if (this.`match`(")")) {
-          /* Unsupported: Break */ break;
+      breakable {
+        while (true) {
+          val expr = if (this.`match`("...")) this.parseSpreadElement() else this.isolateCoverGrammar(this.parseAsyncArgument)
+          args.push(expr)
+          if (this.`match`(")")) {
+            break
+          }
+          this.expectCommaSeparator()
+          if (this.`match`(")")) {
+            break
+          }
         }
       }
     }
@@ -990,78 +1071,80 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       this.scanner.scanComments()
       val next = this.scanner.lex()
       this.scanner.restoreState(state)
-      `match` = next.`type` == 7 && next.value == "("
+      `match` = next.`type` == Punctuator && next.value === "("
     }
     `match`
   }
   
-  def parseImportCall() = {
+  def parseImportCall(): Node.Import = {
     val node = this.createNode()
     this.expectKeyword("import")
     this.finalize(node, new Node.Import())
   }
   
-  def parseLeftHandSideExpressionAllowCall() = {
+  def parseLeftHandSideExpressionAllowCall(): Node.Expression = {
     val startToken = this.lookahead
     val maybeAsync = this.matchContextualKeyword("async")
     val previousAllowIn = this.context.allowIn
     this.context.allowIn = true
-    var expr = new {}
+    var expr: Marker = null
+    var exprNode: Node.Expression = null
     if (this.matchKeyword("super") && this.context.inFunctionBody) {
       expr = this.createNode()
       this.nextToken()
-      expr = this.finalize(expr, new Node.Super())
+      exprNode = this.finalize(expr, new Node.Super())
       if (!this.`match`("(") && !this.`match`(".") && !this.`match`("[")) {
         this.throwUnexpectedToken(this.lookahead)
       }
     } else {
-      expr = this.inheritCoverGrammar(if (this.matchKeyword("new")) this.parseNewExpression else this.parsePrimaryExpression)
+      exprNode = this.inheritCoverGrammar(if (this.matchKeyword("new")) this.parseNewExpression else this.parsePrimaryExpression)
     }
-    while (true) {
-      if (this.`match`(".")) {
-        this.context.isBindingElement = false
-        this.context.isAssignmentTarget = true
-        this.expect(".")
-        val property = this.parseIdentifierName()
-        expr = this.finalize(this.startNode(startToken), new Node.StaticMemberExpression(expr, property))
-      } else if (this.`match`("(")) {
-        val asyncArrow = maybeAsync && startToken.lineNumber == this.lookahead.lineNumber
-        this.context.isBindingElement = false
-        this.context.isAssignmentTarget = false
-        val args = if (asyncArrow) this.parseAsyncArguments() else this.parseArguments()
-        if (expr.isInstanceOf[Import] && args.length != 1) {
-          this.tolerateError(messages_1.Messages.BadImportCallArity)
-        }
-        expr = this.finalize(this.startNode(startToken), new Node.CallExpression(expr, args))
-        if (asyncArrow && this.`match`("=>")) {
-          for (i <- args) {
-            this.reinterpretExpressionAsPattern(i)
+    breakable {
+      while (true) {
+        if (this.`match`(".")) {
+          this.context.isBindingElement = false
+          this.context.isAssignmentTarget = true
+          this.expect(".")
+          val property = this.parseIdentifierName()
+          exprNode = this.finalize(this.startNode(startToken), new Node.StaticMemberExpression(exprNode, property))
+        } else if (this.`match`("(")) {
+          val asyncArrow = maybeAsync && startToken.lineNumber == this.lookahead.lineNumber
+          this.context.isBindingElement = false
+          this.context.isAssignmentTarget = false
+          val args = if (asyncArrow) this.parseAsyncArguments() else this.parseArguments()
+          if (expr.isInstanceOf[Node.Import] && args.length != 1) {
+            this.tolerateError(Messages.BadImportCallArity)
           }
-          expr = new {
-            var `type` = ArrowParameterPlaceHolder
-            var params = args
-            var async = true
+          exprNode = this.finalize(this.startNode(startToken), new Node.CallExpression(exprNode, args))
+          if (asyncArrow && this.`match`("=>")) {
+            val argsReinterpreted = for (i <- args) yield {
+              this.reinterpretExpressionAsArrayPattern(i).asInstanceOf[Node.ArgumentListElement]
+            }
+            exprNode = new Node.ArrowParameterPlaceHolder {
+              params = ArrayBuffer(argsReinterpreted: _*)
+              async = true
+            }
           }
+        } else if (this.`match`("[")) {
+          this.context.isBindingElement = false
+          this.context.isAssignmentTarget = true
+          this.expect("[")
+          val property = this.isolateCoverGrammar(this.parseExpression)
+          this.expect("]")
+          exprNode = this.finalize(this.startNode(startToken), new Node.ComputedMemberExpression(exprNode, property))
+        } else if (this.lookahead.`type` == Template && this.lookahead.head) {
+          val quasi = this.parseTemplateLiteral()
+          exprNode = this.finalize(this.startNode(startToken), new Node.TaggedTemplateExpression(exprNode, quasi))
+        } else {
+          break
         }
-      } else if (this.`match`("[")) {
-        this.context.isBindingElement = false
-        this.context.isAssignmentTarget = true
-        this.expect("[")
-        val property = this.isolateCoverGrammar(this.parseExpression)
-        this.expect("]")
-        expr = this.finalize(this.startNode(startToken), new Node.ComputedMemberExpression(expr, property))
-      } else if (this.lookahead.`type` == 10 && this.lookahead.head) {
-        val quasi = this.parseTemplateLiteral()
-        expr = this.finalize(this.startNode(startToken), new Node.TaggedTemplateExpression(expr, quasi))
-      } else {
-        /* Unsupported: Break */ break;
       }
     }
     this.context.allowIn = previousAllowIn
-    expr
+    exprNode
   }
   
-  def parseSuper() = {
+  def parseSuper(): Node.Super = {
     val node = this.createNode()
     this.expectKeyword("super")
     if (!this.`match`("[") && !this.`match`(".")) {
@@ -1070,46 +1153,48 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.Super())
   }
   
-  def parseLeftHandSideExpression() = {
-    assert_1.assert(this.context.allowIn, "callee of new expression always allow in keyword.")
+  def parseLeftHandSideExpression(): Node.Expression = {
+    assert(this.context.allowIn, "callee of new expression always allow in keyword.")
     val node = this.startNode(this.lookahead)
     var expr = if (this.matchKeyword("super") && this.context.inFunctionBody) this.parseSuper() else this.inheritCoverGrammar(if (this.matchKeyword("new")) this.parseNewExpression else this.parsePrimaryExpression)
-    while (true) {
-      if (this.`match`("[")) {
-        this.context.isBindingElement = false
-        this.context.isAssignmentTarget = true
-        this.expect("[")
-        val property = this.isolateCoverGrammar(this.parseExpression)
-        this.expect("]")
-        expr = this.finalize(node, new Node.ComputedMemberExpression(expr, property))
-      } else if (this.`match`(".")) {
-        this.context.isBindingElement = false
-        this.context.isAssignmentTarget = true
-        this.expect(".")
-        val property = this.parseIdentifierName()
-        expr = this.finalize(node, new Node.StaticMemberExpression(expr, property))
-      } else if (this.lookahead.`type` == 10 && this.lookahead.head) {
-        val quasi = this.parseTemplateLiteral()
-        expr = this.finalize(node, new Node.TaggedTemplateExpression(expr, quasi))
-      } else {
-        /* Unsupported: Break */ break;
+    breakable {
+      while (true) {
+        if (this.`match`("[")) {
+          this.context.isBindingElement = false
+          this.context.isAssignmentTarget = true
+          this.expect("[")
+          val property = this.isolateCoverGrammar(this.parseExpression)
+          this.expect("]")
+          expr = this.finalize(node, new Node.ComputedMemberExpression(expr, property))
+        } else if (this.`match`(".")) {
+          this.context.isBindingElement = false
+          this.context.isAssignmentTarget = true
+          this.expect(".")
+          val property = this.parseIdentifierName()
+          expr = this.finalize(node, new Node.StaticMemberExpression(expr, property))
+        } else if (this.lookahead.`type` == Template && this.lookahead.head) {
+          val quasi = this.parseTemplateLiteral()
+          expr = this.finalize(node, new Node.TaggedTemplateExpression(expr, quasi))
+        } else {
+          break
+        }
       }
     }
     expr
   }
   
   def parseUpdateExpression() = {
-    var expr: Identifier = _
+    var expr: Node.Expression = null
     val startToken = this.lookahead
     if (this.`match`("++") || this.`match`("--")) {
       val node = this.startNode(startToken)
       val token = this.nextToken()
       expr = this.inheritCoverGrammar(this.parseUnaryExpression)
-      if (this.context.strict && expr.isInstanceOf[Identifier] && this.scanner.isRestrictedWord(expr.name)) {
-        this.tolerateError(messages_1.Messages.StrictLHSPrefix)
+      if (this.context.strict && expr.isInstanceOf[Node.Identifier] && this.scanner.isRestrictedWord(expr.asInstanceOf[Node.Identifier].name)) {
+        this.tolerateError(Messages.StrictLHSPrefix)
       }
       if (!this.context.isAssignmentTarget) {
-        this.tolerateError(messages_1.Messages.InvalidLHSInAssignment)
+        this.tolerateError(Messages.InvalidLHSInAssignment)
       }
       val prefix = true
       expr = this.finalize(node, new Node.UpdateExpression(token.value, expr, prefix))
@@ -1117,13 +1202,13 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       this.context.isBindingElement = false
     } else {
       expr = this.inheritCoverGrammar(this.parseLeftHandSideExpressionAllowCall)
-      if (!this.hasLineTerminator && this.lookahead.`type` == 7) {
+      if (!this.hasLineTerminator && this.lookahead.`type` == Punctuator) {
         if (this.`match`("++") || this.`match`("--")) {
-          if (this.context.strict && expr.isInstanceOf[Identifier] && this.scanner.isRestrictedWord(expr.name)) {
-            this.tolerateError(messages_1.Messages.StrictLHSPostfix)
+          if (this.context.strict && expr.isInstanceOf[Node.Identifier] && this.scanner.isRestrictedWord(expr.asInstanceOf[Node.Identifier].name)) {
+            this.tolerateError(Messages.StrictLHSPostfix)
           }
           if (!this.context.isAssignmentTarget) {
-            this.tolerateError(messages_1.Messages.InvalidLHSInAssignment)
+            this.tolerateError(Messages.InvalidLHSInAssignment)
           }
           this.context.isAssignmentTarget = false
           this.context.isBindingElement = false
@@ -1136,22 +1221,23 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     expr
   }
   
-  def parseAwaitExpression() = {
+  def parseAwaitExpression(): Node.AwaitExpression = {
     val node = this.createNode()
     this.nextToken()
     val argument = this.parseUnaryExpression()
     this.finalize(node, new Node.AwaitExpression(argument))
   }
   
-  def parseUnaryExpression() = {
-    var expr: Identifier = _
+  def parseUnaryExpression(): Node.Expression = {
+    var expr: Node.Expression = null
     if (this.`match`("+") || this.`match`("-") || this.`match`("~") || this.`match`("!") || this.matchKeyword("delete") || this.matchKeyword("void") || this.matchKeyword("typeof")) {
       val node = this.startNode(this.lookahead)
       val token = this.nextToken()
       expr = this.inheritCoverGrammar(this.parseUnaryExpression)
-      expr = this.finalize(node, new Node.UnaryExpression(token.value, expr))
-      if (this.context.strict && expr.operator == "delete" && expr.argument.isInstanceOf[Identifier]) {
-        this.tolerateError(messages_1.Messages.StrictDelete)
+      val exprOp = this.finalize(node, new Node.UnaryExpression(token.value, expr))
+      expr = exprOp
+      if (this.context.strict && exprOp.operator == "delete" && exprOp.argument.isInstanceOf[Node.Identifier]) {
+        this.tolerateError(Messages.StrictDelete)
       }
       this.context.isAssignmentTarget = false
       this.context.isBindingElement = false
@@ -1163,10 +1249,10 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     expr
   }
   
-  def parseExponentiationExpression() = {
+  def parseExponentiationExpression(): Node.Expression = {
     val startToken = this.lookahead
     var expr = this.inheritCoverGrammar(this.parseUnaryExpression)
-    if (expr.`type` != syntax_1.Syntax.UnaryExpression && this.`match`("**")) {
+    if (!expr.isInstanceOf[Node.UnaryExpression] && this.`match`("**")) {
       this.nextToken()
       this.context.isAssignmentTarget = false
       this.context.isBindingElement = false
@@ -1177,12 +1263,12 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     expr
   }
   
-  def binaryPrecedence(token: Any) = {
-    val op = token.value
-    var precedence: Double = _
-    if (token.`type` == 7) {
-      precedence = this.operatorPrecedence(op) || 0
-    } else if (token.`type` == 4) {
+  def binaryPrecedence(token: RawToken): Int = {
+    val op: String = token.value
+    var precedence: Int = 0
+    if (token.`type` == Punctuator) {
+      precedence = this.operatorPrecedence(op)
+    } else if (token.`type` == Keyword) {
       precedence = if (op == "instanceof" || this.context.allowIn && op == "in") 7 else 0
     } else {
       precedence = 0
@@ -1190,7 +1276,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     precedence
   }
   
-  def parseBinaryExpression() = {
+  def parseBinaryExpression(): Node.Expression = {
     val startToken = this.lookahead
     var expr = this.inheritCoverGrammar(this.parseExponentiationExpression)
     val token = this.lookahead
@@ -1199,42 +1285,44 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       this.nextToken()
       this.context.isAssignmentTarget = false
       this.context.isBindingElement = false
-      val markers = Array(startToken, this.lookahead)
+      val markers = ArrayBuffer(startToken, this.lookahead)
       var left = expr
       var right = this.isolateCoverGrammar(this.parseExponentiationExpression)
-      val stack = Array(left, token.value, right)
-      val precedences = Array(prec)
-      while (true) {
-        prec = this.binaryPrecedence(this.lookahead)
-        if (prec <= 0) {
-          /* Unsupported: Break */ break;
+      val stack = ArrayBuffer(left, token.value, right)
+      val precedences = ArrayBuffer(prec)
+      breakable {
+        while (true) {
+          prec = this.binaryPrecedence(this.lookahead)
+          if (prec <= 0) {
+            break
+          }
+          // Reduce: make a binary expression from the three topmost entries.
+          while (stack.length > 2 && prec <= precedences(precedences.length - 1)) {
+            right = stack.pop().asInstanceOf[Node.Expression]
+            val operator: String = stack.pop().asInstanceOf[OrType]
+            precedences.pop()
+            left = stack.pop().asInstanceOf[Node.Expression]
+            markers.pop()
+            val node = this.startNode(markers(markers.length - 1))
+            stack.push(this.finalize(node, new Node.BinaryExpression(operator, left, right)))
+          }
+          // Shift.
+          stack.push(this.nextToken().value)
+          precedences.push(prec)
+          markers.push(this.lookahead)
+          stack.push(this.isolateCoverGrammar(this.parseExponentiationExpression))
         }
-        // Reduce: make a binary expression from the three topmost entries.
-        while (stack.length > 2 && prec <= precedences(precedences.length - 1)) {
-          right = stack.pop()
-          val operator = stack.pop()
-          precedences.pop()
-          left = stack.pop()
-          markers.pop()
-          val node = this.startNode(markers(markers.length - 1))
-          stack.push(this.finalize(node, new Node.BinaryExpression(operator, left, right)))
-        }
-        // Shift.
-        stack.push(this.nextToken().value)
-        precedences.push(prec)
-        markers.push(this.lookahead)
-        stack.push(this.isolateCoverGrammar(this.parseExponentiationExpression))
       }
       // Final reduce to clean-up the stack.
       var i = stack.length - 1
-      expr = stack(i)
+      expr = stack(i).asInstanceOf[Node.Expression]
       var lastMarker = markers.pop()
       while (i > 1) {
         val marker = markers.pop()
-        val lastLineStart = lastMarker && lastMarker.lineStart
+        val lastLineStart = if (lastMarker) lastMarker.lineStart else 0
         val node = this.startNode(marker, lastLineStart)
-        val operator = stack(i - 1)
-        expr = this.finalize(node, new Node.BinaryExpression(operator, stack(i - 2), expr))
+        val operator: String = stack(i - 1).asInstanceOf[OrType]
+        expr = this.finalize(node, new Node.BinaryExpression(operator, stack(i - 2).asInstanceOf[Node.Expression], expr))
         i -= 2
         lastMarker = marker
       }
@@ -1242,7 +1330,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     expr
   }
   
-  def parseConditionalExpression() = {
+  def parseConditionalExpression(): Node.Expression = {
     val startToken = this.lookahead
     var expr = this.inheritCoverGrammar(this.parseBinaryExpression)
     if (this.`match`("?")) {
@@ -1260,108 +1348,104 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     expr
   }
   
-  def checkPatternParam(options: Any, param: ArrowParameterPlaceHolder) = {
-    param.`type` match {
-      case syntax_1.Syntax.Identifier =>
-        this.validateParam(options, param, param.name)
-      case syntax_1.Syntax.RestElement =>
+  def checkPatternParam(options: ParameterOptions, param: Node.Node): Unit = {
+    param match {
+      case param: Node.Identifier =>
+        this.validateParam(options, ??? /* param*/, param.name)
+      case param: Node.RestElement =>
         this.checkPatternParam(options, param.argument)
-      case syntax_1.Syntax.AssignmentPattern =>
+      case param: Node.AssignmentPattern =>
         this.checkPatternParam(options, param.left)
-      case syntax_1.Syntax.ArrayPattern =>
+      case param: Node.ArrayPattern =>
         for (i <- param.elements) {
           if (i != null) {
             this.checkPatternParam(options, i)
           }
         }
-      case syntax_1.Syntax.ObjectPattern =>
+      case param: Node.ObjectPattern =>
         for (property <- param.properties) {
-          this.checkPatternParam(options, if (property.isInstanceOf[RestElement]) property else property.value)
+          this.checkPatternParam(options, if (property.isInstanceOf[Node.RestElement]) property else property.asInstanceOf[Node.Property].value)
         }
       case _ =>
     }
     options.simple = options.simple && param.isInstanceOf[Node.Identifier]
   }
   
-  def reinterpretAsCoverFormalsList(expr: Any) = {
-    var params = Array(expr)
-    var asyncArrow = false
-    expr.`type` match {
-      case syntax_1.Syntax.Identifier =>
-      case ArrowParameterPlaceHolder =>
-        params = expr.params
-        asyncArrow = expr.async
-      case _ =>
-        return null
+  def reinterpretAsCoverFormalsList(expr: Node.ArrowParameterPlaceHolder): ParameterOptions = {
+    var paramsSource = ArrayBuffer(expr.params:_*)
+    var paramsTarget = new ArrayBuffer[Node.FunctionParameter](paramsSource.size)
+    var asyncArrow = expr.async
+    object options extends ParameterOptions {
+      simple = true
+      paramSet = mutable.Map.empty
     }
-    object options {
-      var simple = true
-      var paramSet = new {}
-    }
-    for (i <- params.indices) {
-      val param = params(i)
-      param match {
-        case param_cast: AssignmentPattern =>
-          if (param_cast.right.isInstanceOf[YieldExpression]) {
-            if (param_cast.right.argument) {
+    for (i <- paramsSource.indices) {
+      val param = paramsSource(i)
+      val paramReinterpreted = (param: @unchecked) match {
+        case param_cast: Node.AssignmentPattern =>
+          if (param_cast.right.isInstanceOf[Node.YieldExpression]) {
+            val right_cast = param_cast.right.asInstanceOf[Node.YieldExpression]
+            if (right_cast.argument) {
               this.throwUnexpectedToken(this.lookahead)
             }
-            param_cast.right.`type` = syntax_1.Syntax.Identifier
-            param_cast.right.name = "yield"
-            delete param_cast.right.argument
-            delete param_cast.right.delegate
+            val rightAdapted = new Node.Identifier("yield")
+            param_cast.right = rightAdapted
           }
-        case _ =>
-          if (asyncArrow && param.isInstanceOf[Identifier] && param.name == "await") {
+          param_cast
+        case param_cast: Node.FunctionParameter =>
+          if (asyncArrow && param.isInstanceOf[Node.Identifier] && param.asInstanceOf[Node.Identifier].name == "await") {
             this.throwUnexpectedToken(this.lookahead)
           }
+          param_cast
+        //case _ =>
       }
-      this.checkPatternParam(options, param)
-      params(i) = param
+      this.checkPatternParam(options, paramReinterpreted)
+      paramsTarget.push(paramReinterpreted)
     }
     if (this.context.strict || !this.context.allowYield) {
-      for (param <- params) {
+      for (param <- paramsTarget) {
         param match {
-          case param_cast: YieldExpression =>
+          case param_cast: Node.YieldExpression =>
             this.throwUnexpectedToken(this.lookahead)
           case _ =>
         }
       }
     }
-    if (options.message == messages_1.Messages.StrictParamDupe) {
+    if (options.message == Messages.StrictParamDupe) {
       val token = if (this.context.strict) options.stricted else options.firstRestricted
       this.throwUnexpectedToken(token, options.message)
     }
-    new {
-      var simple = options.simple
-      var params = params
-      var stricted = options.stricted
-      var firstRestricted = options.firstRestricted
-      var message = options.message
+    val _params = paramsTarget
+    new ParameterOptions {
+      simple = options.simple
+      params = _params
+      stricted = options.stricted
+      firstRestricted = options.firstRestricted
+      message = options.message
     }
   }
-  
-  def parseAssignmentExpression() = {
-    var expr = new {}
+
+  /* called when result may be a normal expression or assignment expression */
+  def parseAssignmentExpression(): Node.Expression = {
+    var exprTemp: Node.Expression = null
     if (!this.context.allowYield && this.matchKeyword("yield")) {
-      expr = this.parseYieldExpression()
+      this.parseYieldExpression()
     } else {
       val startToken = this.lookahead
       var token = startToken
-      expr = this.parseConditionalExpression()
-      if (token.`type` == 3 && token.lineNumber == this.lookahead.lineNumber && token.value == "async") {
-        if (this.lookahead.`type` == 3 || this.matchKeyword("yield")) {
+      exprTemp = this.parseConditionalExpression()
+      if (token.`type` == Identifier && token.lineNumber == this.lookahead.lineNumber && token.value === "async") {
+        if (this.lookahead.`type` == Identifier || this.matchKeyword("yield")) {
           val arg = this.parsePrimaryExpression()
-          this.reinterpretExpressionAsPattern(arg)
-          expr = new {
-            var `type` = ArrowParameterPlaceHolder
-            var params = Array(arg)
-            var async = true
+          val argT = this.reinterpretExpressionAsArrayPattern(arg).asInstanceOf[Node.ArgumentListElement]
+          exprTemp = new Node.ArrowParameterPlaceHolder {
+            params = ArrayBuffer(argT)
+            async = true
           }
         }
       }
-      if (expr.isInstanceOf[ArrowParameterPlaceHolder] || this.`match`("=>")) {
-        var expr_cast = expr.asInstanceOf[ArrowParameterPlaceHolder]
+      if (exprTemp.isInstanceOf[Node.ArrowParameterPlaceHolder] || this.`match`("=>")) {
+        val expr_cast = exprTemp.asInstanceOf[Node.ArrowParameterPlaceHolder]
         // https://tc39.github.io/ecma262/#sec-arrow-function-definitions
         this.context.isAssignmentTarget = false
         this.context.isBindingElement = false
@@ -1381,7 +1465,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
           this.context.await = isAsync
           val node = this.startNode(startToken)
           this.expect("=>")
-          var body = _
+          var body: Node.BlockStatementOrExpression = null
           if (this.`match`("{")) {
             val previousAllowIn = this.context.allowIn
             this.context.allowIn = true
@@ -1390,78 +1474,83 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
           } else {
             body = this.isolateCoverGrammar(this.parseAssignmentExpression)
           }
-          val expression = body.`type` != syntax_1.Syntax.BlockStatement
+          val expression = !body.isInstanceOf[Node.BlockStatement]
           if (this.context.strict && list.firstRestricted) {
             this.throwUnexpectedToken(list.firstRestricted, list.message)
           }
           if (this.context.strict && list.stricted) {
             this.tolerateUnexpectedToken(list.stricted, list.message)
           }
-          expr_cast = if (isAsync) this.finalize(node, new Node.AsyncArrowFunctionExpression(list.params, body, expression)) else this.finalize(node, new Node.ArrowFunctionExpression(list.params, body, expression))
           this.context.strict = previousStrict
           this.context.allowStrictDirective = previousAllowStrictDirective
           this.context.allowYield = previousAllowYield
           this.context.await = previousAwait
+          if (isAsync) this.finalize(node, new Node.AsyncArrowFunctionExpression(list.params, body, expression)) else this.finalize(node, new Node.ArrowFunctionExpression(list.params, body, expression))
+        } else {
+          exprTemp
         }
       } else {
         if (this.matchAssign()) {
           if (!this.context.isAssignmentTarget) {
-            this.tolerateError(messages_1.Messages.InvalidLHSInAssignment)
+            this.tolerateError(Messages.InvalidLHSInAssignment)
           }
-          if (this.context.strict && expr.isInstanceOf[Identifier]) {
-            var expr_cast = expr.asInstanceOf[Identifier]
+          if (this.context.strict && exprTemp.isInstanceOf[Node.Identifier]) {
+            val expr_cast = exprTemp.asInstanceOf[Node.Identifier]
             val id = expr_cast
             if (this.scanner.isRestrictedWord(id.name)) {
-              this.tolerateUnexpectedToken(token, messages_1.Messages.StrictLHSAssignment)
+              this.tolerateUnexpectedToken(token, Messages.StrictLHSAssignment)
             }
             if (this.scanner.isStrictModeReservedWord(id.name)) {
-              this.tolerateUnexpectedToken(token, messages_1.Messages.StrictReservedWord)
+              this.tolerateUnexpectedToken(token, Messages.StrictReservedWord)
             }
           }
           if (!this.`match`("=")) {
             this.context.isAssignmentTarget = false
             this.context.isBindingElement = false
           } else {
-            this.reinterpretExpressionAsPattern(expr)
+            exprTemp = this.reinterpretExpressionAsArrayPattern(exprTemp).asInstanceOf[Node.Expression]
           }
           token = this.nextToken()
           val operator = token.value
           val right = this.isolateCoverGrammar(this.parseAssignmentExpression)
-          expr = this.finalize(this.startNode(startToken), new Node.AssignmentExpression(operator, expr, right))
           this.context.firstCoverInitializedNameError = null
+          this.finalize(this.startNode(startToken), new Node.AssignmentExpression(operator, exprTemp, right))
+        } else {
+          exprTemp
         }
       }
     }
-    expr
   }
-  
-  def parseExpression() = {
+
+  def parseExpression(): Node.Expression = {
     val startToken = this.lookahead
-    var expr = this.isolateCoverGrammar(this.parseAssignmentExpression)
+    var expr: Node.Expression = this.isolateCoverGrammar(this.parseAssignmentExpression)
     if (this.`match`(",")) {
-      val expressions = Array.empty[Any]
+      val expressions = ArrayBuffer.empty[Node.Expression]
       expressions.push(expr)
-      while (this.lookahead.`type` != 2) {
-        if (!this.`match`(",")) {
-          /* Unsupported: Break */ break;
+      breakable {
+        while (this.lookahead.`type` != EOF) {
+          if (!this.`match`(",")) {
+            break
+          }
+          this.nextToken()
+          expressions.push(this.isolateCoverGrammar(this.parseAssignmentExpression))
         }
-        this.nextToken()
-        expressions.push(this.isolateCoverGrammar(this.parseAssignmentExpression))
       }
       expr = this.finalize(this.startNode(startToken), new Node.SequenceExpression(expressions))
     }
     expr
   }
   
-  def parseStatementListItem() = {
-    var statement = _
+  def parseStatementListItem(): Node.StatementListItem = {
+    var statement: Node.StatementListItem = null
     this.context.isAssignmentTarget = true
     this.context.isBindingElement = true
-    if (this.lookahead.`type` == 4) {
-      this.lookahead.value match {
+    if (this.lookahead.`type` == Keyword) {
+      this.lookahead.value.get[String] match {
         case "export" =>
           if (!this.context.isModule) {
-            this.tolerateUnexpectedToken(this.lookahead, messages_1.Messages.IllegalExportDeclaration)
+            this.tolerateUnexpectedToken(this.lookahead, Messages.IllegalExportDeclaration)
           }
           statement = this.parseExportDeclaration()
         case "import" =>
@@ -1469,21 +1558,21 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
             statement = this.parseExpressionStatement()
           } else {
             if (!this.context.isModule) {
-              this.tolerateUnexpectedToken(this.lookahead, messages_1.Messages.IllegalImportDeclaration)
+              this.tolerateUnexpectedToken(this.lookahead, Messages.IllegalImportDeclaration)
             }
             statement = this.parseImportDeclaration()
           }
         case "const" =>
-          statement = this.parseLexicalDeclaration(new {
-            var inFor = false
+          statement = this.parseLexicalDeclaration(new VariableOptions {
+            inFor = false
           })
         case "function" =>
           statement = this.parseFunctionDeclaration()
         case "class" =>
           statement = this.parseClassDeclaration()
         case "let" =>
-          statement = if (this.isLexicalDeclaration()) this.parseLexicalDeclaration(new {
-            var inFor = false
+          statement = if (this.isLexicalDeclaration()) this.parseLexicalDeclaration(new VariableOptions {
+            inFor = false
           }) else this.parseStatement()
         case _ =>
           statement = this.parseStatement()
@@ -1494,49 +1583,51 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     statement
   }
   
-  def parseBlock() = {
+  def parseBlock(): Node.BlockStatement = {
     val node = this.createNode()
     this.expect("{")
-    val block = Array.empty[Any]
-    while (true) {
-      if (this.`match`("}")) {
-        /* Unsupported: Break */ break;
+    val block = ArrayBuffer.empty[Node.StatementListItem]
+    breakable {
+      while (true) {
+        if (this.`match`("}")) {
+          break
+        }
+        block.push(this.parseStatementListItem())
       }
-      block.push(this.parseStatementListItem())
     }
     this.expect("}")
     this.finalize(node, new Node.BlockStatement(block))
   }
   
-  def parseLexicalBinding(kind: String, options: Any) = {
+  def parseLexicalBinding(kind: String, options: VariableOptions): Node.VariableDeclarator = {
     val node = this.createNode()
-    val params = Array.empty[Any]
+    val params = ArrayBuffer.empty[RawToken]
     val id = this.parsePattern(params, kind)
-    if (this.context.strict && id.isInstanceOf[Identifier]) {
-      val id_cast = id.asInstanceOf[Identifier]
+    if (this.context.strict && id.isInstanceOf[Node.Identifier]) {
+      val id_cast = id.asInstanceOf[Node.Identifier]
       if (this.scanner.isRestrictedWord(id_cast.name)) {
-        this.tolerateError(messages_1.Messages.StrictVarName)
+        this.tolerateError(Messages.StrictVarName)
       }
     }
-    var init = null
+    var init: Node.Expression = null
     if (kind == "const") {
       if (!this.matchKeyword("in") && !this.matchContextualKeyword("of")) {
         if (this.`match`("=")) {
           this.nextToken()
           init = this.isolateCoverGrammar(this.parseAssignmentExpression)
         } else {
-          this.throwError(messages_1.Messages.DeclarationMissingInitializer, "const")
+          this.throwError(Messages.DeclarationMissingInitializer, "const")
         }
       }
-    } else if (!options.inFor && id.`type` != syntax_1.Syntax.Identifier || this.`match`("=")) {
+    } else if (!options.inFor && !id.isInstanceOf[Node.Identifier] || this.`match`("=")) {
       this.expect("=")
       init = this.isolateCoverGrammar(this.parseAssignmentExpression)
     }
     this.finalize(node, new Node.VariableDeclarator(id, init))
   }
   
-  def parseBindingList(kind: String, options: Any) = {
-    val list = Array(this.parseLexicalBinding(kind, options))
+  def parseBindingList(kind: String, options: VariableOptions): Array[Node.VariableDeclarator] = {
+    val list = ArrayBuffer(this.parseLexicalBinding(kind, options))
     while (this.`match`(",")) {
       this.nextToken()
       list.push(this.parseLexicalBinding(kind, options))
@@ -1544,47 +1635,49 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     list
   }
   
-  def isLexicalDeclaration() = {
+  def isLexicalDeclaration(): Boolean = {
     val state = this.scanner.saveState()
     this.scanner.scanComments()
     val next = this.scanner.lex()
     this.scanner.restoreState(state)
-    next.`type` == 3 || next.`type` == 7 && next.value == "[" || next.`type` == 7 && next.value == "{" || next.`type` == 4 && next.value == "let" || next.`type` == 4 && next.value == "yield"
+    next.`type` == Identifier || next.`type` == Punctuator && next.value === "[" || next.`type` == Punctuator && next.value === "{" || next.`type` == Keyword && next.value === "let" || next.`type` == Keyword && next.value === "yield"
   }
   
-  def parseLexicalDeclaration(options: Any) = {
+  def parseLexicalDeclaration(options: VariableOptions): Node.VariableDeclaration = {
     val node = this.createNode()
-    val kind = this.nextToken().value
-    assert_1.assert(kind == "let" || kind == "const", "Lexical declaration must be either let or const")
+    val kind: String = this.nextToken().value
+    assert(kind == "let" || kind == "const", "Lexical declaration must be either let or const")
     val declarations = this.parseBindingList(kind, options)
     this.consumeSemicolon()
     this.finalize(node, new Node.VariableDeclaration(declarations, kind))
   }
   
-  def parseBindingRestElement(params: Array[Any], kind: String) = {
+  def parseBindingRestElement(params: ArrayBuffer[RawToken], kind: String): Node.RestElement = {
     val node = this.createNode()
     this.expect("...")
     val arg = this.parsePattern(params, kind)
     this.finalize(node, new Node.RestElement(arg))
   }
   
-  def parseArrayPattern(params: Array[Any], kind: String) = {
+  def parseArrayPattern(params: ArrayBuffer[RawToken], kind: String): Node.ArrayPattern = {
     val node = this.createNode()
     this.expect("[")
-    val elements = Array.empty[Any]
-    while (!this.`match`("]")) {
-      if (this.`match`(",")) {
-        this.nextToken()
-        elements.push(null)
-      } else {
-        if (this.`match`("...")) {
-          elements.push(this.parseBindingRestElement(params, kind))
-          /* Unsupported: Break */ break;
+    val elements = ArrayBuffer.empty[Node.ArrayPatternElement]
+    breakable {
+      while (!this.`match`("]")) {
+        if (this.`match`(",")) {
+          this.nextToken()
+          elements.push(null)
         } else {
-          elements.push(this.parsePatternWithDefault(params, kind))
-        }
-        if (!this.`match`("]")) {
-          this.expect(",")
+          if (this.`match`("...")) {
+            elements.push(this.parseBindingRestElement(params, kind))
+            break
+          } else {
+            elements.push(this.parsePatternWithDefault(params, kind).asInstanceOf[Node.ArrayPatternElement])
+          }
+          if (!this.`match`("]")) {
+            this.expect(",")
+          }
         }
       }
     }
@@ -1592,14 +1685,14 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.ArrayPattern(elements))
   }
   
-  def parsePropertyPattern(params: Array[Any], kind: String) = {
+  def parsePropertyPattern(params: ArrayBuffer[RawToken], kind: String): Node.Property = {
     val node = this.createNode()
     var computed = false
     var shorthand = false
     val method = false
-    var key = _
-    var value = _
-    if (this.lookahead.`type` == 3) {
+    var key: Node.PropertyKey = null
+    var value: Node.PropertyValue = null
+    if (this.lookahead.`type` == Identifier) {
       val keyToken = this.lookahead
       key = this.parseVariableIdentifier()
       val init = this.finalize(node, new Node.Identifier(keyToken.value))
@@ -1615,33 +1708,33 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         value = init
       } else {
         this.expect(":")
-        value = this.parsePatternWithDefault(params, kind)
+        value = this.parsePatternWithDefault(params, kind).asInstanceOf[Node.PropertyValue]
       }
     } else {
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
       this.expect(":")
-      value = this.parsePatternWithDefault(params, kind)
+      value = this.parsePatternWithDefault(params, kind).asInstanceOf[Node.PropertyValue]
     }
     this.finalize(node, new Node.Property("init", key, computed, value, method, shorthand))
   }
   
-  def parseRestProperty(params: Array[Any], kind: String) = {
+  def parseRestProperty(params: ArrayBuffer[RawToken], kind: String): Node.RestElement = {
     val node = this.createNode()
     this.expect("...")
     val arg = this.parsePattern(params)
     if (this.`match`("=")) {
-      this.throwError(messages_1.Messages.DefaultRestProperty)
+      this.throwError(Messages.DefaultRestProperty)
     }
     if (!this.`match`("}")) {
-      this.throwError(messages_1.Messages.PropertyAfterRestProperty)
+      this.throwError(Messages.PropertyAfterRestProperty)
     }
     this.finalize(node, new Node.RestElement(arg))
   }
   
-  def parseObjectPattern(params: Array[Any], kind: String) = {
+  def parseObjectPattern(params: ArrayBuffer[RawToken], kind: String): Node.ObjectPattern = {
     val node = this.createNode()
-    val properties = Array.empty[Any]
+    val properties = ArrayBuffer.empty[Node.ObjectPatternProperty]
     this.expect("{")
     while (!this.`match`("}")) {
       properties.push(if (this.`match`("...")) this.parseRestProperty(params, kind) else this.parsePropertyPattern(params, kind))
@@ -1653,15 +1746,15 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.ObjectPattern(properties))
   }
   
-  def parsePattern(params: Array[Any], kind: String) = {
-    var pattern = _
+  def parsePattern(params: ArrayBuffer[RawToken], kind: String = ""): Node.BindingIdentifierOrPattern = {
+    var pattern: Node.BindingIdentifierOrPattern = null
     if (this.`match`("[")) {
       pattern = this.parseArrayPattern(params, kind)
     } else if (this.`match`("{")) {
       pattern = this.parseObjectPattern(params, kind)
     } else {
       if (this.matchKeyword("let") && (kind == "const" || kind == "let")) {
-        this.tolerateUnexpectedToken(this.lookahead, messages_1.Messages.LetInLexicalBinding)
+        this.tolerateUnexpectedToken(this.lookahead, Messages.LetInLexicalBinding)
       }
       params.push(this.lookahead)
       pattern = this.parseVariableIdentifier(kind)
@@ -1669,7 +1762,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     pattern
   }
   
-  def parsePatternWithDefault(params: Array[Any], kind: String) = {
+  def parsePatternWithDefault(params: ArrayBuffer[RawToken], kind: String = ""): Node.BindingIdentifierOrPattern = {
     val startToken = this.lookahead
     var pattern = this.parsePattern(params, kind)
     if (this.`match`("=")) {
@@ -1678,59 +1771,60 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       this.context.allowYield = true
       val right = this.isolateCoverGrammar(this.parseAssignmentExpression)
       this.context.allowYield = previousAllowYield
-      pattern = this.finalize(this.startNode(startToken), new Node.AssignmentPattern(pattern, right))
+      this.finalize[Node.BindingIdentifierOrPattern](this.startNode(startToken), new Node.AssignmentPattern(pattern, right))
+    } else {
+      pattern.asInstanceOf[Node.BindingIdentifier]
     }
-    pattern
   }
   
-  def parseVariableIdentifier(kind: String) = {
+  def parseVariableIdentifier(kind: String = ""): Node.Identifier = {
     val node = this.createNode()
     val token = this.nextToken()
-    if (token.`type` == 4 && token.value == "yield") {
+    if (token.`type` == Keyword && token.value === "yield") {
       if (this.context.strict) {
-        this.tolerateUnexpectedToken(token, messages_1.Messages.StrictReservedWord)
+        this.tolerateUnexpectedToken(token, Messages.StrictReservedWord)
       } else if (!this.context.allowYield) {
         this.throwUnexpectedToken(token)
       }
-    } else if (token.`type` != 3) {
-      if (this.context.strict && token.`type` == 4 && this.scanner.isStrictModeReservedWord(token.value)) {
-        this.tolerateUnexpectedToken(token, messages_1.Messages.StrictReservedWord)
+    } else if (token.`type` != Identifier) {
+      if (this.context.strict && token.`type` == Keyword && this.scanner.isStrictModeReservedWord(token.value)) {
+        this.tolerateUnexpectedToken(token, Messages.StrictReservedWord)
       } else {
-        if (this.context.strict || token.value != "let" || kind != "var") {
+        if (this.context.strict || (token.value !== "let") || kind != "var") {
           this.throwUnexpectedToken(token)
         }
       }
-    } else if ((this.context.isModule || this.context.await) && token.`type` == 3 && token.value == "await") {
+    } else if ((this.context.isModule || this.context.await) && token.`type` == Identifier && token.value === "await") {
       this.tolerateUnexpectedToken(token)
     }
     this.finalize(node, new Node.Identifier(token.value))
   }
   
-  def parseVariableDeclaration(options: Any) = {
+  def parseVariableDeclaration(options: VariableOptions): Node.VariableDeclarator = {
     val node = this.createNode()
-    val params = Array.empty[Any]
+    val params = ArrayBuffer.empty[RawToken]
     val id = this.parsePattern(params, "var")
-    if (this.context.strict && id.isInstanceOf[Identifier]) {
-      val id_cast = id.asInstanceOf[Identifier]
+    if (this.context.strict && id.isInstanceOf[Node.Identifier]) {
+      val id_cast = id.asInstanceOf[Node.Identifier]
       if (this.scanner.isRestrictedWord(id_cast.name)) {
-        this.tolerateError(messages_1.Messages.StrictVarName)
+        this.tolerateError(Messages.StrictVarName)
       }
     }
-    var init = null
+    var init: Node.Expression = null
     if (this.`match`("=")) {
       this.nextToken()
       init = this.isolateCoverGrammar(this.parseAssignmentExpression)
-    } else if (id.`type` != syntax_1.Syntax.Identifier && !options.inFor) {
+    } else if (!id.isInstanceOf[Node.Identifier] && !options.inFor) {
       this.expect("=")
     }
     this.finalize(node, new Node.VariableDeclarator(id, init))
   }
   
-  def parseVariableDeclarationList(options: Any) = {
-    object opt {
-      var inFor = options.inFor
+  def parseVariableDeclarationList(options: VariableOptions) = {
+    object opt extends VariableOptions{
+      inFor = options.inFor
     }
-    val list = Array.empty[Any]
+    val list = ArrayBuffer.empty[Node.VariableDeclarator]
     list.push(this.parseVariableDeclaration(opt))
     while (this.`match`(",")) {
       this.nextToken()
@@ -1739,40 +1833,40 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     list
   }
   
-  def parseVariableStatement() = {
+  def parseVariableStatement(): Node.VariableDeclaration = {
     val node = this.createNode()
     this.expectKeyword("var")
-    val declarations = this.parseVariableDeclarationList(new {
-      var inFor = false
+    val declarations = this.parseVariableDeclarationList(new VariableOptions {
+      inFor = false
     })
     this.consumeSemicolon()
     this.finalize(node, new Node.VariableDeclaration(declarations, "var"))
   }
   
-  def parseEmptyStatement() = {
+  def parseEmptyStatement(): Node.EmptyStatement = {
     val node = this.createNode()
     this.expect(";")
     this.finalize(node, new Node.EmptyStatement())
   }
   
-  def parseExpressionStatement() = {
+  def parseExpressionStatement(): Node.ExpressionStatement = {
     val node = this.createNode()
     val expr = this.parseExpression()
     this.consumeSemicolon()
     this.finalize(node, new Node.ExpressionStatement(expr))
   }
   
-  def parseIfClause() = {
+  def parseIfClause(): Node.Statement = {
     if (this.context.strict && this.matchKeyword("function")) {
-      this.tolerateError(messages_1.Messages.StrictFunction)
+      this.tolerateError(Messages.StrictFunction)
     }
     this.parseStatement()
   }
   
-  def parseIfStatement() = {
+  def parseIfStatement(): Node.IfStatement = {
     val node = this.createNode()
-    var consequent = _
-    var alternate = null
+    var consequent: Node.Statement = null
+    var alternate: Node.Statement = null
     this.expectKeyword("if")
     this.expect("(")
     val test = this.parseExpression()
@@ -1813,7 +1907,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   
   def parseWhileStatement() = {
     val node = this.createNode()
-    var body = _
+    var body: Node.Statement = null
     this.expectKeyword("while")
     this.expect("(")
     val test = this.parseExpression()
@@ -1831,12 +1925,15 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   }
   
   def parseForStatement() = {
-    var init = null
-    var test = null
-    var update = null
+    var init: Marker = null
+    var test: Marker = null
+    var update: Marker = null
+    var initNode: Node.ExpressionOrStatement = null
+    var testNode: Node.Expression = null
+    var updateNode: Node.Expression = null
     var forIn = true
-    var left = new {}
-    var right = new {}
+    var left: Node.ExpressionOrStatement = null
+    var right: Node.Expression = null
     val node = this.createNode()
     this.expectKeyword("for")
     this.expect("(")
@@ -1848,113 +1945,113 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         this.nextToken()
         val previousAllowIn = this.context.allowIn
         this.context.allowIn = false
-        val declarations = this.parseVariableDeclarationList(new {
-          var inFor = true
+        val declarations = this.parseVariableDeclarationList(new VariableOptions {
+          inFor = true
         })
         this.context.allowIn = previousAllowIn
         if (declarations.length == 1 && this.matchKeyword("in")) {
           val decl = declarations(0)
-          if (decl.init && (decl.id.isInstanceOf[ArrayPattern] || decl.id.isInstanceOf[ObjectPattern] || this.context.strict)) {
-            this.tolerateError(messages_1.Messages.ForInOfLoopInitializer, "for-in")
+          if (decl.init && (decl.id.isInstanceOf[Node.ArrayPattern] || decl.id.isInstanceOf[Node.ObjectPattern] || this.context.strict)) {
+            this.tolerateError(Messages.ForInOfLoopInitializer, "for-in")
           }
-          init = this.finalize(init, new Node.VariableDeclaration(declarations, "var"))
+          initNode = this.finalize(init, new Node.VariableDeclaration(declarations, "var"))
           this.nextToken()
-          left = init
+          left = initNode
           right = this.parseExpression()
           init = null
         } else if (declarations.length == 1 && declarations(0).init == null && this.matchContextualKeyword("of")) {
-          init = this.finalize(init, new Node.VariableDeclaration(declarations, "var"))
+          initNode = this.finalize(init, new Node.VariableDeclaration(declarations, "var"))
           this.nextToken()
-          left = init
+          left = initNode
           right = this.parseAssignmentExpression()
           init = null
           forIn = false
         } else {
-          init = this.finalize(init, new Node.VariableDeclaration(declarations, "var"))
+          initNode = this.finalize(init, new Node.VariableDeclaration(declarations, "var"))
           this.expect(";")
         }
       } else if (this.matchKeyword("const") || this.matchKeyword("let")) {
         init = this.createNode()
         val kind = this.nextToken().value
-        if (!this.context.strict && this.lookahead.value == "in") {
-          init = this.finalize(init, new Node.Identifier(kind))
+        if (!this.context.strict && this.lookahead.value === "in") {
+          initNode = this.finalize(init, new Node.Identifier(kind))
           this.nextToken()
-          left = init
+          left = initNode
           right = this.parseExpression()
           init = null
         } else {
           val previousAllowIn = this.context.allowIn
           this.context.allowIn = false
-          val declarations = this.parseBindingList(kind, new {
-            var inFor = true
+          val declarations = this.parseBindingList(kind, new VariableOptions {
+            inFor = true
           })
           this.context.allowIn = previousAllowIn
           if (declarations.length == 1 && declarations(0).init == null && this.matchKeyword("in")) {
-            init = this.finalize(init, new Node.VariableDeclaration(declarations, kind))
+            initNode = this.finalize(init, new Node.VariableDeclaration(declarations, kind))
             this.nextToken()
-            left = init
+            left = initNode
             right = this.parseExpression()
             init = null
           } else if (declarations.length == 1 && declarations(0).init == null && this.matchContextualKeyword("of")) {
-            init = this.finalize(init, new Node.VariableDeclaration(declarations, kind))
+            initNode = this.finalize(init, new Node.VariableDeclaration(declarations, kind))
             this.nextToken()
-            left = init
+            left = initNode
             right = this.parseAssignmentExpression()
             init = null
             forIn = false
           } else {
             this.consumeSemicolon()
-            init = this.finalize(init, new Node.VariableDeclaration(declarations, kind))
+            initNode = this.finalize(init, new Node.VariableDeclaration(declarations, kind))
           }
         }
       } else {
         val initStartToken = this.lookahead
         val previousAllowIn = this.context.allowIn
         this.context.allowIn = false
-        init = this.inheritCoverGrammar(this.parseAssignmentExpression)
+        initNode = this.inheritCoverGrammar(this.parseAssignmentExpression)
         this.context.allowIn = previousAllowIn
         if (this.matchKeyword("in")) {
-          if (!this.context.isAssignmentTarget || init.isInstanceOf[AssignmentExpression]) {
-            this.tolerateError(messages_1.Messages.InvalidLHSInForIn)
+          if (!this.context.isAssignmentTarget || init.isInstanceOf[Node.AssignmentExpression]) {
+            this.tolerateError(Messages.InvalidLHSInForIn)
           }
           this.nextToken()
-          this.reinterpretExpressionAsPattern(init)
-          left = init
+          initNode = this.reinterpretExpressionAsArrayPattern(initNode).asInstanceOf[Node.ExpressionOrStatement]
+          left = initNode
           right = this.parseExpression()
           init = null
         } else if (this.matchContextualKeyword("of")) {
-          if (!this.context.isAssignmentTarget || init.isInstanceOf[AssignmentExpression]) {
-            this.tolerateError(messages_1.Messages.InvalidLHSInForLoop)
+          if (!this.context.isAssignmentTarget || init.isInstanceOf[Node.AssignmentExpression]) {
+            this.tolerateError(Messages.InvalidLHSInForLoop)
           }
           this.nextToken()
-          this.reinterpretExpressionAsPattern(init)
-          left = init
+          initNode = this.reinterpretExpressionAsArrayPattern(initNode).asInstanceOf[Node.ExpressionOrStatement]
+          left = initNode
           right = this.parseAssignmentExpression()
           init = null
           forIn = false
         } else {
           if (this.`match`(",")) {
-            val initSeq = Array(init)
+            val initSeq = ArrayBuffer[Node.Expression](initNode.asInstanceOf[Node.Expression])
             while (this.`match`(",")) {
               this.nextToken()
               initSeq.push(this.isolateCoverGrammar(this.parseAssignmentExpression))
             }
-            init = this.finalize(this.startNode(initStartToken), new Node.SequenceExpression(initSeq))
+            initNode = this.finalize(this.startNode(initStartToken), new Node.SequenceExpression(initSeq))
           }
           this.expect(";")
         }
       }
     }
-    if (left.getClass == "undefined") {
+    if (left == null) {
       if (!this.`match`(";")) {
-        test = this.parseExpression()
+        testNode = this.parseExpression()
       }
       this.expect(";")
       if (!this.`match`(")")) {
-        update = this.parseExpression()
+        updateNode = this.parseExpression()
       }
     }
-    var body = _
+    var body: Node.Statement = null
     if (!this.`match`(")") && this.config.tolerant) {
       this.tolerateUnexpectedToken(this.nextToken())
       body = this.finalize(this.createNode(), new Node.EmptyStatement())
@@ -1965,54 +2062,54 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       body = this.isolateCoverGrammar(this.parseStatement)
       this.context.inIteration = previousInIteration
     }
-    if (left.getClass == "undefined") this.finalize(node, new Node.ForStatement(init, test, update, body)) else if (forIn) this.finalize(node, new Node.ForInStatement(left, right, body)) else this.finalize(node, new Node.ForOfStatement(left, right, body))
+    if (left == null) this.finalize(node, new Node.ForStatement(initNode, testNode, updateNode, body)) else if (forIn) this.finalize(node, new Node.ForInStatement(left, right, body)) else this.finalize(node, new Node.ForOfStatement(left, right, body))
   }
   
-  def parseContinueStatement() = {
+  def parseContinueStatement(): Node.ContinueStatement = {
     val node = this.createNode()
     this.expectKeyword("continue")
-    var label = null
-    if (this.lookahead.`type` == 3 && !this.hasLineTerminator) {
+    var label: Node.Identifier = null
+    if (this.lookahead.`type` == Identifier && !this.hasLineTerminator) {
       val id = this.parseVariableIdentifier()
       label = id
       val key = "$" + id.name
-      if (!Object.prototype.hasOwnProperty.call(this.context.labelSet, key)) {
-        this.throwError(messages_1.Messages.UnknownLabel, id.name)
+      if (!(this.context.labelSet contains key)) {
+        this.throwError(Messages.UnknownLabel, id.name)
       }
     }
     this.consumeSemicolon()
     if (label == null && !this.context.inIteration) {
-      this.throwError(messages_1.Messages.IllegalContinue)
+      this.throwError(Messages.IllegalContinue)
     }
     this.finalize(node, new Node.ContinueStatement(label))
   }
   
-  def parseBreakStatement() = {
+  def parseBreakStatement(): Node.BreakStatement = {
     val node = this.createNode()
     this.expectKeyword("break")
-    var label = null
-    if (this.lookahead.`type` == 3 && !this.hasLineTerminator) {
+    var label: Node.Identifier = null
+    if (this.lookahead.`type` == Identifier && !this.hasLineTerminator) {
       val id = this.parseVariableIdentifier()
       val key = "$" + id.name
-      if (!Object.prototype.hasOwnProperty.call(this.context.labelSet, key)) {
-        this.throwError(messages_1.Messages.UnknownLabel, id.name)
+      if (!(this.context.labelSet contains key)) {
+        this.throwError(Messages.UnknownLabel, id.name)
       }
       label = id
     }
     this.consumeSemicolon()
     if (label == null && !this.context.inIteration && !this.context.inSwitch) {
-      this.throwError(messages_1.Messages.IllegalBreak)
+      this.throwError(Messages.IllegalBreak)
     }
     this.finalize(node, new Node.BreakStatement(label))
   }
   
-  def parseReturnStatement() = {
+  def parseReturnStatement(): Node.ReturnStatement = {
     if (!this.context.inFunctionBody) {
-      this.tolerateError(messages_1.Messages.IllegalReturn)
+      this.tolerateError(Messages.IllegalReturn)
     }
     val node = this.createNode()
     this.expectKeyword("return")
-    val hasArgument = !this.`match`(";") && !this.`match`("}") && !this.hasLineTerminator && this.lookahead.`type` != 2 || this.lookahead.`type` == 10
+    val hasArgument = !this.`match`(";") && !this.`match`("}") && !this.hasLineTerminator && this.lookahead.`type` != EOF || this.lookahead.`type` == Template
     val argument = if (hasArgument) this.parseExpression() else null
     this.consumeSemicolon()
     this.finalize(node, new Node.ReturnStatement(argument))
@@ -2020,10 +2117,10 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   
   def parseWithStatement() = {
     if (this.context.strict) {
-      this.tolerateError(messages_1.Messages.StrictModeWith)
+      this.tolerateError(Messages.StrictModeWith)
     }
     val node = this.createNode()
-    var body = _
+    var body: Node.Statement = null
     this.expectKeyword("with")
     this.expect("(")
     val `object` = this.parseExpression()
@@ -2037,9 +2134,9 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.WithStatement(`object`, body))
   }
   
-  def parseSwitchCase() = {
+  def parseSwitchCase(): Node.SwitchCase = {
     val node = this.createNode()
-    var test = _
+    var test: Node.Expression = null
     if (this.matchKeyword("default")) {
       this.nextToken()
       test = null
@@ -2048,17 +2145,19 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       test = this.parseExpression()
     }
     this.expect(":")
-    val consequent = Array.empty[Any]
-    while (true) {
-      if (this.`match`("}") || this.matchKeyword("default") || this.matchKeyword("case")) {
-        /* Unsupported: Break */ break;
+    val consequent = ArrayBuffer.empty[Node.Statement]
+    breakable {
+      while (true) {
+        if (this.`match`("}") || this.matchKeyword("default") || this.matchKeyword("case")) {
+          break
+        }
+        consequent.push(this.parseStatementListItem().asInstanceOf[Node.Statement])
       }
-      consequent.push(this.parseStatementListItem())
     }
     this.finalize(node, new Node.SwitchCase(test, consequent))
   }
   
-  def parseSwitchStatement() = {
+  def parseSwitchStatement(): Node.SwitchStatement = {
     val node = this.createNode()
     this.expectKeyword("switch")
     this.expect("(")
@@ -2066,41 +2165,43 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.expect(")")
     val previousInSwitch = this.context.inSwitch
     this.context.inSwitch = true
-    val cases = Array.empty[Unit]
+    val cases = ArrayBuffer.empty[Node.SwitchCase]
     var defaultFound = false
     this.expect("{")
-    while (true) {
-      if (this.`match`("}")) {
-        /* Unsupported: Break */ break;
-      }
-      val clause = this.parseSwitchCase()
-      if (clause.test == null) {
-        if (defaultFound) {
-          this.throwError(messages_1.Messages.MultipleDefaultsInSwitch)
+    breakable {
+      while (true) {
+        if (this.`match`("}")) {
+          break
         }
-        defaultFound = true
+        val clause = this.parseSwitchCase()
+        if (clause.test == null) {
+          if (defaultFound) {
+            this.throwError(Messages.MultipleDefaultsInSwitch)
+          }
+          defaultFound = true
+        }
+        cases.push(clause)
       }
-      cases.push(clause)
     }
     this.expect("}")
     this.context.inSwitch = previousInSwitch
     this.finalize(node, new Node.SwitchStatement(discriminant, cases))
   }
   
-  def parseLabelledStatement() = {
+  def parseLabelledStatement(): Node.Statement = {
     val node = this.createNode()
     val expr = this.parseExpression()
-    var statement: Any = _
-    if (expr.isInstanceOf[Identifier] && this.`match`(":")) {
-      val expr_cast = expr.asInstanceOf[Identifier]
+    var statement: Node.Statement = null
+    if (expr.isInstanceOf[Node.Identifier] && this.`match`(":")) {
+      val expr_cast = expr.asInstanceOf[Node.Identifier]
       this.nextToken()
       val id = expr_cast
       val key = "$" + id.name
-      if (Object.prototype.hasOwnProperty.call(this.context.labelSet, key)) {
-        this.throwError(messages_1.Messages.Redeclaration, "Label", id.name)
+      if (this.context.labelSet contains key) {
+        this.throwError(Messages.Redeclaration, "Label", id.name)
       }
       this.context.labelSet(key) = true
-      var body = _
+      var body: Node.Statement = null
       if (this.matchKeyword("class")) {
         this.tolerateUnexpectedToken(this.lookahead)
         body = this.parseClassDeclaration()
@@ -2108,9 +2209,9 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         val token = this.lookahead
         val declaration = this.parseFunctionDeclaration()
         if (this.context.strict) {
-          this.tolerateUnexpectedToken(token, messages_1.Messages.StrictFunction)
+          this.tolerateUnexpectedToken(token, Messages.StrictFunction)
         } else if (declaration.generator) {
-          this.tolerateUnexpectedToken(token, messages_1.Messages.GeneratorInLegacyContext)
+          this.tolerateUnexpectedToken(token, Messages.GeneratorInLegacyContext)
         }
         body = declaration
       } else {
@@ -2125,38 +2226,38 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.finalize(node, statement)
   }
   
-  def parseThrowStatement() = {
+  def parseThrowStatement(): Node.ThrowStatement = {
     val node = this.createNode()
     this.expectKeyword("throw")
     if (this.hasLineTerminator) {
-      this.throwError(messages_1.Messages.NewlineAfterThrow)
+      this.throwError(Messages.NewlineAfterThrow)
     }
     val argument = this.parseExpression()
     this.consumeSemicolon()
     this.finalize(node, new Node.ThrowStatement(argument))
   }
   
-  def parseCatchClause() = {
+  def parseCatchClause(): Node.CatchClause = {
     val node = this.createNode()
     this.expectKeyword("catch")
     this.expect("(")
     if (this.`match`(")")) {
       this.throwUnexpectedToken(this.lookahead)
     }
-    val params = Array.empty[Any]
+    val params = ArrayBuffer.empty[RawToken]
     val param = this.parsePattern(params)
-    val paramMap = Map.empty[String, Boolean]
+    val paramMap = mutable.Map.empty[String, Boolean]
     for (i <- params) {
       val key = "$" + i.value
-      if (Object.prototype.hasOwnProperty.call(paramMap, key)) {
-        this.tolerateError(messages_1.Messages.DuplicateBinding, i.value)
+      if (paramMap contains key) {
+        this.tolerateError(Messages.DuplicateBinding, i.value)
       }
       paramMap(key) = true
     }
-    if (this.context.strict && param.isInstanceOf[Identifier]) {
-      val param_cast = param.asInstanceOf[Identifier]
+    if (this.context.strict && param.isInstanceOf[Node.Identifier]) {
+      val param_cast = param.asInstanceOf[Node.Identifier]
       if (this.scanner.isRestrictedWord(param_cast.name)) {
-        this.tolerateError(messages_1.Messages.StrictCatchVariable)
+        this.tolerateError(Messages.StrictCatchVariable)
       }
     }
     this.expect(")")
@@ -2164,37 +2265,37 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.CatchClause(param, body))
   }
   
-  def parseFinallyClause() = {
+  def parseFinallyClause(): Node.BlockStatement = {
     this.expectKeyword("finally")
     this.parseBlock()
   }
   
-  def parseTryStatement() = {
+  def parseTryStatement(): Node.TryStatement = {
     val node = this.createNode()
     this.expectKeyword("try")
     val block = this.parseBlock()
     val handler = if (this.matchKeyword("catch")) this.parseCatchClause() else null
     val finalizer = if (this.matchKeyword("finally")) this.parseFinallyClause() else null
     if (!handler && !finalizer) {
-      this.throwError(messages_1.Messages.NoCatchOrFinally)
+      this.throwError(Messages.NoCatchOrFinally)
     }
     this.finalize(node, new Node.TryStatement(block, handler, finalizer))
   }
   
-  def parseDebuggerStatement() = {
+  def parseDebuggerStatement(): Node.DebuggerStatement = {
     val node = this.createNode()
     this.expectKeyword("debugger")
     this.consumeSemicolon()
     this.finalize(node, new Node.DebuggerStatement())
   }
   
-  def parseStatement() = {
-    var statement = _
+  def parseStatement(): Node.Statement = {
+    var statement: Node.Statement = null
     this.lookahead.`type` match {
-      case 1 | 5 | 6 | 8 | 10 | 9 =>
+      case BooleanLiteral | NullLiteral | NumericLiteral | StringLiteral | Template | RegularExpression =>
         statement = this.parseExpressionStatement()
-      case 7 =>
-        val value = this.lookahead.value
+      case Punctuator =>
+        val value: String = this.lookahead.value
         if (value == "{") {
           statement = this.parseBlock()
         } else if (value == "(") {
@@ -2204,10 +2305,10 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         } else {
           statement = this.parseExpressionStatement()
         }
-      case 3 =>
+      case Identifier =>
         statement = if (this.matchAsyncFunction()) this.parseFunctionDeclaration() else this.parseLabelledStatement()
-      case 4 =>
-        this.lookahead.value match {
+      case Keyword =>
+        this.lookahead.value.get[String] match {
           case "break" =>
             statement = this.parseBreakStatement()
           case "continue" =>
@@ -2253,15 +2354,17 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     val previousInIteration = this.context.inIteration
     val previousInSwitch = this.context.inSwitch
     val previousInFunctionBody = this.context.inFunctionBody
-    this.context.labelSet = new {}
+    this.context.labelSet = mutable.Map.empty
     this.context.inIteration = false
     this.context.inSwitch = false
     this.context.inFunctionBody = true
-    while (this.lookahead.`type` != 2) {
-      if (this.`match`("}")) {
-        /* Unsupported: Break */ break;
+    breakable {
+      while (this.lookahead.`type` != EOF) {
+        if (this.`match`("}")) {
+          break
+        }
+        body.push(this.parseStatementListItem())
       }
-      body.push(this.parseStatementListItem())
     }
     this.expect("}")
     this.context.labelSet = previousLabelSet
@@ -2271,92 +2374,84 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.BlockStatement(body))
   }
   
-  def validateParam(options: Any, param: Any, name: Any) = {
+  def validateParam(options: ParameterOptions, param: RawToken, name: String) = {
     val key = "$" + name
     if (this.context.strict) {
       if (this.scanner.isRestrictedWord(name)) {
         options.stricted = param
-        options.message = messages_1.Messages.StrictParamName
+        options.message = Messages.StrictParamName
       }
-      if (Object.prototype.hasOwnProperty.call(options.paramSet, key)) {
+      if (options.paramSet contains key) {
         options.stricted = param
-        options.message = messages_1.Messages.StrictParamDupe
+        options.message = Messages.StrictParamDupe
       }
     } else if (!options.firstRestricted) {
       if (this.scanner.isRestrictedWord(name)) {
         options.firstRestricted = param
-        options.message = messages_1.Messages.StrictParamName
+        options.message = Messages.StrictParamName
       } else if (this.scanner.isStrictModeReservedWord(name)) {
         options.firstRestricted = param
-        options.message = messages_1.Messages.StrictReservedWord
-      } else if (Object.prototype.hasOwnProperty.call(options.paramSet, key)) {
+        options.message = Messages.StrictReservedWord
+      } else if (options.paramSet contains key) {
         options.stricted = param
-        options.message = messages_1.Messages.StrictParamDupe
+        options.message = Messages.StrictParamDupe
       }
     }
-    /*istanbul ignore next */
-    if (Object.defineProperty.getClass == "function") {
-      Object.defineProperty(options.paramSet, key, new {
-        var value = true
-        var enumerable = true
-        var writable = true
-        var configurable = true
-      })
-    } else {
-      options.paramSet(key) = true
-    }
+    options.paramSet(key) = true
   }
   
-  def parseRestElement(params: Array[Any]) = {
+  def parseRestElement(params: ArrayBuffer[RawToken]): Node.RestElement = {
     val node = this.createNode()
     this.expect("...")
     val arg = this.parsePattern(params)
     if (this.`match`("=")) {
-      this.throwError(messages_1.Messages.DefaultRestParameter)
+      this.throwError(Messages.DefaultRestParameter)
     }
     if (!this.`match`(")")) {
-      this.throwError(messages_1.Messages.ParameterAfterRestParameter)
+      this.throwError(Messages.ParameterAfterRestParameter)
     }
     this.finalize(node, new Node.RestElement(arg))
   }
   
-  def parseFormalParameter(options: Any) = {
-    val params = Array.empty[Any]
+  def parseFormalParameter(options: ParameterOptions) = {
+    val params = ArrayBuffer.empty[RawToken]
     val param = if (this.`match`("...")) this.parseRestElement(params) else this.parsePatternWithDefault(params)
     for (i <- params) {
       this.validateParam(options, i, i.value)
     }
     options.simple = options.simple && param.isInstanceOf[Node.Identifier]
-    options.params.push(param)
+    options.params.push(param.asInstanceOf[Node.FunctionParameter])
   }
-  
-  def parseFormalParameters(firstRestricted: Any) = {
-    object options {
-      var simple = true
-      var params = Array()
-      var firstRestricted = firstRestricted
+
+  def parseFormalParameters(firstRestricted_ : RawToken = null): ParameterOptions = {
+    object options extends ParameterOptions {
+      simple = true
+      params = ArrayBuffer()
+      firstRestricted = firstRestricted_
     }
     this.expect("(")
     if (!this.`match`(")")) {
-      options.paramSet = new {}
-      while (this.lookahead.`type` != 2) {
-        this.parseFormalParameter(options)
-        if (this.`match`(")")) {
-          /* Unsupported: Break */ break;
-        }
-        this.expect(",")
-        if (this.`match`(")")) {
-          /* Unsupported: Break */ break;
+      options.paramSet = mutable.Map.empty
+      breakable {
+        while (this.lookahead.`type` != EOF) {
+          this.parseFormalParameter(options)
+          if (this.`match`(")")) {
+            break
+          }
+          this.expect(",")
+          if (this.`match`(")")) {
+            break
+          }
         }
       }
     }
     this.expect(")")
-    new {
-      var simple = options.simple
-      var params = options.params
-      var stricted = options.stricted
-      var firstRestricted = options.firstRestricted
-      var message = options.message
+    new ParameterOptions {
+      simple = options.simple
+      params = options.params
+      stricted = options.stricted
+      firstRestricted = options.firstRestricted
+      message = options.message
     }
   }
   
@@ -2367,12 +2462,12 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       this.scanner.scanComments()
       val next = this.scanner.lex()
       this.scanner.restoreState(state)
-      `match` = state.lineNumber == next.lineNumber && next.`type` == 4 && next.value == "function"
+      `match` = state.lineNumber == next.lineNumber && next.`type` == Keyword && next.value === "function"
     }
     `match`
   }
   
-  def parseFunctionDeclaration(identifierIsOptional: Boolean) = {
+  def parseFunctionDeclaration(identifierIsOptional: Boolean = false): Node.AFunctionDeclaration = {
     val node = this.createNode()
     val isAsync = this.matchContextualKeyword("async")
     if (isAsync) {
@@ -2383,23 +2478,23 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     if (isGenerator) {
       this.nextToken()
     }
-    var message = _
-    var id = null
-    var firstRestricted = null
+    var message: String = null
+    var id: Node.Identifier = null
+    var firstRestricted: RawToken = null
     if (!identifierIsOptional || !this.`match`("(")) {
       val token = this.lookahead
       id = this.parseVariableIdentifier()
       if (this.context.strict) {
         if (this.scanner.isRestrictedWord(token.value)) {
-          this.tolerateUnexpectedToken(token, messages_1.Messages.StrictFunctionName)
+          this.tolerateUnexpectedToken(token, Messages.StrictFunctionName)
         }
       } else {
         if (this.scanner.isRestrictedWord(token.value)) {
           firstRestricted = token
-          message = messages_1.Messages.StrictFunctionName
+          message = Messages.StrictFunctionName
         } else if (this.scanner.isStrictModeReservedWord(token.value)) {
           firstRestricted = token
-          message = messages_1.Messages.StrictReservedWord
+          message = Messages.StrictReservedWord
         }
       }
     }
@@ -2442,9 +2537,9 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     if (isGenerator) {
       this.nextToken()
     }
-    var message = _
-    var id = null
-    var firstRestricted = new {}
+    var message: String = null
+    var id: Node.Identifier = null
+    var firstRestricted: RawToken = null
     val previousAllowAwait = this.context.await
     val previousAllowYield = this.context.allowYield
     this.context.await = isAsync
@@ -2454,15 +2549,15 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       id = if (!this.context.strict && !isGenerator && this.matchKeyword("yield")) this.parseIdentifierName() else this.parseVariableIdentifier()
       if (this.context.strict) {
         if (this.scanner.isRestrictedWord(token.value)) {
-          this.tolerateUnexpectedToken(token, messages_1.Messages.StrictFunctionName)
+          this.tolerateUnexpectedToken(token, Messages.StrictFunctionName)
         }
       } else {
         if (this.scanner.isRestrictedWord(token.value)) {
           firstRestricted = token
-          message = messages_1.Messages.StrictFunctionName
+          message = Messages.StrictFunctionName
         } else if (this.scanner.isStrictModeReservedWord(token.value)) {
           firstRestricted = token
-          message = messages_1.Messages.StrictReservedWord
+          message = Messages.StrictReservedWord
         }
       }
     }
@@ -2490,65 +2585,69 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     if (isAsync) this.finalize(node, new Node.AsyncFunctionExpression(id, params, body)) else this.finalize(node, new Node.FunctionExpression(id, params, body, isGenerator))
   }
   
-  def parseDirective() = {
+  def parseDirective(): Node.StatementListItem = {
     val token = this.lookahead
     val node = this.createNode()
     val expr = this.parseExpression()
-    val directive = if (expr.isInstanceOf[Literal]) this.getTokenRaw(token).slice(1, -1) else null
+    val directive = if (expr.isInstanceOf[Node.Literal]) this.getTokenRaw(token).slice(1, -1) else null
     this.consumeSemicolon()
     this.finalize(node, if (directive) new Node.Directive(expr, directive) else new Node.ExpressionStatement(expr))
   }
   
-  def parseDirectivePrologues() = {
-    var firstRestricted = null
-    val body = Array.empty[Directive]
-    while (true) {
-      val token = this.lookahead
-      if (token.`type` != 8) {
-        /* Unsupported: Break */ break;
-      }
-      val statement = this.parseDirective()
-      body.push(statement)
-      val directive = statement.directive
-      if (directive.getClass != "string") {
-        /* Unsupported: Break */ break;
-      }
-      if (directive == "use strict") {
-        this.context.strict = true
-        if (firstRestricted) {
-          this.tolerateUnexpectedToken(firstRestricted, messages_1.Messages.StrictOctalLiteral)
+  def parseDirectivePrologues(): ArrayBuffer[Node.StatementListItem] = {
+    var firstRestricted: RawToken = null
+    val body = ArrayBuffer.empty[Node.StatementListItem]
+    breakable {
+      while (true) {
+        val token = this.lookahead
+        if (token.`type` != StringLiteral) {
+          break
         }
-        if (!this.context.allowStrictDirective) {
-          this.tolerateUnexpectedToken(token, messages_1.Messages.IllegalLanguageModeDirective)
+        val statement = this.parseDirective()
+        body.push(statement)
+        val directive = statement match {
+          case d: Node.Directive =>
+            d.directive
+          case _ =>
+            break
         }
-      } else {
-        if (!firstRestricted && token.octal) {
-          firstRestricted = token
+        if (directive == "use strict") {
+          this.context.strict = true
+          if (firstRestricted) {
+            this.tolerateUnexpectedToken(firstRestricted, Messages.StrictOctalLiteral)
+          }
+          if (!this.context.allowStrictDirective) {
+            this.tolerateUnexpectedToken(token, Messages.IllegalLanguageModeDirective)
+          }
+        } else {
+          if (!firstRestricted && token.octal) {
+            firstRestricted = token
+          }
         }
       }
     }
     body
   }
   
-  def qualifiedPropertyName(token: Any) = {
+  def qualifiedPropertyName(token: RawToken): Boolean = {
     token.`type` match {
-      case 3 | 8 | 1 | 5 | 6 | 4 =>
+      case Identifier | StringLiteral | BooleanLiteral | NullLiteral | NumericLiteral | Keyword =>
         return true
-      case 7 =>
-        return token.value == "["
+      case Punctuator =>
+        return token.value === "["
       case _ =>
     }
     false
   }
   
-  def parseGetterMethod() = {
+  def parseGetterMethod(): Node.FunctionExpression = {
     val node = this.createNode()
     val isGenerator = false
     val previousAllowYield = this.context.allowYield
     this.context.allowYield = !isGenerator
     val formalParameters = this.parseFormalParameters()
     if (formalParameters.params.length > 0) {
-      this.tolerateError(messages_1.Messages.BadGetterArity)
+      this.tolerateError(Messages.BadGetterArity)
     }
     val method = this.parsePropertyMethod(formalParameters)
     this.context.allowYield = previousAllowYield
@@ -2562,9 +2661,9 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.context.allowYield = !isGenerator
     val formalParameters = this.parseFormalParameters()
     if (formalParameters.params.length != 1) {
-      this.tolerateError(messages_1.Messages.BadSetterArity)
+      this.tolerateError(Messages.BadSetterArity)
     } else if (formalParameters.params(0).isInstanceOf[Node.RestElement]) {
-      this.tolerateError(messages_1.Messages.BadSetterRestParameter)
+      this.tolerateError(Messages.BadSetterRestParameter)
     }
     val method = this.parsePropertyMethod(formalParameters)
     this.context.allowYield = previousAllowYield
@@ -2585,21 +2684,21 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   
   def isStartOfExpression() = {
     var start = true
-    val value = this.lookahead.value
+    val value: String = this.lookahead.value
     this.lookahead.`type` match {
-      case 7 =>
+      case Punctuator =>
         start = value == "[" || value == "(" || value == "{" || value == "+" || value == "-" || value == "!" || value == "~" || value == "++" || value == "--" || value == "/" || value == "/="
-      case 4 =>
+      case Keyword =>
         start = value == "class" || value == "delete" || value == "function" || value == "let" || value == "new" || value == "super" || value == "this" || value == "typeof" || value == "void" || value == "yield"
       case _ =>
     }
     start
   }
   
-  def parseYieldExpression() = {
+  def parseYieldExpression(): Node.YieldExpression = {
     val node = this.createNode()
     this.expectKeyword("yield")
-    var argument = null
+    var argument: Node.Expression = null
     var delegate = false
     if (!this.hasLineTerminator) {
       val previousAllowYield = this.context.allowYield
@@ -2616,12 +2715,12 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.YieldExpression(argument, delegate))
   }
   
-  def parseClassElement(hasConstructor: Any) = {
+  def parseClassElement(hasConstructor: ByRef[Boolean]): Node.MethodDefinition = {
     var token = this.lookahead
     val node = this.createNode()
-    var kind = ""
-    var key = null
-    var value = null
+    var kind: String = null
+    var key: Node.PropertyKey = null
+    var value: Node.PropertyValue = null
     var computed = false
     var method = false
     var isStatic = false
@@ -2631,7 +2730,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     } else {
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
-      val id = key
+      val id = key.asInstanceOf[Node.Identifier]
       if (id.name == "static" && (this.qualifiedPropertyName(this.lookahead) || this.`match`("*"))) {
         token = this.lookahead
         isStatic = true
@@ -2642,37 +2741,37 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
           key = this.parseObjectPropertyKey()
         }
       }
-      if (token.`type` == 3 && !this.hasLineTerminator && token.value == "async") {
-        val punctuator = this.lookahead.value
+      if (token.`type` == Identifier && !this.hasLineTerminator && token.value === "async") {
+        val punctuator: String = this.lookahead.value
         if (punctuator != ":" && punctuator != "(" && punctuator != "*") {
           isAsync = true
           token = this.lookahead
           key = this.parseObjectPropertyKey()
-          if (token.`type` == 3) {
-            if (token.value == "get" || token.value == "set") {
+          if (token.`type` == Identifier) {
+            if (token.value === "get" || token.value === "set") {
               this.tolerateUnexpectedToken(token)
-            } else if (token.value == "constructor") {
-              this.tolerateUnexpectedToken(token, messages_1.Messages.ConstructorIsAsync)
+            } else if (token.value === "constructor") {
+              this.tolerateUnexpectedToken(token, Messages.ConstructorIsAsync)
             }
           }
         }
       }
     }
     val lookaheadPropertyKey = this.qualifiedPropertyName(this.lookahead)
-    if (token.`type` == 3) {
-      if (token.value == "get" && lookaheadPropertyKey) {
+    if (token.`type` == Identifier) {
+      if (token.value === "get" && lookaheadPropertyKey) {
         kind = "get"
         computed = this.`match`("[")
         key = this.parseObjectPropertyKey()
         this.context.allowYield = false
         value = this.parseGetterMethod()
-      } else if (token.value == "set" && lookaheadPropertyKey) {
+      } else if (token.value === "set" && lookaheadPropertyKey) {
         kind = "set"
         computed = this.`match`("[")
         key = this.parseObjectPropertyKey()
         value = this.parseSetterMethod()
       }
-    } else if (token.`type` == 7 && token.value == "*" && lookaheadPropertyKey) {
+    } else if (token.`type` == Punctuator && token.value === "*" && lookaheadPropertyKey) {
       kind = "init"
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
@@ -2692,14 +2791,14 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     }
     if (!computed) {
       if (isStatic && this.isPropertyKey(key, "prototype")) {
-        this.throwUnexpectedToken(token, messages_1.Messages.StaticPrototype)
+        this.throwUnexpectedToken(token, Messages.StaticPrototype)
       }
       if (!isStatic && this.isPropertyKey(key, "constructor")) {
-        if (kind != "method" || !method || value && value.generator) {
-          this.throwUnexpectedToken(token, messages_1.Messages.ConstructorSpecialMethod)
+        if (kind != "method" || !method || value.isInstanceOf[Node.HasGenerator] && value.asInstanceOf[Node.HasGenerator].generator) {
+          this.throwUnexpectedToken(token, Messages.ConstructorSpecialMethod)
         }
         if (hasConstructor.value) {
-          this.throwUnexpectedToken(token, messages_1.Messages.DuplicateConstructor)
+          this.throwUnexpectedToken(token, Messages.DuplicateConstructor)
         } else {
           hasConstructor.value = true
         }
@@ -2709,11 +2808,9 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.MethodDefinition(key, computed, value, kind, isStatic))
   }
   
-  def parseClassElementList() = {
-    val body = Array.empty[Any]
-    object hasConstructor extends Resource {
-      var value = false
-    }
+  def parseClassElementList(): Array[Node.MethodDefinition] = {
+    val body = ArrayBuffer.empty[Node.MethodDefinition]
+    object hasConstructor extends ByRef[Boolean](false)
     this.expect("{")
     while (!this.`match`("}")) {
       if (this.`match`(";")) {
@@ -2726,80 +2823,80 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     body
   }
   
-  def parseClassBody() = {
+  def parseClassBody(): Node.ClassBody = {
     val node = this.createNode()
     val elementList = this.parseClassElementList()
     this.finalize(node, new Node.ClassBody(elementList))
   }
   
-  def parseClassDeclaration(identifierIsOptional: Boolean) = {
+  def parseClassDeclaration(identifierIsOptional: Boolean = false): Node.ClassDeclaration = {
     val node = this.createNode()
     val previousStrict = this.context.strict
     this.context.strict = true
     this.expectKeyword("class")
-    val id = if (identifierIsOptional && this.lookahead.`type` != 3) null else this.parseVariableIdentifier()
-    var superClass = null
+    val id = if (identifierIsOptional && this.lookahead.`type` != Identifier) null else this.parseVariableIdentifier()
+    var superClass: Node.Identifier = null
     if (this.matchKeyword("extends")) {
       this.nextToken()
-      superClass = this.isolateCoverGrammar(this.parseLeftHandSideExpressionAllowCall)
+      superClass = this.isolateCoverGrammar(this.parseLeftHandSideExpressionAllowCall).asInstanceOf[Node.Identifier]
     }
     val classBody = this.parseClassBody()
     this.context.strict = previousStrict
     this.finalize(node, new Node.ClassDeclaration(id, superClass, classBody))
   }
   
-  def parseClassExpression() = {
+  def parseClassExpression(): Node.ClassExpression = {
     val node = this.createNode()
     val previousStrict = this.context.strict
     this.context.strict = true
     this.expectKeyword("class")
-    val id = if (this.lookahead.`type` == 3) this.parseVariableIdentifier() else null
-    var superClass = null
+    val id = if (this.lookahead.`type` == Identifier) this.parseVariableIdentifier() else null
+    var superClass: Node.Identifier = null
     if (this.matchKeyword("extends")) {
       this.nextToken()
-      superClass = this.isolateCoverGrammar(this.parseLeftHandSideExpressionAllowCall)
+      superClass = this.isolateCoverGrammar(this.parseLeftHandSideExpressionAllowCall).asInstanceOf[Node.Identifier]
     }
     val classBody = this.parseClassBody()
     this.context.strict = previousStrict
     this.finalize(node, new Node.ClassExpression(id, superClass, classBody))
   }
   
-  def parseModule() = {
+  def parseModule(): Node.Module = {
     this.context.strict = true
     this.context.isModule = true
     this.scanner.isModule = true
     val node = this.createNode()
     val body = this.parseDirectivePrologues()
-    while (this.lookahead.`type` != 2) {
+    while (this.lookahead.`type` != EOF) {
       body.push(this.parseStatementListItem())
     }
     this.finalize(node, new Node.Module(body))
   }
   
-  def parseScript() = {
+  def parseScript(): Node.Script = {
     val node = this.createNode()
     val body = this.parseDirectivePrologues()
-    while (this.lookahead.`type` != 2) {
+    while (this.lookahead.`type` != EOF) {
       body.push(this.parseStatementListItem())
     }
     this.finalize(node, new Node.Script(body))
   }
   
-  def parseModuleSpecifier() = {
+  def parseModuleSpecifier(): Node.Literal = {
     val node = this.createNode()
-    if (this.lookahead.`type` != 8) {
-      this.throwError(messages_1.Messages.InvalidModuleSpecifier)
+    if (this.lookahead.`type` != StringLiteral) {
+      this.throwError(Messages.InvalidModuleSpecifier)
     }
     val token = this.nextToken()
     val raw = this.getTokenRaw(token)
     this.finalize(node, new Node.Literal(token.value, raw))
   }
   
-  def parseImportSpecifier() = {
+  def parseImportSpecifier(): Node.ImportSpecifier = {
     val node = this.createNode()
-    var imported = _
-    var local = _
-    if (this.lookahead.`type` == 3) {
+    var imported: Node.Identifier = null
+    var local: Node.Identifier = null
+    if (this.lookahead.`type` == Identifier) {
       imported = this.parseVariableIdentifier()
       local = imported
       if (this.matchContextualKeyword("as")) {
@@ -2819,9 +2916,9 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.ImportSpecifier(local, imported))
   }
   
-  def parseNamedImports() = {
+  def parseNamedImports(): ArrayBuffer[Node.ImportSpecifier] = {
     this.expect("{")
-    val specifiers = Array.empty[Any]
+    val specifiers = ArrayBuffer.empty[Node.ImportSpecifier]
     while (!this.`match`("}")) {
       specifiers.push(this.parseImportSpecifier())
       if (!this.`match`("}")) {
@@ -2842,22 +2939,22 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     val node = this.createNode()
     this.expect("*")
     if (!this.matchContextualKeyword("as")) {
-      this.throwError(messages_1.Messages.NoAsAfterImportNamespace)
+      this.throwError(Messages.NoAsAfterImportNamespace)
     }
     this.nextToken()
     val local = this.parseIdentifierName()
     this.finalize(node, new Node.ImportNamespaceSpecifier(local))
   }
   
-  def parseImportDeclaration() = {
+  def parseImportDeclaration(): Node.ImportDeclaration = {
     if (this.context.inFunctionBody) {
-      this.throwError(messages_1.Messages.IllegalImportDeclaration)
+      this.throwError(Messages.IllegalImportDeclaration)
     }
     val node = this.createNode()
     this.expectKeyword("import")
-    var src = _
-    var specifiers = Array.empty[Any]
-    if (this.lookahead.`type` == 8) {
+    var src: Node.Literal = null
+    var specifiers = ArrayBuffer.empty[Node.ImportDeclarationSpecifier]
+    if (this.lookahead.`type` == StringLiteral) {
       // import 'foo';
       src = this.parseModuleSpecifier()
     } else {
@@ -2886,7 +2983,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         this.throwUnexpectedToken(this.nextToken())
       }
       if (!this.matchContextualKeyword("from")) {
-        val message = if (this.lookahead.value) messages_1.Messages.UnexpectedToken else messages_1.Messages.MissingFromClause
+        val message = if (this.lookahead.value) Messages.UnexpectedToken else Messages.MissingFromClause
         this.throwError(message, this.lookahead.value)
       }
       this.nextToken()
@@ -2896,7 +2993,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.ImportDeclaration(specifiers, src))
   }
   
-  def parseExportSpecifier() = {
+  def parseExportSpecifier(): Node.ExportSpecifier = {
     val node = this.createNode()
     val local = this.parseIdentifierName()
     var exported = local
@@ -2907,13 +3004,13 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
     this.finalize(node, new Node.ExportSpecifier(local, exported))
   }
   
-  def parseExportDeclaration() = {
+  def parseExportDeclaration(): Node.ExportDeclaration = {
     if (this.context.inFunctionBody) {
-      this.throwError(messages_1.Messages.IllegalExportDeclaration)
+      this.throwError(Messages.IllegalExportDeclaration)
     }
     val node = this.createNode()
     this.expectKeyword("export")
-    var exportDeclaration = _
+    var exportDeclaration: Node.ExportDeclaration = null
     if (this.matchKeyword("default")) {
       // export default ...
       this.nextToken()
@@ -2934,7 +3031,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         exportDeclaration = this.finalize(node, new Node.ExportDefaultDeclaration(declaration))
       } else {
         if (this.matchContextualKeyword("from")) {
-          this.throwError(messages_1.Messages.UnexpectedToken, this.lookahead.value)
+          this.throwError(Messages.UnexpectedToken, this.lookahead.value)
         }
         // export default {};
         // export default [];
@@ -2947,33 +3044,33 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
       // export * from 'foo';
       this.nextToken()
       if (!this.matchContextualKeyword("from")) {
-        val message = if (this.lookahead.value) messages_1.Messages.UnexpectedToken else messages_1.Messages.MissingFromClause
+        val message = if (this.lookahead.value) Messages.UnexpectedToken else Messages.MissingFromClause
         this.throwError(message, this.lookahead.value)
       }
       this.nextToken()
       val src = this.parseModuleSpecifier()
       this.consumeSemicolon()
       exportDeclaration = this.finalize(node, new Node.ExportAllDeclaration(src))
-    } else if (this.lookahead.`type` == 4) {
+    } else if (this.lookahead.`type` == Keyword) {
       // export var f = 1;
-      var declaration = _
-      this.lookahead.value match {
+      var declaration: Node.ExportableNamedDeclaration = null
+      this.lookahead.value.get[String] match {
         case "let" | "const" =>
-          declaration = this.parseLexicalDeclaration(new {
-            var inFor = false
+          declaration = this.parseLexicalDeclaration(new VariableOptions {
+            inFor = false
           })
         case "var" | "class" | "function" =>
           declaration = this.parseStatementListItem()
         case _ =>
           this.throwUnexpectedToken(this.lookahead)
       }
-      exportDeclaration = this.finalize(node, new Node.ExportNamedDeclaration(declaration, Array(), null))
+      exportDeclaration = this.finalize(node, new Node.ExportNamedDeclaration(declaration, Seq(), null))
     } else if (this.matchAsyncFunction()) {
       val declaration = this.parseFunctionDeclaration()
-      exportDeclaration = this.finalize(node, new Node.ExportNamedDeclaration(declaration, Array(), null))
+      exportDeclaration = this.finalize(node, new Node.ExportNamedDeclaration(declaration, Seq(), null))
     } else {
-      val specifiers = Array.empty[Any]
-      var source = null
+      val specifiers = ArrayBuffer.empty[Node.ExportSpecifier]
+      var source: Node.Literal = null
       var isExportFromIdentifier = false
       this.expect("{")
       while (!this.`match`("}")) {
@@ -2992,7 +3089,7 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
         this.consumeSemicolon()
       } else if (isExportFromIdentifier) {
         // export {default}; // missing fromClause
-        val message = if (this.lookahead.value) messages_1.Messages.UnexpectedToken else messages_1.Messages.MissingFromClause
+        val message = if (this.lookahead.value) Messages.UnexpectedToken else Messages.MissingFromClause
         this.throwError(message, this.lookahead.value)
       } else {
         // export {foo};
@@ -3005,4 +3102,4 @@ class Parser(code: Any, options: Any, var delegate: (Any, Any) => Any) {
   
 }
 
-exports.Parser = Parser
+

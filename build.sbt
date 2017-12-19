@@ -2,7 +2,7 @@ name := "esprimascala"
 
 version := "0.0.1-SNAPSHOT"
 
-organization := "net.gamatron"
+organization := "com.github.opengrabeso"
 
 scalaVersion := "2.12.4"
 

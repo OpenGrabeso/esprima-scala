@@ -4,14 +4,22 @@ error-handler.js
 */
 
 package com.github.opengrabeso.esprima
-"use strict"
-/*tslint:disable:max-classes-per-file */
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
+
+import scala.collection.mutable.ArrayBuffer
+
+object ErrorHandler {
+  class Error(msg: String) extends Exception(msg) {
+    var index: Int = _
+    var lineNumber: Int = _
+    var column: Int = _
+    var description: String = _
+  }
+}
+
+import ErrorHandler._
 
 class ErrorHandler() {
-  var errors = Array.empty[Error]
+  var errors = ArrayBuffer.empty[Error]
   var tolerant: Boolean = false
   def recordError(error: Error) = {
     this.errors.push(error)
@@ -25,25 +33,13 @@ class ErrorHandler() {
     }
   }
   
-  def constructError(msg: String, column: Any) = {
+  def constructError(msg: String, column: Int): Error = {
     var error = new Error(msg)
-    try {
-      throw error
-    } catch {
-      case base =>
-        /*istanbul ignore else */
-        if (Object.create && Object.defineProperty) {
-          error = Object.create(base)
-          Object.defineProperty(error, "column", new {
-            var value = column
-          })
-        }
-    }
-    /*istanbul ignore next */
+    error.column = column
     error
   }
   
-  def createError(index: Any, line: Any, col: Any, description: Any) = {
+  def createError(index: Int, line: Int, col: Int, description: String) = {
     val msg = "Line " + line + ": " + description
     val error = this.constructError(msg, col)
     error.index = index
@@ -52,11 +48,11 @@ class ErrorHandler() {
     error
   }
   
-  def throwError(index: Any, line: Any, col: Any, description: Any) = {
+  def throwError(index: Int, line: Int, col: Int, description: String) = {
     throw this.createError(index, line, col, description)
   }
   
-  def tolerateError(index: Any, line: Any, col: Any, description: Any) = {
+  def tolerateError(index: Int, line: Int, col: Int, description: String) = {
     val error = this.createError(index, line, col, description)
     if (this.tolerant) {
       this.recordError(error)
@@ -66,5 +62,3 @@ class ErrorHandler() {
   }
   
 }
-
-exports.ErrorHandler = ErrorHandler
