@@ -389,7 +389,7 @@ object Node {
 
   trait AFunctionExpression extends Node // AsyncFunctionExpression | FunctionExpression
 
-  case class MethodDefinition(var key: PropertyKey, var computed: Boolean, var value: PropertyValue, var kind: Boolean, var static: Boolean) extends Node with ClassBodyElement {
+  case class MethodDefinition(var key: PropertyKey, var computed: Boolean, var value: PropertyValue, var kind: String, var static: Boolean) extends Node with ClassBodyElement {
 
     override def clone = copy().copyNode(this)
   }

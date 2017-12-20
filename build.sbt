@@ -4,7 +4,7 @@ version := "0.0.1-SNAPSHOT"
 
 organization := "com.github.opengrabeso"
 
-scalaVersion := "2.12.4"
+scalaVersion := "2.11.12"
 
 crossScalaVersions := Seq("2.12.4", "2.11.12", "2.10.6")
 
