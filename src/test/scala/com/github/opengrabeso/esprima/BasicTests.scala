@@ -1,7 +1,6 @@
 package com.github.opengrabeso.esprima
 
 import com.github.opengrabeso.esprima.Esprima.{parse, tokenize}
-import com.github.opengrabeso.esprima.Parser
 import org.scalatest.FlatSpec
 
 class BasicTests extends FlatSpec with TestInputs {
@@ -50,6 +49,14 @@ class BasicTests extends FlatSpec with TestInputs {
     var i; // assigned once
     var ii; // assigned multiple times,
     """, EnableComments)
+  }
+
+  it should "parse input with arrow function passed as an argument" in {
+    parse("""
+    f( 'G', () => {
+	    g( 'P', ( arg ) => {} );
+    } );
+    """)
   }
 
 }

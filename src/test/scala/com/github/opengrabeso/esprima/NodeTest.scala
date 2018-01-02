@@ -1,6 +1,5 @@
 package com.github.opengrabeso.esprima
 
-import com.github.opengrabeso.esprima.Node
 import org.scalatest.FunSuite
 
 class NodeTest extends FunSuite {
