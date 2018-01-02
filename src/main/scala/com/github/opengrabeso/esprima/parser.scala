@@ -1351,7 +1351,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   def checkPatternParam(options: ParameterOptions, param: Node.Node): Unit = {
     param match {
       case param: Node.Identifier =>
-        this.validateParam(options, ??? /* param*/, param.name)
+        // PORT: we do not know where to get the token from
+        this.validateParam(options, null, param.name)
       case param: Node.RestElement =>
         this.checkPatternParam(options, param.argument)
       case param: Node.AssignmentPattern =>
