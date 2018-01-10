@@ -51,6 +51,26 @@ class BasicTests extends FlatSpec with TestInputs {
     """, EnableComments)
   }
 
+  it should "parse inputs with multiple single line comments correctly" in {
+    object EnableComments extends Parser.Options {
+      range = true
+      attachComment = true
+    }
+    val ast = parse("""
+    // Comment 1
+    // Comment 2
+    var i;
+    var ii;
+    """, EnableComments)
+    val firstStatement = ast.body.head
+    assert(firstStatement.leadingComments.size == 2)
+    assert(firstStatement.leadingComments(0).value.contains("Comment 1"))
+    assert(firstStatement.leadingComments(1).value.contains("Comment 2"))
+    assert(!firstStatement.leadingComments(0).value.contains("Comment 2"))
+    assert(!firstStatement.leadingComments(1).value.contains("Comment 1"))
+  }
+
+
   it should "parse input with arrow function passed as an argument" in {
     parse("""
     f( 'G', () => {

@@ -30,9 +30,9 @@ object Scanner {
   }
 
   trait Position {
-    def line: Int
-    def column: Int
-    def offset: Int = ???
+    val line: Int
+    val column: Int
+    val offset: Int = -1
   }
 
   trait Metadata {
@@ -47,10 +47,10 @@ object Scanner {
   }
 
   trait Comment {
-    def multiLine: Boolean = ???
-    def slice: (Int, Int) = ???
-    def range: (Int, Int)
-    def loc: SourceLocation
+    val multiLine: Boolean
+    val slice: (Int, Int)
+    val range: (Int, Int)
+    val loc: SourceLocation
   }
 
   type Token = Token.Token
@@ -128,8 +128,8 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       val offset_ = offset
       loc = new SourceLocation {
         var start: Position = new Position {
-          var line = self.lineNumber
-          var column = self.index - self.lineStart - offset_
+          val line = self.lineNumber
+          val column = self.index - self.lineStart - offset_
         }
         var end: Position = null
       }
@@ -140,13 +140,13 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       if (Character.isLineTerminator(ch)) {
         if (this.trackComment) {
           loc.end = new Position {
-            override def line = self.lineNumber
-            override def column = self.index - self.lineStart - 1
+            override val line = self.lineNumber
+            override val column = self.index - self.lineStart - 1
           }
           val loc_ = loc
           object entry extends Comment {
-            override def multiLine = false
-            override def slice = (start + offset, self.index - 1)
+            override val multiLine = false
+            override val slice = (start + offset, self.index - 1)
             val range = (start, self.index - 1)
             val loc = loc_
           }
@@ -162,15 +162,15 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
     if (this.trackComment) {
       loc.end = new Position {
-        override def line = self.lineNumber
-        override def column = self.index - self.lineStart
+        override val line = self.lineNumber
+        override val column = self.index - self.lineStart
       }
       val loc_ = loc
       object entry extends Comment {
-        override def multiLine = false
-        override def slice = (start + offset, self.index)
-        var range = (start, self.index)
-        var loc = loc_
+        override val multiLine = false
+        override val slice = (start + offset, self.index)
+        val range = (start, self.index)
+        val loc = loc_
       }
       comments.push(entry)
     }
@@ -186,8 +186,8 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       start = this.index - 2
       loc = new SourceLocation {
         var start: Position = new Position {
-          override def line = self.lineNumber
-          override def column = self.index - self.lineStart - 2
+          override val line = self.lineNumber
+          override val column = self.index - self.lineStart - 2
         }
         var end: Position = null
       }
@@ -207,15 +207,15 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
           this.index += 2
           if (this.trackComment) {
             loc.end = new Position{
-              override def line = self.lineNumber
-              override def column = self.index - self.lineStart
+              override val line = self.lineNumber
+              override val column = self.index - self.lineStart
             }
             val loc_ = loc
             object entry extends Comment {
-              override def multiLine = true
-              override def slice = (start + 2, self.index - 2)
-              def range = (start, self.index)
-              def loc = loc_
+              override val multiLine = true
+              override val slice = (start + 2, self.index - 2)
+              val range = (start, self.index)
+              val loc = loc_
             }
             comments.push(entry)
           }
@@ -229,15 +229,15 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     // Ran off the end of the file - the whole thing is a comment
     if (this.trackComment) {
       loc.end = new Position {
-        override def line = self.lineNumber
-        override def column = self.index - self.lineStart
+        override val line = self.lineNumber
+        override val column = self.index - self.lineStart
       }
       val loc_ = loc
       object entry extends Comment {
-        override def multiLine = true
-        override def slice = (start + 2, self.index)
-        def range = (start, self.index)
-        def loc = loc_
+        override val multiLine = true
+        override val slice = (start + 2, self.index)
+        val range = (start, self.index)
+        val loc = loc_
       }
       comments.push(entry)
     }

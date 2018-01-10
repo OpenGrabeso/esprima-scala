@@ -101,8 +101,8 @@ class Tokenizer(code: String, config: Parser.Options) {
         if (this.trackLoc) {
           loc = new SourceLocation {
             var start: Position = new Position {
-              override def line = self.scanner.lineNumber
-              override def column = self.scanner.index - self.scanner.lineStart
+              override val line = self.scanner.lineNumber
+              override val column = self.scanner.index - self.scanner.lineStart
             }
             var end: Position = null
           }
@@ -131,8 +131,8 @@ class Tokenizer(code: String, config: Parser.Options) {
         }
         if (this.trackLoc) {
           loc.end = new Position {
-            override def line = self.scanner.lineNumber
-            override def column = self.scanner.index - self.scanner.lineStart
+            override val line = self.scanner.lineNumber
+            override val column = self.scanner.index - self.scanner.lineStart
           }
           entry.loc = loc
         }

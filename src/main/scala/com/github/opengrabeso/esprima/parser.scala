@@ -254,14 +254,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           }
           object metadata extends Scanner.Metadata {
             var start: Position = new Position {
-              override def line = e.loc.start.line
-              override def column = e.loc.start.column
-              override def offset = e.range._1
+              override val line = e.loc.start.line
+              override val column = e.loc.start.column
+              override val offset = e.range._1
             }
             var end: Position = new Position {
-              override def line = e.loc.end.line
-              override def column = e.loc.end.column
-              override def offset = e.range._2
+              override val line = e.loc.end.line
+              override val column = e.loc.end.column
+              override val offset = e.range._2
             }
           }
           this.delegate(node, metadata)
@@ -285,12 +285,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     if (this.config.loc) {
       t.loc = new SourceLocation {
         var start: Position = new Position {
-          override def line = self.startMarker.line
-          override def column = self.startMarker.column
+          override val line = self.startMarker.line
+          override val column = self.startMarker.column
         }
         var end: Position = new Position {
-          override def line = self.scanner.lineNumber
-          override def column = self.scanner.index - self.scanner.lineStart
+          override val line = self.scanner.lineNumber
+          override val column = self.scanner.index - self.scanner.lineStart
         }
       }
     }
@@ -374,12 +374,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     if (this.config.loc) {
       node.loc = new SourceLocation {
         var start: Position = new Position {
-          override def line = marker.line
-          override def column = marker.column
+          override val line = marker.line
+          override val column = marker.column
         }
         var end: Position = new Position {
-          override def line = self.lastMarker.line
-          override def column = self.lastMarker.column
+          override val line = self.lastMarker.line
+          override val column = self.lastMarker.column
         }
       }
       if (this.config.source) {
@@ -389,14 +389,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     if (this.delegate) {
       object metadata extends Scanner.Metadata {
         var start: Position = new Position {
-          override def line = marker.line
-          override def column = marker.column
-          override def offset = marker.index
+          override val line = marker.line
+          override val column = marker.column
+          override val offset = marker.index
         }
         var end: Position = new Position {
-          override def line = self.lastMarker.line
-          override def column = self.lastMarker.column
-          override def offset = self.lastMarker.index
+          override val line = self.lastMarker.line
+          override val column = self.lastMarker.column
+          override val offset = self.lastMarker.index
         }
       }
       this.delegate(node, metadata)

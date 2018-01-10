@@ -13,8 +13,8 @@ import scala.util.control.Breaks._
 
 object CommentHandler {
   trait Comment {
-    def `type`: String
-    def value: String
+    val `type`: String
+    val value: String
     var range: (Int, Int) = _
     var loc: SourceLocation = _
   }
