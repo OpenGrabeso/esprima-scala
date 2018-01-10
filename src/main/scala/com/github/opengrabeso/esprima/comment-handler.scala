@@ -137,16 +137,16 @@ class CommentHandler() {
     }
     val node_ = node
     this.stack.push(new NodeInfo {
-      def node = node_
-      def start = metadata.start.offset
+      val node = node_
+      val start = metadata.start.offset
     })
   }
   
   def visitComment(node: Node.CommentNode, metadata: Metadata) = {
     val `type_` = if (!node.multiline) "Line" else "Block"
     object comment extends Comment {
-      var `type` = `type_`
-      var value = node.value
+      val `type` = `type_`
+      val value = node.value
     }
     if (node.range) {
       comment.range = node.range
@@ -158,8 +158,8 @@ class CommentHandler() {
     if (this.attach) {
       object entry extends Entry {
         var comment = new Comment {
-          override def `type` = `type_`
-          override def value = node.value
+          override val `type` = `type_`
+          override val value = node.value
           range = (metadata.start.offset, metadata.end.offset)
         }
         var start = metadata.start.offset
