@@ -79,4 +79,14 @@ class BasicTests extends FlatSpec with TestInputs {
     """)
   }
 
+  it should "parse input with rest arguments" in {
+    parse("""
+    function sum(...theArgs) {
+      return theArgs.reduce((previous, current) => {
+        return previous + current;
+      });
+    }
+    """)
+  }
+
 }

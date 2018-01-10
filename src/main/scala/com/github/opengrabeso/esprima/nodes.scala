@@ -454,7 +454,8 @@ object Node {
 
 
   /* ported: added ArgumentListElement because of parseGroupExpression */
-  case class RestElement(var argument: BindingIdentifierOrPattern) extends Node with ArrayPatternElement with ObjectPatternProperty with ArgumentListElement {
+  /* ported: added FunctionParameter because of parseFormalParameter */
+  case class RestElement(var argument: BindingIdentifierOrPattern) extends Node with ArrayPatternElement with ObjectPatternProperty with ArgumentListElement with FunctionParameter {
 
     override def clone = copy().copyNode(this)
   }

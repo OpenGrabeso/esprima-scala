@@ -2416,12 +2416,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   
   def parseFormalParameter(options: ParameterOptions) = {
     val params = ArrayBuffer.empty[RawToken]
-    val param = if (this.`match`("...")) this.parseRestElement(params) else this.parsePatternWithDefault(params)
+    val param = if (this.`match`("...")) this.parseRestElement(params) else this.parsePatternWithDefault(params).asInstanceOf[Node.FunctionParameter]
     for (i <- params) {
       this.validateParam(options, i, i.value)
     }
     options.simple = options.simple && param.isInstanceOf[Node.Identifier]
-    options.params.push(param.asInstanceOf[Node.FunctionParameter])
+    options.params.push(param)
   }
 
   def parseFormalParameters(firstRestricted_ : RawToken = null): ParameterOptions = {
