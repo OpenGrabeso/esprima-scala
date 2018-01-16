@@ -1,14 +1,10 @@
 /*
-ScalaFromJS: 2017-12-06 21:28:23.723
+ScalaFromJS: Dev 2018-01-16 17:57:51
 comment-handler.js
 */
 
 package esprima
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
-val syntax_1 = require("./syntax")
-
+/* import { Syntax } from './syntax' */
 class CommentHandler() {
   var attach: Boolean = false
   var comments = Array.empty[Any]
@@ -95,7 +91,7 @@ class CommentHandler() {
   }
   
   def visitNode(node: Node, metadata: SourceLocation) = {
-    if (node.`type` == syntax_1.Syntax.Program && node.body.length > 0) {
+    if (node.isInstanceOf[Program] && node.asInstanceOf[Program].body.length > 0) {
       return
     }
     this.insertInnerComments(node, metadata)
@@ -156,4 +152,3 @@ class CommentHandler() {
   
 }
 
-exports.CommentHandler = CommentHandler

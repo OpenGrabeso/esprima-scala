@@ -1,10 +1,9 @@
 /*
-ScalaFromJS: 2017-12-05 14:48:54.460
+ScalaFromJS: Dev 2018-01-16 17:57:51
 esprima.js
 */
 
 package esprima
-"use strict"
 /*
 Copyright JS Foundation and other contributors, https://js.foundation/
 
@@ -28,17 +27,14 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
-val comment_handler_1 = require("./comment-handler")
-val jsx_parser_1 = require("./jsx-parser")
-val parser_1 = require("./parser")
-val tokenizer_1 = require("./tokenizer")
-
-def parse(code: Any, options: Script, delegate: (Unit, Unit) => Any) = {
+/* import { CommentHandler } from './comment-handler' */
+/* import { JSXParser } from './jsx-parser' */
+/* import { Parser } from './parser' */
+/* import { Tokenizer } from './tokenizer' */
+def parse(code: Double, options: Any, delegate: (Unit, Unit) => Any) = {
   var commentHandler = null
-  val proxyDelegate = (node, metadata) => {
+
+  def proxyDelegate(node: Node, metadata: SourceLocation) = {
     if (delegate) {
       delegate(node, metadata)
     }
@@ -52,7 +48,7 @@ def parse(code: Any, options: Script, delegate: (Unit, Unit) => Any) = {
     collectComment = options.comment.getClass == "boolean" && options.comment
     val attachComment = options.attachComment.getClass == "boolean" && options.attachComment
     if (collectComment || attachComment) {
-      commentHandler = new comment_handler_1.CommentHandler()
+      commentHandler = new CommentHandler()
       commentHandler.attach = attachComment
       options.comment = true
       parserDelegate = proxyDelegate
@@ -62,11 +58,11 @@ def parse(code: Any, options: Script, delegate: (Unit, Unit) => Any) = {
   if (options && options.sourceType.getClass == "string") {
     isModule = options.sourceType == "module"
   }
-  var parser: Any = _
+  var parser: Parser = _
   if (options && options.jsx.getClass == "boolean" && options.jsx) {
-    parser = new jsx_parser_1.JSXParser(code, options, parserDelegate)
+    parser = new JSXParser(code, options, parserDelegate)
   } else {
-    parser = new parser_1.Parser(code, options, parserDelegate)
+    parser = new Parser(code, options, parserDelegate)
   }
   val program = if (isModule) parser.parseModule() else parser.parseScript()
   val ast = program
@@ -81,24 +77,21 @@ def parse(code: Any, options: Script, delegate: (Unit, Unit) => Any) = {
   }
   ast
 }
-exports.parse = parse
 
-def parseModule(code: Any, options: Any, delegate: (Unit, Unit) => Any) = {
+def parseModule(code: Double, options: Any, delegate: (Unit, Unit) => Any) = {
   val parsingOptions = options || new {}
   parsingOptions.sourceType = "module"
   parse(code, parsingOptions, delegate)
 }
-exports.parseModule = parseModule
 
-def parseScript(code: Any, options: Any, delegate: (Unit, Unit) => Any) = {
+def parseScript(code: Double, options: Any, delegate: (Unit, Unit) => Any) = {
   val parsingOptions = options || new {}
   parsingOptions.sourceType = "script"
   parse(code, parsingOptions, delegate)
 }
-exports.parseScript = parseScript
 
-def tokenize(code: Any, options: Any, delegate: (Unit) => Any) = {
-  val tokenizer = new tokenizer_1.Tokenizer(code, options)
+def tokenize(code: Double, options: Any, delegate: (Unit) => Any) = {
+  val tokenizer = new Tokenizer(code, options)
   val tokens = Array.empty[Unit]
   try {
     while (true) {
@@ -120,8 +113,5 @@ def tokenize(code: Any, options: Any, delegate: (Unit) => Any) = {
   }
   tokens
 }
-exports.tokenize = tokenize
-val syntax_1 = require("./syntax")
-exports.Syntax = syntax_1.Syntax
-// Sync with *.json manifests.
-exports.version = "4.0.0-dev"
+/* export { Syntax } from './syntax' */
+val version = "4.0.0-dev"

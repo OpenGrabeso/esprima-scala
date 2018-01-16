@@ -1,14 +1,10 @@
 /*
-ScalaFromJS: 2017-12-05 14:38:17.341
+ScalaFromJS: Dev 2018-01-16 17:57:51
 syntax.js
 */
 
 package esprima
-"use strict"
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
-exports.Syntax = new {
+object Syntax {
   var AssignmentExpression = "AssignmentExpression"
   var AssignmentPattern = "AssignmentPattern"
   var ArrayExpression = "ArrayExpression"

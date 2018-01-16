@@ -1,21 +1,17 @@
 /*
-ScalaFromJS: 2017-12-05 14:38:17.341
+ScalaFromJS: Dev 2018-01-16 17:57:51
 token.js
 */
 
 package esprima
-"use strict"
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
-exports.TokenName = new {}
-exports.TokenName(1) = "Boolean"
-exports.TokenName(2) = "<end>"
-exports.TokenName(3) = "Identifier"
-exports.TokenName(4) = "Keyword"
-exports.TokenName(5) = "Null"
-exports.TokenName(6) = "Numeric"
-exports.TokenName(7) = "Punctuator"
-exports.TokenName(8) = "String"
-exports.TokenName(9) = "RegularExpression"
-exports.TokenName(10) = "Template"
+var TokenName: Any = _
+TokenName(1) =  /*BooleanLiteral */"Boolean"
+TokenName(2) =  /*EOF */"<end>"
+TokenName(3) =  /*Identifier */"Identifier"
+TokenName(4) =  /*Keyword */"Keyword"
+TokenName(5) =  /*NullLiteral */"Null"
+TokenName(6) =  /*NumericLiteral */"Numeric"
+TokenName(7) =  /*Punctuator */"Punctuator"
+TokenName(8) =  /*StringLiteral */"String"
+TokenName(9) =  /*RegularExpression */"RegularExpression"
+TokenName(10) =  /*Template */"Template"

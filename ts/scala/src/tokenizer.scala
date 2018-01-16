@@ -1,27 +1,27 @@
 /*
-ScalaFromJS: 2017-12-06 21:28:23.723
+ScalaFromJS: Dev 2018-01-16 17:57:51
 tokenizer.js
 */
 
 package esprima
-"use strict"
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
-val error_handler_1 = require("./error-handler")
-val scanner_1 = require("./scanner")
-val token_1 = require("./token")
-
+/* import { ErrorHandler } from './error-handler' */
+/* import { Scanner } from './scanner' */
+/* import { TokenName } from './token' */
 class Reader() {
   var paren: Double = _
   var values = Array.empty[String]
   var curly: Double = paren = -1
+  // A function following one of those tokens is an expression.
   def beforeFunctionExpression(t: String) = {
-    Array("(", "{", "[", "in", "typeof", "instanceof", "new", "return", "case", "delete", "throw", "void", // assignment operators
-    "=", "+=", "-=", "*=", "**=", "/=", "%=", "<<=", ">>=", ">>>=", "&=", "|=", "^=", ",", // binary/unary operators
+    Array("(", "{", "[", "in", "typeof", "instanceof", "new", "return", "case", "delete", "throw", "void", 
+    // assignment operators
+    "=", "+=", "-=", "*=", "**=", "/=", "%=", "<<=", ">>=", ">>>=", "&=", "|=", "^=", ",", 
+    // binary/unary operators
     "+", "-", "*", "**", "/", "%", "++", "--", "<<", ">>", ">>>", "&", "|", "^", "!", "~", "&&", "||", "?", ":", "===", "==", ">=", "<=", "<", ">", "!=", "!==").indexOf(t) >= 0
   }
   
+  // Determine if forward slash (/) is an operator or part of a regular expression
+  // https://github.com/mozilla/sweet.js/wiki/design
   def isRegexStart() = {
     val previous = this.values(this.values.length - 1)
     var regex = previous != null
@@ -49,8 +49,8 @@ class Reader() {
     regex
   }
   
-  def push(token: RawToken) = {
-    if (token.`type` == 7 || token.`type` == 4) {
+  def push(token: Any) = {
+    if (token.`type` == 7 ||  /*Punctuator */token.`type` == 4)  /*Keyword */{
       if (token.value == "{") {
         this.curly = this.values.length
       } else if (token.value == "(") {
@@ -64,10 +64,10 @@ class Reader() {
   
 }
 
-class Tokenizer(code: Any, config: Any) {
-  var errorHandler: ErrorHandler = new error_handler_1.ErrorHandler()
+class Tokenizer(code: Double, config: Any) {
+  var errorHandler: ErrorHandler = new ErrorHandler()
   errorHandler.tolerant = if (config) config.tolerant.getClass == "boolean" && config.tolerant else false
-  var scanner: Scanner = new scanner_1.Scanner(code, this.errorHandler)
+  var scanner: Scanner = new Scanner(code, errorHandler)
   scanner.trackComment = if (config) config.comment.getClass == "boolean" && config.comment else false
   var trackRange: Boolean = if (config) config.range.getClass == "boolean" && config.range else false
   var trackLoc: Boolean = if (config) config.loc.getClass == "boolean" && config.loc else false
@@ -108,7 +108,7 @@ class Tokenizer(code: Any, config: Any) {
           }
         }
         val maybeRegex = this.scanner.source(this.scanner.index) == "/" && this.reader.isRegexStart()
-        var token: RawToken = _
+        var token = new {}
         if (maybeRegex) {
           val state = this.scanner.saveState()
           try {
@@ -123,7 +123,7 @@ class Tokenizer(code: Any, config: Any) {
         }
         this.reader.push(token)
         object entry {
-          var `type` = token_1.TokenName(token.`type`)
+          var `type` = TokenName(token.`type`)
           var value = this.scanner.source.slice(token.start, token.end)
         }
         if (this.trackRange) {
@@ -136,7 +136,7 @@ class Tokenizer(code: Any, config: Any) {
           }
           entry.loc = loc
         }
-        if (token.`type` == 9) {
+        if (token.`type` == 9)  /*RegularExpression */{
           val pattern = token.pattern
           val flags = token.flags
           entry.regex = new {
@@ -152,4 +152,3 @@ class Tokenizer(code: Any, config: Any) {
   
 }
 
-exports.Tokenizer = Tokenizer

@@ -1,9 +1,10 @@
 /*
-ScalaFromJS: 2017-12-06 21:18:26.753
+ScalaFromJS: Dev 2018-01-16 17:57:51
 esprima-convert.js
 */
 
 package esprima-convert.js
+
 /* export * from "src/assert" */
 /* export * from "src/character" */
 /* export * from "src/comment-handler" */
@@ -20,5 +21,4 @@ package esprima-convert.js
 /* export * from "src/token" */
 /* export * from "src/tokenizer" */
 /* export * from "src/xhtml-entities" */
-/* import * from "types" */
-import types*
+/* import "types" */
