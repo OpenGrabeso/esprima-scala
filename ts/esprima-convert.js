@@ -14,7 +14,7 @@ export * from "src/syntax"
 export * from "src/token"
 export * from "src/tokenizer"
 export * from "src/xhtml-entities"
-import * from "types"
+import "types"
 var ScalaFromJS_settings = {
     members: [
         /*
