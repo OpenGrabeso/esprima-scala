@@ -1,6 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.JSXSyntax = {
+export const JSXSyntax = {
     JSXAttribute: 'JSXAttribute',
     JSXClosingElement: 'JSXClosingElement',
     JSXElement: 'JSXElement',

@@ -1,7 +1,5 @@
-"use strict";
 /* tslint:disable:max-classes-per-file */
-Object.defineProperty(exports, "__esModule", { value: true });
-class ErrorHandler {
+export class ErrorHandler {
     constructor() {
         this.errors = [];
         this.tolerant = false;
@@ -53,4 +51,3 @@ class ErrorHandler {
         }
     }
 }
-exports.ErrorHandler = ErrorHandler;

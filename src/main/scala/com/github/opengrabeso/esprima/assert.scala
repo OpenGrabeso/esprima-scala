@@ -1,5 +1,5 @@
 /*
-ScalaFromJS: 2017-12-05 14:33:13.940
+ScalaFromJS: Dev 2018-01-16 17:57:51
 assert.js
 */
 

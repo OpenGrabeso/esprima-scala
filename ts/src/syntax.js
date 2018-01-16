@@ -1,6 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Syntax = {
+export const Syntax = {
     AssignmentExpression: 'AssignmentExpression',
     AssignmentPattern: 'AssignmentPattern',
     ArrayExpression: 'ArrayExpression',

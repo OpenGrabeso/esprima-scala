@@ -1,7 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const syntax_1 = require("./syntax");
-class CommentHandler {
+import { Syntax } from './syntax';
+export class CommentHandler {
     constructor() {
         this.attach = false;
         this.comments = [];
@@ -12,7 +10,7 @@ class CommentHandler {
     insertInnerComments(node, metadata) {
         //  innnerComments for properties empty block
         //  `function a() {/** comments **\/}`
-        if (node.type === syntax_1.Syntax.BlockStatement && node.body.length === 0) {
+        if (node.type === Syntax.BlockStatement && node.body.length === 0) {
             const innerComments = [];
             for (let i = this.leading.length - 1; i >= 0; --i) {
                 const entry = this.leading[i];
@@ -86,7 +84,7 @@ class CommentHandler {
         return leadingComments;
     }
     visitNode(node, metadata) {
-        if (node.type === syntax_1.Syntax.Program && node.body.length > 0) {
+        if (node.type === Syntax.Program && node.body.length > 0) {
             return;
         }
         this.insertInnerComments(node, metadata);
@@ -145,4 +143,3 @@ class CommentHandler {
         }
     }
 }
-exports.CommentHandler = CommentHandler;

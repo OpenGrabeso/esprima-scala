@@ -1,15 +1,13 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const assert_1 = require("./assert");
-const character_1 = require("./character");
-const messages_1 = require("./messages");
+import { assert } from './assert';
+import { Character } from './character';
+import { Messages } from './messages';
 function hexValue(ch) {
     return '0123456789abcdef'.indexOf(ch.toLowerCase());
 }
 function octalValue(ch) {
     return '01234567'.indexOf(ch);
 }
-class Scanner {
+export class Scanner {
     constructor(code, handler) {
         this.source = code;
         this.errorHandler = handler;
@@ -36,10 +34,10 @@ class Scanner {
     eof() {
         return this.index >= this.length;
     }
-    throwUnexpectedToken(message = messages_1.Messages.UnexpectedTokenIllegal) {
+    throwUnexpectedToken(message = Messages.UnexpectedTokenIllegal) {
         return this.errorHandler.throwError(this.index, this.lineNumber, this.index - this.lineStart + 1, message);
     }
-    tolerateUnexpectedToken(message = messages_1.Messages.UnexpectedTokenIllegal) {
+    tolerateUnexpectedToken(message = Messages.UnexpectedTokenIllegal) {
         this.errorHandler.tolerateError(this.index, this.lineNumber, this.index - this.lineStart + 1, message);
     }
     // https://tc39.github.io/ecma262/#sec-comments
@@ -60,7 +58,7 @@ class Scanner {
         while (!this.eof()) {
             const ch = this.source.charCodeAt(this.index);
             ++this.index;
-            if (character_1.Character.isLineTerminator(ch)) {
+            if (Character.isLineTerminator(ch)) {
                 if (this.trackComment) {
                     loc.end = {
                         line: this.lineNumber,
@@ -113,7 +111,7 @@ class Scanner {
         }
         while (!this.eof()) {
             const ch = this.source.charCodeAt(this.index);
-            if (character_1.Character.isLineTerminator(ch)) {
+            if (Character.isLineTerminator(ch)) {
                 if (ch === 0x0D && this.source.charCodeAt(this.index + 1) === 0x0A) {
                     ++this.index;
                 }
@@ -171,10 +169,10 @@ class Scanner {
         let start = (this.index === 0);
         while (!this.eof()) {
             let ch = this.source.charCodeAt(this.index);
-            if (character_1.Character.isWhiteSpace(ch)) {
+            if (Character.isWhiteSpace(ch)) {
                 ++this.index;
             }
-            else if (character_1.Character.isLineTerminator(ch)) {
+            else if (Character.isLineTerminator(ch)) {
                 ++this.index;
                 if (ch === 0x0D && this.source.charCodeAt(this.index) === 0x0A) {
                     ++this.index;
@@ -310,7 +308,7 @@ class Scanner {
         const len = (prefix === 'u') ? 4 : 2;
         let code = 0;
         for (let i = 0; i < len; ++i) {
-            if (!this.eof() && character_1.Character.isHexDigit(this.source.charCodeAt(this.index))) {
+            if (!this.eof() && Character.isHexDigit(this.source.charCodeAt(this.index))) {
                 code = code * 16 + hexValue(this.source[this.index++]);
             }
             else {
@@ -328,7 +326,7 @@ class Scanner {
         }
         while (!this.eof()) {
             ch = this.source[this.index++];
-            if (!character_1.Character.isHexDigit(ch.charCodeAt(0))) {
+            if (!Character.isHexDigit(ch.charCodeAt(0))) {
                 break;
             }
             code = code * 16 + hexValue(ch);
@@ -336,7 +334,7 @@ class Scanner {
         if (code > 0x10FFFF || ch !== '}') {
             this.throwUnexpectedToken();
         }
-        return character_1.Character.fromCodePoint(code);
+        return Character.fromCodePoint(code);
     }
     getIdentifier() {
         const start = this.index++;
@@ -352,7 +350,7 @@ class Scanner {
                 this.index = start;
                 return this.getComplexIdentifier();
             }
-            if (character_1.Character.isIdentifierPart(ch)) {
+            if (Character.isIdentifierPart(ch)) {
                 ++this.index;
             }
             else {
@@ -363,7 +361,7 @@ class Scanner {
     }
     getComplexIdentifier() {
         let cp = this.codePointAt(this.index);
-        let id = character_1.Character.fromCodePoint(cp);
+        let id = Character.fromCodePoint(cp);
         this.index += id.length;
         // '\u' (U+005C, U+0075) denotes an escaped character.
         let ch;
@@ -378,7 +376,7 @@ class Scanner {
             }
             else {
                 ch = this.scanHexEscape('u');
-                if (ch === null || ch === '\\' || !character_1.Character.isIdentifierStart(ch.charCodeAt(0))) {
+                if (ch === null || ch === '\\' || !Character.isIdentifierStart(ch.charCodeAt(0))) {
                     this.throwUnexpectedToken();
                 }
             }
@@ -386,10 +384,10 @@ class Scanner {
         }
         while (!this.eof()) {
             cp = this.codePointAt(this.index);
-            if (!character_1.Character.isIdentifierPart(cp)) {
+            if (!Character.isIdentifierPart(cp)) {
                 break;
             }
-            ch = character_1.Character.fromCodePoint(cp);
+            ch = Character.fromCodePoint(cp);
             id += ch;
             this.index += ch.length;
             // '\u' (U+005C, U+0075) denotes an escaped character.
@@ -405,7 +403,7 @@ class Scanner {
                 }
                 else {
                     ch = this.scanHexEscape('u');
-                    if (ch === null || ch === '\\' || !character_1.Character.isIdentifierPart(ch.charCodeAt(0))) {
+                    if (ch === null || ch === '\\' || !Character.isIdentifierPart(ch.charCodeAt(0))) {
                         this.throwUnexpectedToken();
                     }
                 }
@@ -418,12 +416,12 @@ class Scanner {
         // \0 is not octal escape sequence
         let octal = (ch !== '0');
         let code = octalValue(ch);
-        if (!this.eof() && character_1.Character.isOctalDigit(this.source.charCodeAt(this.index))) {
+        if (!this.eof() && Character.isOctalDigit(this.source.charCodeAt(this.index))) {
             octal = true;
             code = code * 8 + octalValue(this.source[this.index++]);
             // 3 digits are only allowed when string starts
             // with 0, 1, 2, 3
-            if ('0123'.indexOf(ch) >= 0 && !this.eof() && character_1.Character.isOctalDigit(this.source.charCodeAt(this.index))) {
+            if ('0123'.indexOf(ch) >= 0 && !this.eof() && Character.isOctalDigit(this.source.charCodeAt(this.index))) {
                 code = code * 8 + octalValue(this.source[this.index++]);
             }
         }
@@ -458,7 +456,7 @@ class Scanner {
         if (type !== 3 /* Identifier */ && (start + id.length !== this.index)) {
             const restore = this.index;
             this.index = start;
-            this.tolerateUnexpectedToken(messages_1.Messages.InvalidEscapedReservedWord);
+            this.tolerateUnexpectedToken(Messages.InvalidEscapedReservedWord);
             this.index = restore;
         }
         return {
@@ -554,7 +552,7 @@ class Scanner {
     scanHexLiteral(start) {
         let num = '';
         while (!this.eof()) {
-            if (!character_1.Character.isHexDigit(this.source.charCodeAt(this.index))) {
+            if (!Character.isHexDigit(this.source.charCodeAt(this.index))) {
                 break;
             }
             num += this.source[this.index++];
@@ -562,7 +560,7 @@ class Scanner {
         if (num.length === 0) {
             this.throwUnexpectedToken();
         }
-        if (character_1.Character.isIdentifierStart(this.source.charCodeAt(this.index))) {
+        if (Character.isIdentifierStart(this.source.charCodeAt(this.index))) {
             this.throwUnexpectedToken();
         }
         return {
@@ -591,7 +589,7 @@ class Scanner {
         if (!this.eof()) {
             ch = this.source.charCodeAt(this.index);
             /* istanbul ignore else */
-            if (character_1.Character.isIdentifierStart(ch) || character_1.Character.isDecimalDigit(ch)) {
+            if (Character.isIdentifierStart(ch) || Character.isDecimalDigit(ch)) {
                 this.throwUnexpectedToken();
             }
         }
@@ -607,7 +605,7 @@ class Scanner {
     scanOctalLiteral(prefix, start) {
         let num = '';
         let octal = false;
-        if (character_1.Character.isOctalDigit(prefix.charCodeAt(0))) {
+        if (Character.isOctalDigit(prefix.charCodeAt(0))) {
             octal = true;
             num = '0' + this.source[this.index++];
         }
@@ -615,7 +613,7 @@ class Scanner {
             ++this.index;
         }
         while (!this.eof()) {
-            if (!character_1.Character.isOctalDigit(this.source.charCodeAt(this.index))) {
+            if (!Character.isOctalDigit(this.source.charCodeAt(this.index))) {
                 break;
             }
             num += this.source[this.index++];
@@ -624,7 +622,7 @@ class Scanner {
             // only 0o or 0O
             this.throwUnexpectedToken();
         }
-        if (character_1.Character.isIdentifierStart(this.source.charCodeAt(this.index)) || character_1.Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
+        if (Character.isIdentifierStart(this.source.charCodeAt(this.index)) || Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
             this.throwUnexpectedToken();
         }
         return {
@@ -645,7 +643,7 @@ class Scanner {
             if (ch === '8' || ch === '9') {
                 return false;
             }
-            if (!character_1.Character.isOctalDigit(ch.charCodeAt(0))) {
+            if (!Character.isOctalDigit(ch.charCodeAt(0))) {
                 return true;
             }
         }
@@ -654,7 +652,7 @@ class Scanner {
     scanNumericLiteral() {
         const start = this.index;
         let ch = this.source[start];
-        assert_1.assert(character_1.Character.isDecimalDigit(ch.charCodeAt(0)) || (ch === '.'), 'Numeric literal must start with a decimal digit or a decimal point');
+        assert(Character.isDecimalDigit(ch.charCodeAt(0)) || (ch === '.'), 'Numeric literal must start with a decimal digit or a decimal point');
         let num = '';
         if (ch !== '.') {
             num = this.source[this.index++];
@@ -675,20 +673,20 @@ class Scanner {
                 if (ch === 'o' || ch === 'O') {
                     return this.scanOctalLiteral(ch, start);
                 }
-                if (ch && character_1.Character.isOctalDigit(ch.charCodeAt(0))) {
+                if (ch && Character.isOctalDigit(ch.charCodeAt(0))) {
                     if (this.isImplicitOctalLiteral()) {
                         return this.scanOctalLiteral(ch, start);
                     }
                 }
             }
-            while (character_1.Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
+            while (Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
                 num += this.source[this.index++];
             }
             ch = this.source[this.index];
         }
         if (ch === '.') {
             num += this.source[this.index++];
-            while (character_1.Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
+            while (Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
                 num += this.source[this.index++];
             }
             ch = this.source[this.index];
@@ -699,8 +697,8 @@ class Scanner {
             if (ch === '+' || ch === '-') {
                 num += this.source[this.index++];
             }
-            if (character_1.Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
-                while (character_1.Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
+            if (Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
+                while (Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
                     num += this.source[this.index++];
                 }
             }
@@ -708,7 +706,7 @@ class Scanner {
                 this.throwUnexpectedToken();
             }
         }
-        if (character_1.Character.isIdentifierStart(this.source.charCodeAt(this.index))) {
+        if (Character.isIdentifierStart(this.source.charCodeAt(this.index))) {
             this.throwUnexpectedToken();
         }
         return {
@@ -724,7 +722,7 @@ class Scanner {
     scanStringLiteral() {
         const start = this.index;
         let quote = this.source[start];
-        assert_1.assert((quote === '\'' || quote === '"'), 'String literal must starts with a quote');
+        assert((quote === '\'' || quote === '"'), 'String literal must starts with a quote');
         ++this.index;
         let octal = false;
         let str = '';
@@ -736,7 +734,7 @@ class Scanner {
             }
             else if (ch === '\\') {
                 ch = this.source[this.index++];
-                if (!ch || !character_1.Character.isLineTerminator(ch.charCodeAt(0))) {
+                if (!ch || !Character.isLineTerminator(ch.charCodeAt(0))) {
                     switch (ch) {
                         case 'u':
                             if (this.source[this.index] === '{') {
@@ -754,7 +752,7 @@ class Scanner {
                         case 'x':
                             const unescaped = this.scanHexEscape(ch);
                             if (unescaped === null) {
-                                this.throwUnexpectedToken(messages_1.Messages.InvalidHexEscapeSequence);
+                                this.throwUnexpectedToken(Messages.InvalidHexEscapeSequence);
                             }
                             str += unescaped;
                             break;
@@ -782,7 +780,7 @@ class Scanner {
                             this.tolerateUnexpectedToken();
                             break;
                         default:
-                            if (ch && character_1.Character.isOctalDigit(ch.charCodeAt(0))) {
+                            if (ch && Character.isOctalDigit(ch.charCodeAt(0))) {
                                 const octToDec = this.octalToDecimal(ch);
                                 octal = octToDec.octal || octal;
                                 str += String.fromCharCode(octToDec.code);
@@ -801,7 +799,7 @@ class Scanner {
                     this.lineStart = this.index;
                 }
             }
-            else if (character_1.Character.isLineTerminator(ch.charCodeAt(0))) {
+            else if (Character.isLineTerminator(ch.charCodeAt(0))) {
                 break;
             }
             else {
@@ -850,7 +848,7 @@ class Scanner {
             }
             else if (ch === '\\') {
                 ch = this.source[this.index++];
-                if (!character_1.Character.isLineTerminator(ch.charCodeAt(0))) {
+                if (!Character.isLineTerminator(ch.charCodeAt(0))) {
                     switch (ch) {
                         case 'n':
                             cooked += '\n';
@@ -881,7 +879,7 @@ class Scanner {
                         case 'x':
                             const unescaped = this.scanHexEscape(ch);
                             if (unescaped === null) {
-                                this.throwUnexpectedToken(messages_1.Messages.InvalidHexEscapeSequence);
+                                this.throwUnexpectedToken(Messages.InvalidHexEscapeSequence);
                             }
                             cooked += unescaped;
                             break;
@@ -896,15 +894,15 @@ class Scanner {
                             break;
                         default:
                             if (ch === '0') {
-                                if (character_1.Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
+                                if (Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
                                     // Illegal: \01 \02 and so on
-                                    this.throwUnexpectedToken(messages_1.Messages.TemplateOctalLiteral);
+                                    this.throwUnexpectedToken(Messages.TemplateOctalLiteral);
                                 }
                                 cooked += '\0';
                             }
-                            else if (character_1.Character.isOctalDigit(ch.charCodeAt(0))) {
+                            else if (Character.isOctalDigit(ch.charCodeAt(0))) {
                                 // Illegal: \1 \2
-                                this.throwUnexpectedToken(messages_1.Messages.TemplateOctalLiteral);
+                                this.throwUnexpectedToken(Messages.TemplateOctalLiteral);
                             }
                             else {
                                 cooked += ch;
@@ -920,7 +918,7 @@ class Scanner {
                     this.lineStart = this.index;
                 }
             }
-            else if (character_1.Character.isLineTerminator(ch.charCodeAt(0))) {
+            else if (Character.isLineTerminator(ch.charCodeAt(0))) {
                 ++this.lineNumber;
                 if (ch === '\r' && this.source[this.index] === '\n') {
                     ++this.index;
@@ -966,7 +964,7 @@ class Scanner {
                 .replace(/\\u\{([0-9a-fA-F]+)\}|\\u([a-fA-F0-9]{4})/g, ($0, $1, $2) => {
                 const codePoint = parseInt($1 || $2, 16);
                 if (codePoint > 0x10FFFF) {
-                    self.throwUnexpectedToken(messages_1.Messages.InvalidRegExp);
+                    self.throwUnexpectedToken(Messages.InvalidRegExp);
                 }
                 if (codePoint <= 0xFFFF) {
                     return String.fromCharCode(codePoint);
@@ -980,7 +978,7 @@ class Scanner {
             RegExp(tmp);
         }
         catch (e) {
-            this.throwUnexpectedToken(messages_1.Messages.InvalidRegExp);
+            this.throwUnexpectedToken(Messages.InvalidRegExp);
         }
         // Return a regular expression object for this pattern-flag pair, or
         // `null` in case the current environment doesn't support the flags it
@@ -995,7 +993,7 @@ class Scanner {
     }
     scanRegExpBody() {
         let ch = this.source[this.index];
-        assert_1.assert(ch === '/', 'Regular expression literal must start with a slash');
+        assert(ch === '/', 'Regular expression literal must start with a slash');
         let str = this.source[this.index++];
         let classMarker = false;
         let terminated = false;
@@ -1005,13 +1003,13 @@ class Scanner {
             if (ch === '\\') {
                 ch = this.source[this.index++];
                 // https://tc39.github.io/ecma262/#sec-literals-regular-expression-literals
-                if (character_1.Character.isLineTerminator(ch.charCodeAt(0))) {
-                    this.throwUnexpectedToken(messages_1.Messages.UnterminatedRegExp);
+                if (Character.isLineTerminator(ch.charCodeAt(0))) {
+                    this.throwUnexpectedToken(Messages.UnterminatedRegExp);
                 }
                 str += ch;
             }
-            else if (character_1.Character.isLineTerminator(ch.charCodeAt(0))) {
-                this.throwUnexpectedToken(messages_1.Messages.UnterminatedRegExp);
+            else if (Character.isLineTerminator(ch.charCodeAt(0))) {
+                this.throwUnexpectedToken(Messages.UnterminatedRegExp);
             }
             else if (classMarker) {
                 if (ch === ']') {
@@ -1029,7 +1027,7 @@ class Scanner {
             }
         }
         if (!terminated) {
-            this.throwUnexpectedToken(messages_1.Messages.UnterminatedRegExp);
+            this.throwUnexpectedToken(Messages.UnterminatedRegExp);
         }
         // Exclude leading and trailing slash.
         return str.substr(1, str.length - 2);
@@ -1039,7 +1037,7 @@ class Scanner {
         let flags = '';
         while (!this.eof()) {
             let ch = this.source[this.index];
-            if (!character_1.Character.isIdentifierPart(ch.charCodeAt(0))) {
+            if (!Character.isIdentifierPart(ch.charCodeAt(0))) {
                 break;
             }
             ++this.index;
@@ -1103,7 +1101,7 @@ class Scanner {
             };
         }
         const cp = this.source.charCodeAt(this.index);
-        if (character_1.Character.isIdentifierStart(cp)) {
+        if (Character.isIdentifierStart(cp)) {
             return this.scanIdentifier();
         }
         // Very common: ( and ) and ;
@@ -1117,12 +1115,12 @@ class Scanner {
         // Dot (.) U+002E can also start a floating-point number, hence the need
         // to check the next character.
         if (cp === 0x2E) {
-            if (character_1.Character.isDecimalDigit(this.source.charCodeAt(this.index + 1))) {
+            if (Character.isDecimalDigit(this.source.charCodeAt(this.index + 1))) {
                 return this.scanNumericLiteral();
             }
             return this.scanPunctuator();
         }
-        if (character_1.Character.isDecimalDigit(cp)) {
+        if (Character.isDecimalDigit(cp)) {
             return this.scanNumericLiteral();
         }
         // Template literals start with ` (U+0060) for template head
@@ -1132,11 +1130,10 @@ class Scanner {
         }
         // Possible identifier start in a surrogate pair.
         if (cp >= 0xD800 && cp < 0xDFFF) {
-            if (character_1.Character.isIdentifierStart(this.codePointAt(this.index))) {
+            if (Character.isIdentifierStart(this.codePointAt(this.index))) {
                 return this.scanIdentifier();
             }
         }
         return this.scanPunctuator();
     }
 }
-exports.Scanner = Scanner;

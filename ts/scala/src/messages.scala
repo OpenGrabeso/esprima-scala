@@ -1,15 +1,10 @@
 /*
-ScalaFromJS: 2017-12-05 14:34:17.395
+ScalaFromJS: Dev 2018-01-16 17:57:51
 messages.js
 */
 
-package com.github.opengrabeso.esprima
-"use strict"
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
-// Error messages should be identical to V8.
-exports.Messages = new {
+package esprima
+object Messages {
   var BadImportCallArity = "Unexpected token"
   var BadGetterArity = "Getter must not have any formal parameters"
   var BadSetterArity = "Setter must have exactly one formal parameter"
@@ -28,7 +23,7 @@ exports.Messages = new {
   var IllegalContinue = "Illegal continue statement"
   var IllegalExportDeclaration = "Unexpected token"
   var IllegalImportDeclaration = "Unexpected token"
-  var IllegalLanguageModeDirective = "Illegal \'use strict\' directive in function with non-simple parameter list"
+  var IllegalLanguageModeDirective = "Illegal 'use strict' directive in function with non-simple parameter list"
   var IllegalReturn = "Illegal return statement"
   var InvalidEscapedReservedWord = "Keyword must not contain escaped characters"
   var InvalidHexEscapeSequence = "Invalid hexadecimal escape sequence"
@@ -45,7 +40,7 @@ exports.Messages = new {
   var NoCatchOrFinally = "Missing catch or finally after try"
   var ParameterAfterRestParameter = "Rest parameter must be last formal parameter"
   var PropertyAfterRestProperty = "Unexpected token"
-  var Redeclaration = "%0 \'%1\' has already been declared"
+  var Redeclaration = "%0 '%1' has already been declared"
   var StaticPrototype = "Classes may not have static property named prototype"
   var StrictCatchVariable = "Catch variable may not be eval or arguments in strict mode"
   var StrictDelete = "Delete of an unqualified identifier in strict mode."
@@ -69,6 +64,6 @@ exports.Messages = new {
   var UnexpectedTemplate = "Unexpected quasi %0"
   var UnexpectedToken = "Unexpected token %0"
   var UnexpectedTokenIllegal = "Unexpected token ILLEGAL"
-  var UnknownLabel = "Undefined label \'%0\'"
+  var UnknownLabel = "Undefined label '%0'"
   var UnterminatedRegExp = "Invalid regular expression: missing /"
 }

@@ -1,88 +1,75 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const jsx_syntax_1 = require("./jsx-syntax");
+import { JSXSyntax } from './jsx-syntax';
 /* tslint:disable:max-classes-per-file */
-class JSXClosingElement {
+export class JSXClosingElement {
     constructor(name) {
-        this.type = jsx_syntax_1.JSXSyntax.JSXClosingElement;
+        this.type = JSXSyntax.JSXClosingElement;
         this.name = name;
     }
 }
-exports.JSXClosingElement = JSXClosingElement;
-class JSXElement {
+export class JSXElement {
     constructor(openingElement, children, closingElement) {
-        this.type = jsx_syntax_1.JSXSyntax.JSXElement;
+        this.type = JSXSyntax.JSXElement;
         this.openingElement = openingElement;
         this.children = children;
         this.closingElement = closingElement;
     }
 }
-exports.JSXElement = JSXElement;
-class JSXEmptyExpression {
+export class JSXEmptyExpression {
     constructor() {
-        this.type = jsx_syntax_1.JSXSyntax.JSXEmptyExpression;
+        this.type = JSXSyntax.JSXEmptyExpression;
     }
 }
-exports.JSXEmptyExpression = JSXEmptyExpression;
-class JSXExpressionContainer {
+export class JSXExpressionContainer {
     constructor(expression) {
-        this.type = jsx_syntax_1.JSXSyntax.JSXExpressionContainer;
+        this.type = JSXSyntax.JSXExpressionContainer;
         this.expression = expression;
     }
 }
-exports.JSXExpressionContainer = JSXExpressionContainer;
-class JSXIdentifier {
+export class JSXIdentifier {
     constructor(name) {
-        this.type = jsx_syntax_1.JSXSyntax.JSXIdentifier;
+        this.type = JSXSyntax.JSXIdentifier;
         this.name = name;
     }
 }
-exports.JSXIdentifier = JSXIdentifier;
-class JSXMemberExpression {
+export class JSXMemberExpression {
     constructor(object, property) {
-        this.type = jsx_syntax_1.JSXSyntax.JSXMemberExpression;
+        this.type = JSXSyntax.JSXMemberExpression;
         this.object = object;
         this.property = property;
     }
 }
-exports.JSXMemberExpression = JSXMemberExpression;
-class JSXAttribute {
+export class JSXAttribute {
     constructor(name, value) {
-        this.type = jsx_syntax_1.JSXSyntax.JSXAttribute;
+        this.type = JSXSyntax.JSXAttribute;
         this.name = name;
         this.value = value;
     }
 }
-exports.JSXAttribute = JSXAttribute;
-class JSXNamespacedName {
+export class JSXNamespacedName {
     constructor(namespace, name) {
-        this.type = jsx_syntax_1.JSXSyntax.JSXNamespacedName;
+        this.type = JSXSyntax.JSXNamespacedName;
         this.namespace = namespace;
         this.name = name;
     }
 }
-exports.JSXNamespacedName = JSXNamespacedName;
-class JSXOpeningElement {
+export class JSXOpeningElement {
     constructor(name, selfClosing, attributes) {
-        this.type = jsx_syntax_1.JSXSyntax.JSXOpeningElement;
+        this.type = JSXSyntax.JSXOpeningElement;
         this.name = name;
         this.selfClosing = selfClosing;
         this.attributes = attributes;
     }
 }
-exports.JSXOpeningElement = JSXOpeningElement;
-class JSXSpreadAttribute {
+export class JSXSpreadAttribute {
     constructor(argument) {
-        this.type = jsx_syntax_1.JSXSyntax.JSXSpreadAttribute;
+        this.type = JSXSyntax.JSXSpreadAttribute;
         this.argument = argument;
     }
 }
-exports.JSXSpreadAttribute = JSXSpreadAttribute;
-class JSXText {
+export class JSXText {
     constructor(value, raw) {
-        this.type = jsx_syntax_1.JSXSyntax.JSXText;
+        this.type = JSXSyntax.JSXText;
         this.value = value;
         this.raw = raw;
     }
 }
-exports.JSXText = JSXText;

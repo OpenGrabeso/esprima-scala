@@ -1,5 +1,5 @@
 /*
-ScalaFromJS: 2017-12-06 21:28:23.723
+ScalaFromJS: Dev 2018-01-16 17:57:51
 tokenizer.js
 */
 
@@ -15,12 +15,17 @@ class Reader() {
   var paren: Int = -1
   var values = ArrayBuffer.empty[Any]
   var curly: Int = paren
+  // A function following one of those tokens is an expression.
   def beforeFunctionExpression(t: Any) = {
-    Array("(", "{", "[", "in", "typeof", "instanceof", "new", "return", "case", "delete", "throw", "void", // assignment operators
-    "=", "+=", "-=", "*=", "**=", "/=", "%=", "<<=", ">>=", ">>>=", "&=", "|=", "^=", ",", // binary/unary operators
+    Array("(", "{", "[", "in", "typeof", "instanceof", "new", "return", "case", "delete", "throw", "void",
+    // assignment operators
+    "=", "+=", "-=", "*=", "**=", "/=", "%=", "<<=", ">>=", ">>>=", "&=", "|=", "^=", ",",
+    // binary/unary operators
     "+", "-", "*", "**", "/", "%", "++", "--", "<<", ">>", ">>>", "&", "|", "^", "!", "~", "&&", "||", "?", ":", "===", "==", ">=", "<=", "<", ">", "!=", "!==").indexOf(t) >= 0
   }
   
+  // Determine if forward slash (/) is an operator or part of a regular expression
+  // https://github.com/mozilla/sweet.js/wiki/design
   def isRegexStart() = {
     val previous = this.values(this.values.length - 1)
     var regex = previous != null
@@ -47,7 +52,7 @@ class Reader() {
     }
     regex
   }
-  
+
   def push(token: RawToken) = {
     if (token.`type` == Punctuator || token.`type` == Keyword) {
       if (token.value === "{") {
@@ -136,7 +141,7 @@ class Tokenizer(code: String, config: Parser.Options) {
           }
           entry.loc = loc
         }
-        if (token.`type` == RegularExpression) {
+        if (token.`type` == RegularExpression)  /*RegularExpression */{
           val pattern = token.pattern
           val flags = token.flags
           entry.regex = new RegExp (

@@ -1,81 +1,57 @@
 /*
-ScalaFromJS: 2017-12-06 21:28:23.723
+ScalaFromJS: Dev 2018-01-16 17:57:51
 nodes.js
 */
 
-package com.github.opengrabeso.esprima
-"use strict"
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
-val syntax_1 = require("./syntax")
-/*tslint:disable:max-classes-per-file */
-
+package esprima
+/* import { Syntax } from './syntax' */
 class ArrayExpression(var elements: Any) {
-  var `type` = syntax_1.Syntax.ArrayExpression
+  var `type` = Syntax.ArrayExpression
 }
-
-exports.ArrayExpression = ArrayExpression
 
 class ArrayPattern(var elements: Any) {
-  var `type` = syntax_1.Syntax.ArrayPattern
+  var `type` = Syntax.ArrayPattern
 }
 
-exports.ArrayPattern = ArrayPattern
-
 class ArrowFunctionExpression(var params: Any, var body: Any, var expression: Any) {
-  var `type` = syntax_1.Syntax.ArrowFunctionExpression
+  var `type` = Syntax.ArrowFunctionExpression
   var id = null
   var generator: Boolean = false
   var async: Boolean = false
 }
 
-exports.ArrowFunctionExpression = ArrowFunctionExpression
-
 class AssignmentExpression(var operator: Any, var left: Any, var right: Any) {
-  var `type` = syntax_1.Syntax.AssignmentExpression
+  var `type` = Syntax.AssignmentExpression
 }
-
-exports.AssignmentExpression = AssignmentExpression
 
 class AssignmentPattern(var left: Any, var right: Any) {
-  var `type` = syntax_1.Syntax.AssignmentPattern
+  var `type` = Syntax.AssignmentPattern
 }
 
-exports.AssignmentPattern = AssignmentPattern
-
 class AsyncArrowFunctionExpression(var params: Any, var body: Any, var expression: Any) {
-  var `type` = syntax_1.Syntax.ArrowFunctionExpression
+  var `type` = Syntax.ArrowFunctionExpression
   var id = null
   var generator: Boolean = false
   var async: Boolean = true
 }
 
-exports.AsyncArrowFunctionExpression = AsyncArrowFunctionExpression
-
 class AsyncFunctionDeclaration(var id: Any, var params: Any, var body: Any) {
-  var `type` = syntax_1.Syntax.FunctionDeclaration
+  var `type` = Syntax.FunctionDeclaration
   var generator: Boolean = false
   var expression: Boolean = false
   var async: Boolean = true
 }
-
-exports.AsyncFunctionDeclaration = AsyncFunctionDeclaration
 
 class AsyncFunctionExpression(var id: Any, var params: Any, var body: Any) {
-  var `type` = syntax_1.Syntax.FunctionExpression
+  var `type` = Syntax.FunctionExpression
   var generator: Boolean = false
   var expression: Boolean = false
   var async: Boolean = true
 }
 
-exports.AsyncFunctionExpression = AsyncFunctionExpression
-
 class AwaitExpression(var argument: Any) {
-  var `type` = syntax_1.Syntax.AwaitExpression
+  var `type` = Syntax.AwaitExpression
 }
-
-exports.AwaitExpression = AwaitExpression
 
 class BinaryExpression(operator_par: String, left_par: Any, right_par: Any) {
   var `type` = _
@@ -86,7 +62,7 @@ class BinaryExpression(operator_par: String, left_par: Any, right_par: Any) {
 
   def constructor(operator: String, left: Any, right: Any) = {
     val logical = operator == "||" || operator == "&&"
-    this.`type` = if (logical) syntax_1.Syntax.LogicalExpression else syntax_1.Syntax.BinaryExpression
+    this.`type` = if (logical) Syntax.LogicalExpression else Syntax.BinaryExpression
     this.operator = operator
     this.left = left
     this.right = right
@@ -94,396 +70,269 @@ class BinaryExpression(operator_par: String, left_par: Any, right_par: Any) {
   
 }
 
-exports.BinaryExpression = BinaryExpression
-
 class BlockStatement(var body: Any) {
-  var `type` = syntax_1.Syntax.BlockStatement
+  var `type` = Syntax.BlockStatement
 }
-
-exports.BlockStatement = BlockStatement
 
 class BreakStatement(var label: Any) {
-  var `type` = syntax_1.Syntax.BreakStatement
+  var `type` = Syntax.BreakStatement
 }
-
-exports.BreakStatement = BreakStatement
 
 class CallExpression(var callee: Any, var arguments: Any) {
-  var `type` = syntax_1.Syntax.CallExpression
+  var `type` = Syntax.CallExpression
 }
-
-exports.CallExpression = CallExpression
 
 class CatchClause(var param: Any, var body: Any) {
-  var `type` = syntax_1.Syntax.CatchClause
+  var `type` = Syntax.CatchClause
 }
-
-exports.CatchClause = CatchClause
 
 class ClassBody(var body: Any) {
-  var `type` = syntax_1.Syntax.ClassBody
+  var `type` = Syntax.ClassBody
 }
-
-exports.ClassBody = ClassBody
 
 class ClassDeclaration(var id: Any, var superClass: Any, var body: Any) {
-  var `type` = syntax_1.Syntax.ClassDeclaration
+  var `type` = Syntax.ClassDeclaration
 }
-
-exports.ClassDeclaration = ClassDeclaration
 
 class ClassExpression(var id: Any, var superClass: Any, var body: Any) {
-  var `type` = syntax_1.Syntax.ClassExpression
+  var `type` = Syntax.ClassExpression
 }
 
-exports.ClassExpression = ClassExpression
-
 class ComputedMemberExpression(var `object`: Any, var property: Any) {
-  var `type` = syntax_1.Syntax.MemberExpression
+  var `type` = Syntax.MemberExpression
   var computed: Boolean = true
 }
 
-exports.ComputedMemberExpression = ComputedMemberExpression
-
 class ConditionalExpression(var test: Any, var consequent: Any, var alternate: Any) {
-  var `type` = syntax_1.Syntax.ConditionalExpression
+  var `type` = Syntax.ConditionalExpression
 }
-
-exports.ConditionalExpression = ConditionalExpression
 
 class ContinueStatement(var label: Any) {
-  var `type` = syntax_1.Syntax.ContinueStatement
+  var `type` = Syntax.ContinueStatement
 }
-
-exports.ContinueStatement = ContinueStatement
 
 class DebuggerStatement() {
-  var `type` = syntax_1.Syntax.DebuggerStatement
+  var `type` = Syntax.DebuggerStatement
 }
-
-exports.DebuggerStatement = DebuggerStatement
 
 class Directive(var expression: Any, var directive: String) {
-  var `type` = syntax_1.Syntax.ExpressionStatement
+  var `type` = Syntax.ExpressionStatement
 }
-
-exports.Directive = Directive
 
 class DoWhileStatement(var body: Any, var test: Any) {
-  var `type` = syntax_1.Syntax.DoWhileStatement
+  var `type` = Syntax.DoWhileStatement
 }
-
-exports.DoWhileStatement = DoWhileStatement
 
 class EmptyStatement() {
-  var `type` = syntax_1.Syntax.EmptyStatement
+  var `type` = Syntax.EmptyStatement
 }
-
-exports.EmptyStatement = EmptyStatement
 
 class ExportAllDeclaration(var source: Any) {
-  var `type` = syntax_1.Syntax.ExportAllDeclaration
+  var `type` = Syntax.ExportAllDeclaration
 }
-
-exports.ExportAllDeclaration = ExportAllDeclaration
 
 class ExportDefaultDeclaration(var declaration: Any) {
-  var `type` = syntax_1.Syntax.ExportDefaultDeclaration
+  var `type` = Syntax.ExportDefaultDeclaration
 }
-
-exports.ExportDefaultDeclaration = ExportDefaultDeclaration
 
 class ExportNamedDeclaration(var declaration: Any, var specifiers: Any, var source: Any) {
-  var `type` = syntax_1.Syntax.ExportNamedDeclaration
+  var `type` = Syntax.ExportNamedDeclaration
 }
-
-exports.ExportNamedDeclaration = ExportNamedDeclaration
 
 class ExportSpecifier(var local: Any, var exported: Any) {
-  var `type` = syntax_1.Syntax.ExportSpecifier
+  var `type` = Syntax.ExportSpecifier
 }
-
-exports.ExportSpecifier = ExportSpecifier
 
 class ExpressionStatement(var expression: Any) {
-  var `type` = syntax_1.Syntax.ExpressionStatement
+  var `type` = Syntax.ExpressionStatement
 }
 
-exports.ExpressionStatement = ExpressionStatement
-
 class ForInStatement(var left: Any, var right: Any, var body: Any) {
-  var `type` = syntax_1.Syntax.ForInStatement
+  var `type` = Syntax.ForInStatement
   var each: Boolean = false
 }
 
-exports.ForInStatement = ForInStatement
-
 class ForOfStatement(var left: Any, var right: Any, var body: Any) {
-  var `type` = syntax_1.Syntax.ForOfStatement
+  var `type` = Syntax.ForOfStatement
 }
-
-exports.ForOfStatement = ForOfStatement
 
 class ForStatement(var init: Any, var test: Any, var update: Any, var body: Any) {
-  var `type` = syntax_1.Syntax.ForStatement
+  var `type` = Syntax.ForStatement
 }
-
-exports.ForStatement = ForStatement
 
 class FunctionDeclaration(var id: Any, var params: Any, var body: Any, var generator: Any) {
-  var `type` = syntax_1.Syntax.FunctionDeclaration
+  var `type` = Syntax.FunctionDeclaration
   var expression: Boolean = false
   var async: Boolean = false
 }
-
-exports.FunctionDeclaration = FunctionDeclaration
 
 class FunctionExpression(var id: Any, var params: Any, var body: Any, var generator: Any) {
-  var `type` = syntax_1.Syntax.FunctionExpression
+  var `type` = Syntax.FunctionExpression
   var expression: Boolean = false
   var async: Boolean = false
 }
 
-exports.FunctionExpression = FunctionExpression
-
 class Identifier(var name: String) {
-  var `type` = syntax_1.Syntax.Identifier
+  var `type` = Syntax.Identifier
 }
-
-exports.Identifier = Identifier
 
 class IfStatement(var test: Any, var consequent: Any, var alternate: Any) {
-  var `type` = syntax_1.Syntax.IfStatement
+  var `type` = Syntax.IfStatement
 }
-
-exports.IfStatement = IfStatement
 
 class Import() {
-  var `type` = syntax_1.Syntax.Import
+  var `type` = Syntax.Import
 }
-
-exports.Import = Import
 
 class ImportDeclaration(var specifiers: Any, var source: Any) {
-  var `type` = syntax_1.Syntax.ImportDeclaration
+  var `type` = Syntax.ImportDeclaration
 }
-
-exports.ImportDeclaration = ImportDeclaration
 
 class ImportDefaultSpecifier(var local: Any) {
-  var `type` = syntax_1.Syntax.ImportDefaultSpecifier
+  var `type` = Syntax.ImportDefaultSpecifier
 }
-
-exports.ImportDefaultSpecifier = ImportDefaultSpecifier
 
 class ImportNamespaceSpecifier(var local: Any) {
-  var `type` = syntax_1.Syntax.ImportNamespaceSpecifier
+  var `type` = Syntax.ImportNamespaceSpecifier
 }
-
-exports.ImportNamespaceSpecifier = ImportNamespaceSpecifier
 
 class ImportSpecifier(var local: Any, var imported: Any) {
-  var `type` = syntax_1.Syntax.ImportSpecifier
+  var `type` = Syntax.ImportSpecifier
 }
-
-exports.ImportSpecifier = ImportSpecifier
 
 class LabeledStatement(var label: Any, var body: Any) {
-  var `type` = syntax_1.Syntax.LabeledStatement
+  var `type` = Syntax.LabeledStatement
 }
-
-exports.LabeledStatement = LabeledStatement
 
 class Literal(var value: String, var raw: Any) {
-  var `type` = syntax_1.Syntax.Literal
+  var `type` = Syntax.Literal
 }
-
-exports.Literal = Literal
 
 class MetaProperty(var meta: Any, var property: Any) {
-  var `type` = syntax_1.Syntax.MetaProperty
+  var `type` = Syntax.MetaProperty
 }
-
-exports.MetaProperty = MetaProperty
 
 class MethodDefinition(var key: Any, var computed: Any, var value: Any, var kind: Any, var static: Any) {
-  var `type` = syntax_1.Syntax.MethodDefinition
+  var `type` = Syntax.MethodDefinition
 }
 
-exports.MethodDefinition = MethodDefinition
-
 class Module(var body: Any) {
-  var `type` = syntax_1.Syntax.Program
+  var `type` = Syntax.Program
   var sourceType: String = "module"
 }
 
-exports.Module = Module
-
 class NewExpression(var callee: Any, var arguments: Any) {
-  var `type` = syntax_1.Syntax.NewExpression
+  var `type` = Syntax.NewExpression
 }
-
-exports.NewExpression = NewExpression
 
 class ObjectExpression(var properties: Any) {
-  var `type` = syntax_1.Syntax.ObjectExpression
+  var `type` = Syntax.ObjectExpression
 }
-
-exports.ObjectExpression = ObjectExpression
 
 class ObjectPattern(var properties: Any) {
-  var `type` = syntax_1.Syntax.ObjectPattern
+  var `type` = Syntax.ObjectPattern
 }
-
-exports.ObjectPattern = ObjectPattern
 
 class Property(var kind: Any, var key: Any, var computed: Any, var value: Any, var method: Any, var shorthand: Any) {
-  var `type` = syntax_1.Syntax.Property
+  var `type` = Syntax.Property
 }
 
-exports.Property = Property
-
 class RegexLiteral(var value: Any, var raw: Any, pattern: Any, flags: Any) {
-  var `type` = syntax_1.Syntax.Literal
+  var `type` = Syntax.Literal
   var regex = new {
     var pattern = pattern
     var flags = flags
   }
 }
 
-exports.RegexLiteral = RegexLiteral
-
 class RestElement(var argument: Any) {
-  var `type` = syntax_1.Syntax.RestElement
+  var `type` = Syntax.RestElement
 }
-
-exports.RestElement = RestElement
 
 class ReturnStatement(var argument: Any) {
-  var `type` = syntax_1.Syntax.ReturnStatement
+  var `type` = Syntax.ReturnStatement
 }
 
-exports.ReturnStatement = ReturnStatement
-
 class Script(var body: Any) {
-  var `type` = syntax_1.Syntax.Program
+  var `type` = Syntax.Program
   var sourceType: String = "script"
 }
 
-exports.Script = Script
-
-class SequenceExpression(var expressions: Any) {
-  var `type` = syntax_1.Syntax.SequenceExpression
+class SequenceExpression(var expressions: Array[Unit]) {
+  var `type` = Syntax.SequenceExpression
 }
-
-exports.SequenceExpression = SequenceExpression
 
 class SpreadElement(var argument: Any) {
-  var `type` = syntax_1.Syntax.SpreadElement
+  var `type` = Syntax.SpreadElement
 }
 
-exports.SpreadElement = SpreadElement
-
 class StaticMemberExpression(var `object`: Any, var property: Any) {
-  var `type` = syntax_1.Syntax.MemberExpression
+  var `type` = Syntax.MemberExpression
   var computed: Boolean = false
 }
 
-exports.StaticMemberExpression = StaticMemberExpression
-
 class Super() {
-  var `type` = syntax_1.Syntax.Super
+  var `type` = Syntax.Super
 }
-
-exports.Super = Super
 
 class SwitchCase(var test: Any, var consequent: Any) {
-  var `type` = syntax_1.Syntax.SwitchCase
+  var `type` = Syntax.SwitchCase
 }
-
-exports.SwitchCase = SwitchCase
 
 class SwitchStatement(var discriminant: Any, var cases: Any) {
-  var `type` = syntax_1.Syntax.SwitchStatement
+  var `type` = Syntax.SwitchStatement
 }
-
-exports.SwitchStatement = SwitchStatement
 
 class TaggedTemplateExpression(var tag: Any, var quasi: Any) {
-  var `type` = syntax_1.Syntax.TaggedTemplateExpression
+  var `type` = Syntax.TaggedTemplateExpression
 }
-
-exports.TaggedTemplateExpression = TaggedTemplateExpression
 
 class TemplateElement(var value: Any, var tail: Any) {
-  var `type` = syntax_1.Syntax.TemplateElement
+  var `type` = Syntax.TemplateElement
 }
-
-exports.TemplateElement = TemplateElement
 
 class TemplateLiteral(var quasis: Any, var expressions: Any) {
-  var `type` = syntax_1.Syntax.TemplateLiteral
+  var `type` = Syntax.TemplateLiteral
 }
-
-exports.TemplateLiteral = TemplateLiteral
 
 class ThisExpression() {
-  var `type` = syntax_1.Syntax.ThisExpression
+  var `type` = Syntax.ThisExpression
 }
-
-exports.ThisExpression = ThisExpression
 
 class ThrowStatement(var argument: Any) {
-  var `type` = syntax_1.Syntax.ThrowStatement
+  var `type` = Syntax.ThrowStatement
 }
-
-exports.ThrowStatement = ThrowStatement
 
 class TryStatement(var block: Any, var handler: Any, var finalizer: Any) {
-  var `type` = syntax_1.Syntax.TryStatement
+  var `type` = Syntax.TryStatement
 }
 
-exports.TryStatement = TryStatement
-
 class UnaryExpression(var operator: Any, var argument: Any) {
-  var `type` = syntax_1.Syntax.UnaryExpression
+  var `type` = Syntax.UnaryExpression
   var prefix: Boolean = true
 }
 
-exports.UnaryExpression = UnaryExpression
-
-class UpdateExpression(var operator: Any, var argument: Any, var prefix: Any) {
-  var `type` = syntax_1.Syntax.UpdateExpression
+class UpdateExpression(var operator: String, var argument: Any, var prefix: Any) {
+  var `type` = Syntax.UpdateExpression
 }
-
-exports.UpdateExpression = UpdateExpression
 
 class VariableDeclaration(var declarations: Any, var kind: Any) {
-  var `type` = syntax_1.Syntax.VariableDeclaration
+  var `type` = Syntax.VariableDeclaration
 }
-
-exports.VariableDeclaration = VariableDeclaration
 
 class VariableDeclarator(var id: Any, var init: Any) {
-  var `type` = syntax_1.Syntax.VariableDeclarator
+  var `type` = Syntax.VariableDeclarator
 }
-
-exports.VariableDeclarator = VariableDeclarator
 
 class WhileStatement(var test: Any, var body: Any) {
-  var `type` = syntax_1.Syntax.WhileStatement
+  var `type` = Syntax.WhileStatement
 }
-
-exports.WhileStatement = WhileStatement
 
 class WithStatement(var `object`: Any, var body: Any) {
-  var `type` = syntax_1.Syntax.WithStatement
+  var `type` = Syntax.WithStatement
 }
-
-exports.WithStatement = WithStatement
 
 class YieldExpression(var argument: Any, var delegate: Any) {
-  var `type` = syntax_1.Syntax.YieldExpression
+  var `type` = Syntax.YieldExpression
 }
 
-exports.YieldExpression = YieldExpression

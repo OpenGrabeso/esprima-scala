@@ -1,14 +1,12 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const assert_1 = require("./assert");
-const error_handler_1 = require("./error-handler");
-const messages_1 = require("./messages");
-const Node = require("./nodes");
-const scanner_1 = require("./scanner");
-const syntax_1 = require("./syntax");
-const token_1 = require("./token");
+import { assert } from './assert';
+import { ErrorHandler } from './error-handler';
+import { Messages } from './messages';
+import * as Node from './nodes';
+import { Scanner } from './scanner';
+import { Syntax } from './syntax';
+import { TokenName } from './token';
 const ArrowParameterPlaceHolder = 'ArrowParameterPlaceHolder';
-class Parser {
+export class Parser {
     constructor(code, options = {}, delegate) {
         this.config = {
             range: (typeof options.range === 'boolean') && options.range,
@@ -22,9 +20,9 @@ class Parser {
             this.config.source = String(options.source);
         }
         this.delegate = delegate;
-        this.errorHandler = new error_handler_1.ErrorHandler();
+        this.errorHandler = new ErrorHandler();
         this.errorHandler.tolerant = this.config.tolerant;
-        this.scanner = new scanner_1.Scanner(code, this.errorHandler);
+        this.scanner = new Scanner(code, this.errorHandler);
         this.scanner.trackComment = this.config.comment;
         this.operatorPrecedence = {
             ')': 0,
@@ -99,7 +97,7 @@ class Parser {
     throwError(messageFormat, ...values) {
         const args = Array.prototype.slice.call(arguments, 1);
         const msg = messageFormat.replace(/%(\d)/g, (whole, idx) => {
-            assert_1.assert(idx < args.length, 'Message reference must be in range');
+            assert(idx < args.length, 'Message reference must be in range');
             return args[idx];
         });
         const index = this.lastMarker.index;
@@ -110,7 +108,7 @@ class Parser {
     tolerateError(messageFormat, ...values) {
         const args = Array.prototype.slice.call(arguments, 1);
         const msg = messageFormat.replace(/%(\d)/g, (whole, idx) => {
-            assert_1.assert(idx < args.length, 'Message reference must be in range');
+            assert(idx < args.length, 'Message reference must be in range');
             return args[idx];
         });
         const index = this.lastMarker.index;
@@ -120,22 +118,22 @@ class Parser {
     }
     // Throw an exception because of the token.
     unexpectedTokenError(token, message) {
-        let msg = message || messages_1.Messages.UnexpectedToken;
+        let msg = message || Messages.UnexpectedToken;
         let value;
         if (token) {
             if (!message) {
-                msg = (token.type === 2 /* EOF */) ? messages_1.Messages.UnexpectedEOS :
-                    (token.type === 3 /* Identifier */) ? messages_1.Messages.UnexpectedIdentifier :
-                        (token.type === 6 /* NumericLiteral */) ? messages_1.Messages.UnexpectedNumber :
-                            (token.type === 8 /* StringLiteral */) ? messages_1.Messages.UnexpectedString :
-                                (token.type === 10 /* Template */) ? messages_1.Messages.UnexpectedTemplate :
-                                    messages_1.Messages.UnexpectedToken;
+                msg = (token.type === 2 /* EOF */) ? Messages.UnexpectedEOS :
+                    (token.type === 3 /* Identifier */) ? Messages.UnexpectedIdentifier :
+                        (token.type === 6 /* NumericLiteral */) ? Messages.UnexpectedNumber :
+                            (token.type === 8 /* StringLiteral */) ? Messages.UnexpectedString :
+                                (token.type === 10 /* Template */) ? Messages.UnexpectedTemplate :
+                                    Messages.UnexpectedToken;
                 if (token.type === 4 /* Keyword */) {
                     if (this.scanner.isFutureReservedWord(token.value)) {
-                        msg = messages_1.Messages.UnexpectedReserved;
+                        msg = Messages.UnexpectedReserved;
                     }
                     else if (this.context.strict && this.scanner.isStrictModeReservedWord(token.value)) {
-                        msg = messages_1.Messages.StrictReservedWord;
+                        msg = Messages.StrictReservedWord;
                     }
                 }
             }
@@ -208,7 +206,7 @@ class Parser {
     }
     convertToken(token) {
         const t = {
-            type: token_1.TokenName[token.type],
+            type: TokenName[token.type],
             value: this.getTokenRaw(token)
         };
         if (this.config.range) {
@@ -347,7 +345,7 @@ class Parser {
                 this.tolerateUnexpectedToken(token);
             }
             else {
-                this.tolerateUnexpectedToken(token, messages_1.Messages.UnexpectedToken);
+                this.tolerateUnexpectedToken(token, Messages.UnexpectedToken);
             }
         }
         else {
@@ -483,7 +481,7 @@ class Parser {
             case 6 /* NumericLiteral */:
             case 8 /* StringLiteral */:
                 if (this.context.strict && this.lookahead.octal) {
-                    this.tolerateUnexpectedToken(this.lookahead, messages_1.Messages.StrictOctalLiteral);
+                    this.tolerateUnexpectedToken(this.lookahead, Messages.StrictOctalLiteral);
                 }
                 this.context.isAssignmentTarget = false;
                 this.context.isBindingElement = false;
@@ -649,7 +647,7 @@ class Parser {
             case 8 /* StringLiteral */:
             case 6 /* NumericLiteral */:
                 if (this.context.strict && token.octal) {
-                    this.tolerateUnexpectedToken(token, messages_1.Messages.StrictOctalLiteral);
+                    this.tolerateUnexpectedToken(token, Messages.StrictOctalLiteral);
                 }
                 const raw = this.getTokenRaw(token);
                 key = this.finalize(node, new Node.Literal(token.value, raw));
@@ -675,8 +673,8 @@ class Parser {
         return key;
     }
     isPropertyKey(key, value) {
-        return (key.type === syntax_1.Syntax.Identifier && key.name === value) ||
-            (key.type === syntax_1.Syntax.Literal && key.value === value);
+        return (key.type === Syntax.Identifier && key.name === value) ||
+            (key.type === Syntax.Literal && key.value === value);
     }
     parseObjectProperty(hasProto) {
         const node = this.createNode();
@@ -732,7 +730,7 @@ class Parser {
             if (this.match(':') && !isAsync) {
                 if (!computed && this.isPropertyKey(key, '__proto__')) {
                     if (hasProto.value) {
-                        this.tolerateError(messages_1.Messages.DuplicateProtoProperty);
+                        this.tolerateError(Messages.DuplicateProtoProperty);
                     }
                     hasProto.value = true;
                 }
@@ -779,7 +777,7 @@ class Parser {
     }
     // https://tc39.github.io/ecma262/#sec-template-literals
     parseTemplateHead() {
-        assert_1.assert(this.lookahead.head, 'Template literal must start with a template head');
+        assert(this.lookahead.head, 'Template literal must start with a template head');
         const node = this.createNode();
         const token = this.nextToken();
         const raw = token.value;
@@ -812,32 +810,32 @@ class Parser {
     // https://tc39.github.io/ecma262/#sec-grouping-operator
     reinterpretExpressionAsPattern(expr) {
         switch (expr.type) {
-            case syntax_1.Syntax.Identifier:
-            case syntax_1.Syntax.MemberExpression:
-            case syntax_1.Syntax.RestElement:
-            case syntax_1.Syntax.AssignmentPattern:
+            case Syntax.Identifier:
+            case Syntax.MemberExpression:
+            case Syntax.RestElement:
+            case Syntax.AssignmentPattern:
                 break;
-            case syntax_1.Syntax.SpreadElement:
-                expr.type = syntax_1.Syntax.RestElement;
+            case Syntax.SpreadElement:
+                expr.type = Syntax.RestElement;
                 this.reinterpretExpressionAsPattern(expr.argument);
                 break;
-            case syntax_1.Syntax.ArrayExpression:
-                expr.type = syntax_1.Syntax.ArrayPattern;
+            case Syntax.ArrayExpression:
+                expr.type = Syntax.ArrayPattern;
                 for (let i = 0; i < expr.elements.length; i++) {
                     if (expr.elements[i] !== null) {
                         this.reinterpretExpressionAsPattern(expr.elements[i]);
                     }
                 }
                 break;
-            case syntax_1.Syntax.ObjectExpression:
-                expr.type = syntax_1.Syntax.ObjectPattern;
+            case Syntax.ObjectExpression:
+                expr.type = Syntax.ObjectPattern;
                 for (let i = 0; i < expr.properties.length; i++) {
                     const property = expr.properties[i];
-                    this.reinterpretExpressionAsPattern(property.type === syntax_1.Syntax.SpreadElement ? property : property.value);
+                    this.reinterpretExpressionAsPattern(property.type === Syntax.SpreadElement ? property : property.value);
                 }
                 break;
-            case syntax_1.Syntax.AssignmentExpression:
-                expr.type = syntax_1.Syntax.AssignmentPattern;
+            case Syntax.AssignmentExpression:
+                expr.type = Syntax.AssignmentPattern;
                 delete expr.operator;
                 this.reinterpretExpressionAsPattern(expr.left);
                 break;
@@ -934,7 +932,7 @@ class Parser {
                 if (!arrow) {
                     this.expect(')');
                     if (this.match('=>')) {
-                        if (expr.type === syntax_1.Syntax.Identifier && expr.name === 'yield') {
+                        if (expr.type === Syntax.Identifier && expr.name === 'yield') {
                             arrow = true;
                             expr = {
                                 type: ArrowParameterPlaceHolder,
@@ -946,7 +944,7 @@ class Parser {
                             if (!this.context.isBindingElement) {
                                 this.throwUnexpectedToken(this.lookahead);
                             }
-                            if (expr.type === syntax_1.Syntax.SequenceExpression) {
+                            if (expr.type === Syntax.SequenceExpression) {
                                 for (let i = 0; i < expr.expressions.length; i++) {
                                     this.reinterpretExpressionAsPattern(expr.expressions[i]);
                                 }
@@ -954,7 +952,7 @@ class Parser {
                             else {
                                 this.reinterpretExpressionAsPattern(expr);
                             }
-                            const parameters = (expr.type === syntax_1.Syntax.SequenceExpression ? expr.expressions : [expr]);
+                            const parameters = (expr.type === Syntax.SequenceExpression ? expr.expressions : [expr]);
                             expr = {
                                 type: ArrowParameterPlaceHolder,
                                 params: parameters,
@@ -1006,7 +1004,7 @@ class Parser {
     parseNewExpression() {
         const node = this.createNode();
         const id = this.parseIdentifierName();
-        assert_1.assert(id.name === 'new', 'New expression must start with `new`');
+        assert(id.name === 'new', 'New expression must start with `new`');
         let expr;
         if (this.match('.')) {
             this.nextToken();
@@ -1101,8 +1099,8 @@ class Parser {
                 this.context.isBindingElement = false;
                 this.context.isAssignmentTarget = false;
                 const args = asyncArrow ? this.parseAsyncArguments() : this.parseArguments();
-                if (expr.type === syntax_1.Syntax.Import && args.length !== 1) {
-                    this.tolerateError(messages_1.Messages.BadImportCallArity);
+                if (expr.type === Syntax.Import && args.length !== 1) {
+                    this.tolerateError(Messages.BadImportCallArity);
                 }
                 expr = this.finalize(this.startNode(startToken), new Node.CallExpression(expr, args));
                 if (asyncArrow && this.match('=>')) {
@@ -1144,7 +1142,7 @@ class Parser {
         return this.finalize(node, new Node.Super());
     }
     parseLeftHandSideExpression() {
-        assert_1.assert(this.context.allowIn, 'callee of new expression always allow in keyword.');
+        assert(this.context.allowIn, 'callee of new expression always allow in keyword.');
         const node = this.startNode(this.lookahead);
         let expr = (this.matchKeyword('super') && this.context.inFunctionBody) ? this.parseSuper() :
             this.inheritCoverGrammar(this.matchKeyword('new') ? this.parseNewExpression : this.parsePrimaryExpression);
@@ -1182,11 +1180,11 @@ class Parser {
             const node = this.startNode(startToken);
             const token = this.nextToken();
             expr = this.inheritCoverGrammar(this.parseUnaryExpression);
-            if (this.context.strict && expr.type === syntax_1.Syntax.Identifier && this.scanner.isRestrictedWord(expr.name)) {
-                this.tolerateError(messages_1.Messages.StrictLHSPrefix);
+            if (this.context.strict && expr.type === Syntax.Identifier && this.scanner.isRestrictedWord(expr.name)) {
+                this.tolerateError(Messages.StrictLHSPrefix);
             }
             if (!this.context.isAssignmentTarget) {
-                this.tolerateError(messages_1.Messages.InvalidLHSInAssignment);
+                this.tolerateError(Messages.InvalidLHSInAssignment);
             }
             const prefix = true;
             expr = this.finalize(node, new Node.UpdateExpression(token.value, expr, prefix));
@@ -1197,11 +1195,11 @@ class Parser {
             expr = this.inheritCoverGrammar(this.parseLeftHandSideExpressionAllowCall);
             if (!this.hasLineTerminator && this.lookahead.type === 7 /* Punctuator */) {
                 if (this.match('++') || this.match('--')) {
-                    if (this.context.strict && expr.type === syntax_1.Syntax.Identifier && this.scanner.isRestrictedWord(expr.name)) {
-                        this.tolerateError(messages_1.Messages.StrictLHSPostfix);
+                    if (this.context.strict && expr.type === Syntax.Identifier && this.scanner.isRestrictedWord(expr.name)) {
+                        this.tolerateError(Messages.StrictLHSPostfix);
                     }
                     if (!this.context.isAssignmentTarget) {
-                        this.tolerateError(messages_1.Messages.InvalidLHSInAssignment);
+                        this.tolerateError(Messages.InvalidLHSInAssignment);
                     }
                     this.context.isAssignmentTarget = false;
                     this.context.isBindingElement = false;
@@ -1228,8 +1226,8 @@ class Parser {
             const token = this.nextToken();
             expr = this.inheritCoverGrammar(this.parseUnaryExpression);
             expr = this.finalize(node, new Node.UnaryExpression(token.value, expr));
-            if (this.context.strict && expr.operator === 'delete' && expr.argument.type === syntax_1.Syntax.Identifier) {
-                this.tolerateError(messages_1.Messages.StrictDelete);
+            if (this.context.strict && expr.operator === 'delete' && expr.argument.type === Syntax.Identifier) {
+                this.tolerateError(Messages.StrictDelete);
             }
             this.context.isAssignmentTarget = false;
             this.context.isBindingElement = false;
@@ -1245,7 +1243,7 @@ class Parser {
     parseExponentiationExpression() {
         const startToken = this.lookahead;
         let expr = this.inheritCoverGrammar(this.parseUnaryExpression);
-        if (expr.type !== syntax_1.Syntax.UnaryExpression && this.match('**')) {
+        if (expr.type !== Syntax.UnaryExpression && this.match('**')) {
             this.nextToken();
             this.context.isAssignmentTarget = false;
             this.context.isBindingElement = false;
@@ -1349,26 +1347,26 @@ class Parser {
     // https://tc39.github.io/ecma262/#sec-assignment-operators
     checkPatternParam(options, param) {
         switch (param.type) {
-            case syntax_1.Syntax.Identifier:
+            case Syntax.Identifier:
                 this.validateParam(options, param, param.name);
                 break;
-            case syntax_1.Syntax.RestElement:
+            case Syntax.RestElement:
                 this.checkPatternParam(options, param.argument);
                 break;
-            case syntax_1.Syntax.AssignmentPattern:
+            case Syntax.AssignmentPattern:
                 this.checkPatternParam(options, param.left);
                 break;
-            case syntax_1.Syntax.ArrayPattern:
+            case Syntax.ArrayPattern:
                 for (let i = 0; i < param.elements.length; i++) {
                     if (param.elements[i] !== null) {
                         this.checkPatternParam(options, param.elements[i]);
                     }
                 }
                 break;
-            case syntax_1.Syntax.ObjectPattern:
+            case Syntax.ObjectPattern:
                 for (let i = 0; i < param.properties.length; i++) {
                     const property = param.properties[i];
-                    this.checkPatternParam(options, (property.type === syntax_1.Syntax.RestElement) ? property : property.value);
+                    this.checkPatternParam(options, (property.type === Syntax.RestElement) ? property : property.value);
                 }
                 break;
             default:
@@ -1381,7 +1379,7 @@ class Parser {
         let options;
         let asyncArrow = false;
         switch (expr.type) {
-            case syntax_1.Syntax.Identifier:
+            case Syntax.Identifier:
                 break;
             case ArrowParameterPlaceHolder:
                 params = expr.params;
@@ -1396,18 +1394,18 @@ class Parser {
         };
         for (let i = 0; i < params.length; ++i) {
             const param = params[i];
-            if (param.type === syntax_1.Syntax.AssignmentPattern) {
-                if (param.right.type === syntax_1.Syntax.YieldExpression) {
+            if (param.type === Syntax.AssignmentPattern) {
+                if (param.right.type === Syntax.YieldExpression) {
                     if (param.right.argument) {
                         this.throwUnexpectedToken(this.lookahead);
                     }
-                    param.right.type = syntax_1.Syntax.Identifier;
+                    param.right.type = Syntax.Identifier;
                     param.right.name = 'yield';
                     delete param.right.argument;
                     delete param.right.delegate;
                 }
             }
-            else if (asyncArrow && param.type === syntax_1.Syntax.Identifier && param.name === 'await') {
+            else if (asyncArrow && param.type === Syntax.Identifier && param.name === 'await') {
                 this.throwUnexpectedToken(this.lookahead);
             }
             this.checkPatternParam(options, param);
@@ -1416,12 +1414,12 @@ class Parser {
         if (this.context.strict || !this.context.allowYield) {
             for (let i = 0; i < params.length; ++i) {
                 const param = params[i];
-                if (param.type === syntax_1.Syntax.YieldExpression) {
+                if (param.type === Syntax.YieldExpression) {
                     this.throwUnexpectedToken(this.lookahead);
                 }
             }
         }
-        if (options.message === messages_1.Messages.StrictParamDupe) {
+        if (options.message === Messages.StrictParamDupe) {
             const token = this.context.strict ? options.stricted : options.firstRestricted;
             this.throwUnexpectedToken(token, options.message);
         }
@@ -1483,7 +1481,7 @@ class Parser {
                     else {
                         body = this.isolateCoverGrammar(this.parseAssignmentExpression);
                     }
-                    const expression = body.type !== syntax_1.Syntax.BlockStatement;
+                    const expression = body.type !== Syntax.BlockStatement;
                     if (this.context.strict && list.firstRestricted) {
                         this.throwUnexpectedToken(list.firstRestricted, list.message);
                     }
@@ -1501,15 +1499,15 @@ class Parser {
             else {
                 if (this.matchAssign()) {
                     if (!this.context.isAssignmentTarget) {
-                        this.tolerateError(messages_1.Messages.InvalidLHSInAssignment);
+                        this.tolerateError(Messages.InvalidLHSInAssignment);
                     }
-                    if (this.context.strict && expr.type === syntax_1.Syntax.Identifier) {
+                    if (this.context.strict && expr.type === Syntax.Identifier) {
                         const id = expr;
                         if (this.scanner.isRestrictedWord(id.name)) {
-                            this.tolerateUnexpectedToken(token, messages_1.Messages.StrictLHSAssignment);
+                            this.tolerateUnexpectedToken(token, Messages.StrictLHSAssignment);
                         }
                         if (this.scanner.isStrictModeReservedWord(id.name)) {
-                            this.tolerateUnexpectedToken(token, messages_1.Messages.StrictReservedWord);
+                            this.tolerateUnexpectedToken(token, Messages.StrictReservedWord);
                         }
                     }
                     if (!this.match('=')) {
@@ -1556,7 +1554,7 @@ class Parser {
             switch (this.lookahead.value) {
                 case 'export':
                     if (!this.context.isModule) {
-                        this.tolerateUnexpectedToken(this.lookahead, messages_1.Messages.IllegalExportDeclaration);
+                        this.tolerateUnexpectedToken(this.lookahead, Messages.IllegalExportDeclaration);
                     }
                     statement = this.parseExportDeclaration();
                     break;
@@ -1566,7 +1564,7 @@ class Parser {
                     }
                     else {
                         if (!this.context.isModule) {
-                            this.tolerateUnexpectedToken(this.lookahead, messages_1.Messages.IllegalImportDeclaration);
+                            this.tolerateUnexpectedToken(this.lookahead, Messages.IllegalImportDeclaration);
                         }
                         statement = this.parseImportDeclaration();
                     }
@@ -1611,9 +1609,9 @@ class Parser {
         const node = this.createNode();
         const params = [];
         const id = this.parsePattern(params, kind);
-        if (this.context.strict && id.type === syntax_1.Syntax.Identifier) {
+        if (this.context.strict && id.type === Syntax.Identifier) {
             if (this.scanner.isRestrictedWord(id.name)) {
-                this.tolerateError(messages_1.Messages.StrictVarName);
+                this.tolerateError(Messages.StrictVarName);
             }
         }
         let init = null;
@@ -1624,11 +1622,11 @@ class Parser {
                     init = this.isolateCoverGrammar(this.parseAssignmentExpression);
                 }
                 else {
-                    this.throwError(messages_1.Messages.DeclarationMissingInitializer, 'const');
+                    this.throwError(Messages.DeclarationMissingInitializer, 'const');
                 }
             }
         }
-        else if ((!options.inFor && id.type !== syntax_1.Syntax.Identifier) || this.match('=')) {
+        else if ((!options.inFor && id.type !== Syntax.Identifier) || this.match('=')) {
             this.expect('=');
             init = this.isolateCoverGrammar(this.parseAssignmentExpression);
         }
@@ -1656,7 +1654,7 @@ class Parser {
     parseLexicalDeclaration(options) {
         const node = this.createNode();
         const kind = this.nextToken().value;
-        assert_1.assert(kind === 'let' || kind === 'const', 'Lexical declaration must be either let or const');
+        assert(kind === 'let' || kind === 'const', 'Lexical declaration must be either let or const');
         const declarations = this.parseBindingList(kind, options);
         this.consumeSemicolon();
         return this.finalize(node, new Node.VariableDeclaration(declarations, kind));
@@ -1734,10 +1732,10 @@ class Parser {
         this.expect('...');
         const arg = this.parsePattern(params);
         if (this.match('=')) {
-            this.throwError(messages_1.Messages.DefaultRestProperty);
+            this.throwError(Messages.DefaultRestProperty);
         }
         if (!this.match('}')) {
-            this.throwError(messages_1.Messages.PropertyAfterRestProperty);
+            this.throwError(Messages.PropertyAfterRestProperty);
         }
         return this.finalize(node, new Node.RestElement(arg));
     }
@@ -1764,7 +1762,7 @@ class Parser {
         }
         else {
             if (this.matchKeyword('let') && (kind === 'const' || kind === 'let')) {
-                this.tolerateUnexpectedToken(this.lookahead, messages_1.Messages.LetInLexicalBinding);
+                this.tolerateUnexpectedToken(this.lookahead, Messages.LetInLexicalBinding);
             }
             params.push(this.lookahead);
             pattern = this.parseVariableIdentifier(kind);
@@ -1790,7 +1788,7 @@ class Parser {
         const token = this.nextToken();
         if (token.type === 4 /* Keyword */ && token.value === 'yield') {
             if (this.context.strict) {
-                this.tolerateUnexpectedToken(token, messages_1.Messages.StrictReservedWord);
+                this.tolerateUnexpectedToken(token, Messages.StrictReservedWord);
             }
             else if (!this.context.allowYield) {
                 this.throwUnexpectedToken(token);
@@ -1798,7 +1796,7 @@ class Parser {
         }
         else if (token.type !== 3 /* Identifier */) {
             if (this.context.strict && token.type === 4 /* Keyword */ && this.scanner.isStrictModeReservedWord(token.value)) {
-                this.tolerateUnexpectedToken(token, messages_1.Messages.StrictReservedWord);
+                this.tolerateUnexpectedToken(token, Messages.StrictReservedWord);
             }
             else {
                 if (this.context.strict || token.value !== 'let' || kind !== 'var') {
@@ -1815,9 +1813,9 @@ class Parser {
         const node = this.createNode();
         const params = [];
         const id = this.parsePattern(params, 'var');
-        if (this.context.strict && id.type === syntax_1.Syntax.Identifier) {
+        if (this.context.strict && id.type === Syntax.Identifier) {
             if (this.scanner.isRestrictedWord(id.name)) {
-                this.tolerateError(messages_1.Messages.StrictVarName);
+                this.tolerateError(Messages.StrictVarName);
             }
         }
         let init = null;
@@ -1825,7 +1823,7 @@ class Parser {
             this.nextToken();
             init = this.isolateCoverGrammar(this.parseAssignmentExpression);
         }
-        else if (id.type !== syntax_1.Syntax.Identifier && !options.inFor) {
+        else if (id.type !== Syntax.Identifier && !options.inFor) {
             this.expect('=');
         }
         return this.finalize(node, new Node.VariableDeclarator(id, init));
@@ -1863,7 +1861,7 @@ class Parser {
     // https://tc39.github.io/ecma262/#sec-if-statement
     parseIfClause() {
         if (this.context.strict && this.matchKeyword('function')) {
-            this.tolerateError(messages_1.Messages.StrictFunction);
+            this.tolerateError(Messages.StrictFunction);
         }
         return this.parseStatement();
     }
@@ -1954,8 +1952,8 @@ class Parser {
                 this.context.allowIn = previousAllowIn;
                 if (declarations.length === 1 && this.matchKeyword('in')) {
                     const decl = declarations[0];
-                    if (decl.init && (decl.id.type === syntax_1.Syntax.ArrayPattern || decl.id.type === syntax_1.Syntax.ObjectPattern || this.context.strict)) {
-                        this.tolerateError(messages_1.Messages.ForInOfLoopInitializer, 'for-in');
+                    if (decl.init && (decl.id.type === Syntax.ArrayPattern || decl.id.type === Syntax.ObjectPattern || this.context.strict)) {
+                        this.tolerateError(Messages.ForInOfLoopInitializer, 'for-in');
                     }
                     init = this.finalize(init, new Node.VariableDeclaration(declarations, 'var'));
                     this.nextToken();
@@ -2019,8 +2017,8 @@ class Parser {
                 init = this.inheritCoverGrammar(this.parseAssignmentExpression);
                 this.context.allowIn = previousAllowIn;
                 if (this.matchKeyword('in')) {
-                    if (!this.context.isAssignmentTarget || init.type === syntax_1.Syntax.AssignmentExpression) {
-                        this.tolerateError(messages_1.Messages.InvalidLHSInForIn);
+                    if (!this.context.isAssignmentTarget || init.type === Syntax.AssignmentExpression) {
+                        this.tolerateError(Messages.InvalidLHSInForIn);
                     }
                     this.nextToken();
                     this.reinterpretExpressionAsPattern(init);
@@ -2029,8 +2027,8 @@ class Parser {
                     init = null;
                 }
                 else if (this.matchContextualKeyword('of')) {
-                    if (!this.context.isAssignmentTarget || init.type === syntax_1.Syntax.AssignmentExpression) {
-                        this.tolerateError(messages_1.Messages.InvalidLHSInForLoop);
+                    if (!this.context.isAssignmentTarget || init.type === Syntax.AssignmentExpression) {
+                        this.tolerateError(Messages.InvalidLHSInForLoop);
                     }
                     this.nextToken();
                     this.reinterpretExpressionAsPattern(init);
@@ -2088,12 +2086,12 @@ class Parser {
             label = id;
             const key = '$' + id.name;
             if (!Object.prototype.hasOwnProperty.call(this.context.labelSet, key)) {
-                this.throwError(messages_1.Messages.UnknownLabel, id.name);
+                this.throwError(Messages.UnknownLabel, id.name);
             }
         }
         this.consumeSemicolon();
         if (label === null && !this.context.inIteration) {
-            this.throwError(messages_1.Messages.IllegalContinue);
+            this.throwError(Messages.IllegalContinue);
         }
         return this.finalize(node, new Node.ContinueStatement(label));
     }
@@ -2106,20 +2104,20 @@ class Parser {
             const id = this.parseVariableIdentifier();
             const key = '$' + id.name;
             if (!Object.prototype.hasOwnProperty.call(this.context.labelSet, key)) {
-                this.throwError(messages_1.Messages.UnknownLabel, id.name);
+                this.throwError(Messages.UnknownLabel, id.name);
             }
             label = id;
         }
         this.consumeSemicolon();
         if (label === null && !this.context.inIteration && !this.context.inSwitch) {
-            this.throwError(messages_1.Messages.IllegalBreak);
+            this.throwError(Messages.IllegalBreak);
         }
         return this.finalize(node, new Node.BreakStatement(label));
     }
     // https://tc39.github.io/ecma262/#sec-return-statement
     parseReturnStatement() {
         if (!this.context.inFunctionBody) {
-            this.tolerateError(messages_1.Messages.IllegalReturn);
+            this.tolerateError(Messages.IllegalReturn);
         }
         const node = this.createNode();
         this.expectKeyword('return');
@@ -2133,7 +2131,7 @@ class Parser {
     // https://tc39.github.io/ecma262/#sec-with-statement
     parseWithStatement() {
         if (this.context.strict) {
-            this.tolerateError(messages_1.Messages.StrictModeWith);
+            this.tolerateError(Messages.StrictModeWith);
         }
         const node = this.createNode();
         let body;
@@ -2190,7 +2188,7 @@ class Parser {
             const clause = this.parseSwitchCase();
             if (clause.test === null) {
                 if (defaultFound) {
-                    this.throwError(messages_1.Messages.MultipleDefaultsInSwitch);
+                    this.throwError(Messages.MultipleDefaultsInSwitch);
                 }
                 defaultFound = true;
             }
@@ -2205,12 +2203,12 @@ class Parser {
         const node = this.createNode();
         const expr = this.parseExpression();
         let statement;
-        if ((expr.type === syntax_1.Syntax.Identifier) && this.match(':')) {
+        if ((expr.type === Syntax.Identifier) && this.match(':')) {
             this.nextToken();
             const id = expr;
             const key = '$' + id.name;
             if (Object.prototype.hasOwnProperty.call(this.context.labelSet, key)) {
-                this.throwError(messages_1.Messages.Redeclaration, 'Label', id.name);
+                this.throwError(Messages.Redeclaration, 'Label', id.name);
             }
             this.context.labelSet[key] = true;
             let body;
@@ -2222,10 +2220,10 @@ class Parser {
                 const token = this.lookahead;
                 const declaration = this.parseFunctionDeclaration();
                 if (this.context.strict) {
-                    this.tolerateUnexpectedToken(token, messages_1.Messages.StrictFunction);
+                    this.tolerateUnexpectedToken(token, Messages.StrictFunction);
                 }
                 else if (declaration.generator) {
-                    this.tolerateUnexpectedToken(token, messages_1.Messages.GeneratorInLegacyContext);
+                    this.tolerateUnexpectedToken(token, Messages.GeneratorInLegacyContext);
                 }
                 body = declaration;
             }
@@ -2246,7 +2244,7 @@ class Parser {
         const node = this.createNode();
         this.expectKeyword('throw');
         if (this.hasLineTerminator) {
-            this.throwError(messages_1.Messages.NewlineAfterThrow);
+            this.throwError(Messages.NewlineAfterThrow);
         }
         const argument = this.parseExpression();
         this.consumeSemicolon();
@@ -2266,13 +2264,13 @@ class Parser {
         for (let i = 0; i < params.length; i++) {
             const key = '$' + params[i].value;
             if (Object.prototype.hasOwnProperty.call(paramMap, key)) {
-                this.tolerateError(messages_1.Messages.DuplicateBinding, params[i].value);
+                this.tolerateError(Messages.DuplicateBinding, params[i].value);
             }
             paramMap[key] = true;
         }
-        if (this.context.strict && param.type === syntax_1.Syntax.Identifier) {
+        if (this.context.strict && param.type === Syntax.Identifier) {
             if (this.scanner.isRestrictedWord(param.name)) {
-                this.tolerateError(messages_1.Messages.StrictCatchVariable);
+                this.tolerateError(Messages.StrictCatchVariable);
             }
         }
         this.expect(')');
@@ -2290,7 +2288,7 @@ class Parser {
         const handler = this.matchKeyword('catch') ? this.parseCatchClause() : null;
         const finalizer = this.matchKeyword('finally') ? this.parseFinallyClause() : null;
         if (!handler && !finalizer) {
-            this.throwError(messages_1.Messages.NoCatchOrFinally);
+            this.throwError(Messages.NoCatchOrFinally);
         }
         return this.finalize(node, new Node.TryStatement(block, handler, finalizer));
     }
@@ -2416,25 +2414,25 @@ class Parser {
         if (this.context.strict) {
             if (this.scanner.isRestrictedWord(name)) {
                 options.stricted = param;
-                options.message = messages_1.Messages.StrictParamName;
+                options.message = Messages.StrictParamName;
             }
             if (Object.prototype.hasOwnProperty.call(options.paramSet, key)) {
                 options.stricted = param;
-                options.message = messages_1.Messages.StrictParamDupe;
+                options.message = Messages.StrictParamDupe;
             }
         }
         else if (!options.firstRestricted) {
             if (this.scanner.isRestrictedWord(name)) {
                 options.firstRestricted = param;
-                options.message = messages_1.Messages.StrictParamName;
+                options.message = Messages.StrictParamName;
             }
             else if (this.scanner.isStrictModeReservedWord(name)) {
                 options.firstRestricted = param;
-                options.message = messages_1.Messages.StrictReservedWord;
+                options.message = Messages.StrictReservedWord;
             }
             else if (Object.prototype.hasOwnProperty.call(options.paramSet, key)) {
                 options.stricted = param;
-                options.message = messages_1.Messages.StrictParamDupe;
+                options.message = Messages.StrictParamDupe;
             }
         }
         /* istanbul ignore next */
@@ -2450,10 +2448,10 @@ class Parser {
         this.expect('...');
         const arg = this.parsePattern(params);
         if (this.match('=')) {
-            this.throwError(messages_1.Messages.DefaultRestParameter);
+            this.throwError(Messages.DefaultRestParameter);
         }
         if (!this.match(')')) {
-            this.throwError(messages_1.Messages.ParameterAfterRestParameter);
+            this.throwError(Messages.ParameterAfterRestParameter);
         }
         return this.finalize(node, new Node.RestElement(arg));
     }
@@ -2526,17 +2524,17 @@ class Parser {
             id = this.parseVariableIdentifier();
             if (this.context.strict) {
                 if (this.scanner.isRestrictedWord(token.value)) {
-                    this.tolerateUnexpectedToken(token, messages_1.Messages.StrictFunctionName);
+                    this.tolerateUnexpectedToken(token, Messages.StrictFunctionName);
                 }
             }
             else {
                 if (this.scanner.isRestrictedWord(token.value)) {
                     firstRestricted = token;
-                    message = messages_1.Messages.StrictFunctionName;
+                    message = Messages.StrictFunctionName;
                 }
                 else if (this.scanner.isStrictModeReservedWord(token.value)) {
                     firstRestricted = token;
-                    message = messages_1.Messages.StrictReservedWord;
+                    message = Messages.StrictReservedWord;
                 }
             }
         }
@@ -2591,17 +2589,17 @@ class Parser {
             id = (!this.context.strict && !isGenerator && this.matchKeyword('yield')) ? this.parseIdentifierName() : this.parseVariableIdentifier();
             if (this.context.strict) {
                 if (this.scanner.isRestrictedWord(token.value)) {
-                    this.tolerateUnexpectedToken(token, messages_1.Messages.StrictFunctionName);
+                    this.tolerateUnexpectedToken(token, Messages.StrictFunctionName);
                 }
             }
             else {
                 if (this.scanner.isRestrictedWord(token.value)) {
                     firstRestricted = token;
-                    message = messages_1.Messages.StrictFunctionName;
+                    message = Messages.StrictFunctionName;
                 }
                 else if (this.scanner.isStrictModeReservedWord(token.value)) {
                     firstRestricted = token;
-                    message = messages_1.Messages.StrictReservedWord;
+                    message = Messages.StrictReservedWord;
                 }
             }
         }
@@ -2634,7 +2632,7 @@ class Parser {
         const token = this.lookahead;
         const node = this.createNode();
         const expr = this.parseExpression();
-        const directive = (expr.type === syntax_1.Syntax.Literal) ? this.getTokenRaw(token).slice(1, -1) : null;
+        const directive = (expr.type === Syntax.Literal) ? this.getTokenRaw(token).slice(1, -1) : null;
         this.consumeSemicolon();
         return this.finalize(node, directive ? new Node.Directive(expr, directive) : new Node.ExpressionStatement(expr));
     }
@@ -2655,10 +2653,10 @@ class Parser {
             if (directive === 'use strict') {
                 this.context.strict = true;
                 if (firstRestricted) {
-                    this.tolerateUnexpectedToken(firstRestricted, messages_1.Messages.StrictOctalLiteral);
+                    this.tolerateUnexpectedToken(firstRestricted, Messages.StrictOctalLiteral);
                 }
                 if (!this.context.allowStrictDirective) {
-                    this.tolerateUnexpectedToken(token, messages_1.Messages.IllegalLanguageModeDirective);
+                    this.tolerateUnexpectedToken(token, Messages.IllegalLanguageModeDirective);
                 }
             }
             else {
@@ -2693,7 +2691,7 @@ class Parser {
         this.context.allowYield = !isGenerator;
         const formalParameters = this.parseFormalParameters();
         if (formalParameters.params.length > 0) {
-            this.tolerateError(messages_1.Messages.BadGetterArity);
+            this.tolerateError(Messages.BadGetterArity);
         }
         const method = this.parsePropertyMethod(formalParameters);
         this.context.allowYield = previousAllowYield;
@@ -2706,10 +2704,10 @@ class Parser {
         this.context.allowYield = !isGenerator;
         const formalParameters = this.parseFormalParameters();
         if (formalParameters.params.length !== 1) {
-            this.tolerateError(messages_1.Messages.BadSetterArity);
+            this.tolerateError(Messages.BadSetterArity);
         }
         else if (formalParameters.params[0] instanceof Node.RestElement) {
-            this.tolerateError(messages_1.Messages.BadSetterRestParameter);
+            this.tolerateError(Messages.BadSetterRestParameter);
         }
         const method = this.parsePropertyMethod(formalParameters);
         this.context.allowYield = previousAllowYield;
@@ -2809,7 +2807,7 @@ class Parser {
                             this.tolerateUnexpectedToken(token);
                         }
                         else if (token.value === 'constructor') {
-                            this.tolerateUnexpectedToken(token, messages_1.Messages.ConstructorIsAsync);
+                            this.tolerateUnexpectedToken(token, Messages.ConstructorIsAsync);
                         }
                     }
                 }
@@ -2851,14 +2849,14 @@ class Parser {
         }
         if (!computed) {
             if (isStatic && this.isPropertyKey(key, 'prototype')) {
-                this.throwUnexpectedToken(token, messages_1.Messages.StaticPrototype);
+                this.throwUnexpectedToken(token, Messages.StaticPrototype);
             }
             if (!isStatic && this.isPropertyKey(key, 'constructor')) {
                 if (kind !== 'method' || !method || (value && value.generator)) {
-                    this.throwUnexpectedToken(token, messages_1.Messages.ConstructorSpecialMethod);
+                    this.throwUnexpectedToken(token, Messages.ConstructorSpecialMethod);
                 }
                 if (hasConstructor.value) {
-                    this.throwUnexpectedToken(token, messages_1.Messages.DuplicateConstructor);
+                    this.throwUnexpectedToken(token, Messages.DuplicateConstructor);
                 }
                 else {
                     hasConstructor.value = true;
@@ -2943,7 +2941,7 @@ class Parser {
     parseModuleSpecifier() {
         const node = this.createNode();
         if (this.lookahead.type !== 8 /* StringLiteral */) {
-            this.throwError(messages_1.Messages.InvalidModuleSpecifier);
+            this.throwError(Messages.InvalidModuleSpecifier);
         }
         const token = this.nextToken();
         const raw = this.getTokenRaw(token);
@@ -2999,7 +2997,7 @@ class Parser {
         const node = this.createNode();
         this.expect('*');
         if (!this.matchContextualKeyword('as')) {
-            this.throwError(messages_1.Messages.NoAsAfterImportNamespace);
+            this.throwError(Messages.NoAsAfterImportNamespace);
         }
         this.nextToken();
         const local = this.parseIdentifierName();
@@ -3007,7 +3005,7 @@ class Parser {
     }
     parseImportDeclaration() {
         if (this.context.inFunctionBody) {
-            this.throwError(messages_1.Messages.IllegalImportDeclaration);
+            this.throwError(Messages.IllegalImportDeclaration);
         }
         const node = this.createNode();
         this.expectKeyword('import');
@@ -3048,7 +3046,7 @@ class Parser {
                 this.throwUnexpectedToken(this.nextToken());
             }
             if (!this.matchContextualKeyword('from')) {
-                const message = this.lookahead.value ? messages_1.Messages.UnexpectedToken : messages_1.Messages.MissingFromClause;
+                const message = this.lookahead.value ? Messages.UnexpectedToken : Messages.MissingFromClause;
                 this.throwError(message, this.lookahead.value);
             }
             this.nextToken();
@@ -3070,7 +3068,7 @@ class Parser {
     }
     parseExportDeclaration() {
         if (this.context.inFunctionBody) {
-            this.throwError(messages_1.Messages.IllegalExportDeclaration);
+            this.throwError(Messages.IllegalExportDeclaration);
         }
         const node = this.createNode();
         this.expectKeyword('export');
@@ -3098,7 +3096,7 @@ class Parser {
             }
             else {
                 if (this.matchContextualKeyword('from')) {
-                    this.throwError(messages_1.Messages.UnexpectedToken, this.lookahead.value);
+                    this.throwError(Messages.UnexpectedToken, this.lookahead.value);
                 }
                 // export default {};
                 // export default [];
@@ -3113,7 +3111,7 @@ class Parser {
             // export * from 'foo';
             this.nextToken();
             if (!this.matchContextualKeyword('from')) {
-                const message = this.lookahead.value ? messages_1.Messages.UnexpectedToken : messages_1.Messages.MissingFromClause;
+                const message = this.lookahead.value ? Messages.UnexpectedToken : Messages.MissingFromClause;
                 this.throwError(message, this.lookahead.value);
             }
             this.nextToken();
@@ -3165,7 +3163,7 @@ class Parser {
             }
             else if (isExportFromIdentifier) {
                 // export {default}; // missing fromClause
-                const message = this.lookahead.value ? messages_1.Messages.UnexpectedToken : messages_1.Messages.MissingFromClause;
+                const message = this.lookahead.value ? Messages.UnexpectedToken : Messages.MissingFromClause;
                 this.throwError(message, this.lookahead.value);
             }
             else {
@@ -3177,4 +3175,3 @@ class Parser {
         return exportDeclaration;
     }
 }
-exports.Parser = Parser;

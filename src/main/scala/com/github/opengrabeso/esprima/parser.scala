@@ -1,5 +1,5 @@
 /*
-ScalaFromJS: 2017-12-06 21:28:23.723
+ScalaFromJS: Dev 2018-01-16 17:57:51
 parser.js
 */
 
@@ -92,7 +92,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   }
   var errorHandler: ErrorHandler = new ErrorHandler()
   errorHandler.tolerant = config.tolerant
-  var scanner: Scanner = new Scanner(code, this.errorHandler)
+  var scanner: Scanner = new Scanner(code, errorHandler)
   scanner.trackComment = config.comment
   object operatorPrecedence {
     object list {
@@ -194,6 +194,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.errorHandler.tolerateError(index, line, column, msg)
   }
   
+  // Throw an exception because of the token.
   def unexpectedTokenError(token: RawToken, message: String = null) = {
     var msg = message || Messages.UnexpectedToken
     var value: String = null
@@ -270,6 +271,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
   }
   
+  // From internal representation to an external structure
   def getTokenRaw(token: RawToken): String = {
     this.scanner.source.slice(token.start, token.end)
   }
@@ -294,7 +296,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         }
       }
     }
-    if (token.`type` == RegularExpression) {
+    if (token.`type` == RegularExpression)  /*RegularExpression */{
       val pattern = token.pattern
       val flags = token.flags
       t.regex = new RegExp (
@@ -318,13 +320,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     val next = this.scanner.lex()
     this.hasLineTerminator = token.lineNumber != next.lineNumber
-    if (next && this.context.strict && next.`type` == Identifier) {
+    if (next && this.context.strict && next.`type` == Identifier)  /*Identifier */{
       if (this.scanner.isStrictModeReservedWord(next.value)) {
         next.`type` = Keyword
       }
     }
-    this.lookahead = next
-    if (this.config.tokens && next.`type` != EOF) {
+     /*Keyword */this.lookahead = next
+    if (this.config.tokens && next.`type` != EOF)  /*EOF */{
       this.tokens.push(this.convertToken(next))
     }
     token
@@ -404,6 +406,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     node
   }
   
+  // Expect the next token to match the specified punctuator.
+  // If not, an exception will be thrown.
   def expect(value: String) = {
     val token = this.nextToken()
     if (token.`type` != Punctuator || (token.value !== value)) {
@@ -411,12 +415,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
   }
   
+  // Quietly expect a comma when in tolerant mode, otherwise delegates to expect().
   def expectCommaSeparator() = {
     if (this.config.tolerant) {
       val token = this.lookahead
-      if (token.`type` == Punctuator && token.value === ",") {
+      if (token.`type` == Punctuator &&  /*Punctuator */token.value === ",") {
         this.nextToken()
-      } else if (token.`type` == Punctuator && token.value === ";") {
+      } else if (token.`type` == Punctuator &&  /*Punctuator */token.value === ";") {
         this.nextToken()
         this.tolerateUnexpectedToken(token)
       } else {
@@ -427,6 +432,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
   }
   
+  // Expect the next token to match the specified keyword.
+  // If not, an exception will be thrown.
   def expectKeyword(keyword: String) = {
     val token = this.nextToken()
     if (token.`type` != Keyword || (token.value !== keyword)) {
@@ -434,26 +441,62 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
   }
   
+  // Return true if the next token matches the specified punctuator.
   def `match`(value: String) = {
-    this.lookahead.`type` == Punctuator && this.lookahead.value === value
+    this.lookahead.`type` == Punctuator &&  /*Punctuator */this.lookahead.value === value
   }
   
+  // Return true if the next token matches the specified keyword
   def matchKeyword(keyword: String) = {
-    this.lookahead.`type` == Keyword && this.lookahead.value === keyword
+    this.lookahead.`type` == Keyword &&  /*Keyword */this.lookahead.value === keyword
   }
   
+  // Return true if the next token matches the specified contextual keyword
+  // (where an identifier is sometimes a keyword depending on the context)
   def matchContextualKeyword(keyword: String) = {
-    this.lookahead.`type` == Identifier && this.lookahead.value === keyword
+    this.lookahead.`type` == Identifier &&  /*Identifier */this.lookahead.value === keyword
   }
   
+  // Return true if the next token is an assignment operator
   def matchAssign(): Boolean = {
-    if (this.lookahead.`type` != Punctuator) {
+    if (this.lookahead.`type` != Punctuator)  /*Punctuator */{
       return false
     }
     val op: String = this.lookahead.value
     op == "=" || op == "*=" || op == "**=" || op == "/=" || op == "%=" || op == "+=" || op == "-=" || op == "<<=" || op == ">>=" || op == ">>>=" || op == "&=" || op == "^=" || op == "|="
   }
   
+  // Cover grammar support.
+  //
+  // When an assignment expression position starts with an left parenthesis, the determination of the type
+  // of the syntax is to be deferred arbitrarily long until the end of the parentheses pair (plus a lookahead)
+  // or the first comma. This situation also defers the determination of all the expressions nested in the pair.
+  //
+  // There are three productions that can be parsed in a parentheses pair that needs to be determined
+  // after the outermost pair is closed. They are:
+  //
+  //   1. AssignmentExpression
+  //   2. BindingElements
+  //   3. AssignmentTargets
+  //
+  // In order to avoid exponential backtracking, we use two flags to denote if the production can be
+  // binding element or assignment target.
+  //
+  // The three productions have the relationship:
+  //
+  //   BindingElements ⊆ AssignmentTargets ⊆ AssignmentExpression
+  //
+  // with a single exception that CoverInitializedName when used directly in an Expression, generates
+  // an early error. Therefore, we need the third state, firstCoverInitializedNameError, to track the
+  // first usage of CoverInitializedName and report it when we reached the end of the parentheses pair.
+  //
+  // isolateCoverGrammar function runs the given parser function with a new cover grammar context, and it does not
+  // effect the current flags. This means the production the parser parses is only used as an expression. Therefore
+  // the CoverInitializedName check is conducted.
+  //
+  // inheritCoverGrammar function runs the given parse function with a new cover grammar context, and it propagates
+  // the flags outside of the parser. This means the production the parser parses is used as a part of a potential
+  // pattern. The CoverInitializedName check is deferred.
   def isolateCoverGrammar[T <:Node.Node](parseFunction: () => T): T = {
     val previousIsBindingElement = this.context.isBindingElement
     val previousIsAssignmentTarget = this.context.isAssignmentTarget
@@ -489,7 +532,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     if (this.`match`(";")) {
       this.nextToken()
     } else if (!this.hasLineTerminator) {
-      if (this.lookahead.`type` != EOF && !this.`match`("}")) {
+      if (this.lookahead.`type` != EOF &&  /*EOF */!this.`match`("}")) {
         this.throwUnexpectedToken(this.lookahead)
       }
       this.lastMarker.index = this.startMarker.index
@@ -498,6 +541,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
   }
   
+  // https://tc39.github.io/ecma262/#sec-primary-expression
   def parsePrimaryExpression(): Node.Expression = {
     val node = this.createNode()
     var expr: Node.Expression = null
@@ -505,12 +549,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var raw: String = null
     this.lookahead.`type` match {
       case Identifier =>
-        if ((this.context.isModule || this.context.await) && this.lookahead.value === "await") {
+         /*Identifier */if ((this.context.isModule || this.context.await) && this.lookahead.value === "await") {
           this.tolerateUnexpectedToken(this.lookahead)
         }
         expr = if (this.matchAsyncFunction()) this.parseFunctionExpression() else this.finalize(node, new Node.Identifier(this.nextToken().value))
-      case NumericLiteral | StringLiteral =>
-        if (this.context.strict && this.lookahead.octal) {
+       /*NumericLiteral */case NumericLiteral | StringLiteral =>
+         /*StringLiteral */if (this.context.strict && this.lookahead.octal) {
           this.tolerateUnexpectedToken(this.lookahead, Messages.StrictOctalLiteral)
         }
         this.context.isAssignmentTarget = false
@@ -519,21 +563,21 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         raw = this.getTokenRaw(token)
         expr = this.finalize(node, new Node.Literal(token.value, raw))
       case BooleanLiteral =>
-        this.context.isAssignmentTarget = false
+         /*BooleanLiteral */this.context.isAssignmentTarget = false
         this.context.isBindingElement = false
         token = this.nextToken()
         raw = this.getTokenRaw(token)
         expr = this.finalize(node, new Node.Literal(token.value === "true", raw))
       case NullLiteral =>
-        this.context.isAssignmentTarget = false
+         /*NullLiteral */this.context.isAssignmentTarget = false
         this.context.isBindingElement = false
         token = this.nextToken()
         raw = this.getTokenRaw(token)
         expr = this.finalize(node, new Node.Literal(null, raw))
       case Template =>
-        expr = this.parseTemplateLiteral()
+         /*Template */expr = this.parseTemplateLiteral()
       case Punctuator =>
-        this.lookahead.value.get[String] match {
+         /*Punctuator */this.lookahead.value.get[String] match {
           case "(" =>
             this.context.isBindingElement = false
             expr = this.inheritCoverGrammar(this.parseGroupExpression)
@@ -552,7 +596,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
             expr = this.throwUnexpectedToken(this.nextToken())
         }
       case Keyword =>
-        if (!this.context.strict && this.context.allowYield && this.matchKeyword("yield")) {
+         /*Keyword */if (!this.context.strict && this.context.allowYield && this.matchKeyword("yield")) {
           expr = this.parseIdentifierName()
         } else if (!this.context.strict && this.matchKeyword("let")) {
           expr = this.finalize(node, new Node.Identifier(this.nextToken().value))
@@ -578,6 +622,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     expr
   }
   
+  // https://tc39.github.io/ecma262/#sec-array-initializer
   def parseSpreadElement(): Node.SpreadElement = {
     val node = this.createNode()
     this.expect("...")
@@ -612,6 +657,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.ArrayExpression(elements))
   }
   
+  // https://tc39.github.io/ecma262/#sec-object-initializer
   def parsePropertyMethod(params: ParameterOptions) = {
     this.context.isAssignmentTarget = false
     this.context.isBindingElement = false
@@ -659,8 +705,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val token = this.nextToken()
     var key: Node.PropertyKey = null
     token.`type` match {
-      case StringLiteral | NumericLiteral =>
-        if (this.context.strict && token.octal) {
+       /*StringLiteral */case StringLiteral | NumericLiteral =>
+         /*NumericLiteral */if (this.context.strict && token.octal) {
           this.tolerateUnexpectedToken(token, Messages.StrictOctalLiteral)
         }
         val raw = this.getTokenRaw(token)
@@ -694,7 +740,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var method = false
     var shorthand = false
     var isAsync = false
-    if (token.`type` == Identifier) {
+    if (token.`type` == Identifier)  /*Identifier */{
       val id: String = token.value
       this.nextToken()
       computed = this.`match`("[")
@@ -707,18 +753,18 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       key = this.parseObjectPropertyKey()
     }
     val lookaheadPropertyKey = this.qualifiedPropertyName(this.lookahead)
-    if (token.`type` == Identifier && !isAsync && token.value === "get" && lookaheadPropertyKey) {
+    if (token.`type` == Identifier &&  /*Identifier */!isAsync && token.value === "get" && lookaheadPropertyKey) {
       kind = "get"
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
       this.context.allowYield = false
       value = this.parseGetterMethod()
-    } else if (token.`type` == Identifier && !isAsync && token.value === "set" && lookaheadPropertyKey) {
+    } else if (token.`type` == Identifier &&  /*Identifier */!isAsync && token.value === "set" && lookaheadPropertyKey) {
       kind = "set"
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
       value = this.parseSetterMethod()
-    } else if (token.`type` == Punctuator && token.value === "*" && lookaheadPropertyKey) {
+    } else if (token.`type` == Punctuator &&  /*Punctuator */token.value === "*" && lookaheadPropertyKey) {
       kind = "init"
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
@@ -741,7 +787,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       } else if (this.`match`("(")) {
         value = if (isAsync) this.parsePropertyMethodAsyncFunction() else this.parsePropertyMethodFunction()
         method = true
-      } else if (token.`type` == Identifier) {
+      } else if (token.`type` == Identifier)  /*Identifier */{
         val id = this.finalize(node, new Node.Identifier(token.value))
         if (this.`match`("=")) {
           this.context.firstCoverInitializedNameError = this.lookahead
@@ -775,6 +821,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.ObjectExpression(properties))
   }
   
+  // https://tc39.github.io/ecma262/#sec-template-literals
   def parseTemplateHead(): Node.TemplateElement = {
     assert(this.lookahead.head, "Template literal must start with a template head")
     val node = this.createNode()
@@ -788,7 +835,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   }
   
   def parseTemplateElement() = {
-    if (this.lookahead.`type` != Template) {
+    if (this.lookahead.`type` != Template)  /*Template */{
       this.throwUnexpectedToken(this.lookahead)
     }
     val node = this.createNode()
@@ -894,7 +941,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           this.context.isAssignmentTarget = false
           expressions.push(expr)
           breakable {
-            while (this.lookahead.`type` != EOF) {
+            while (this.lookahead.`type` != EOF)  /*EOF */{
               if (!this.`match`(",")) {
                 break
               }
@@ -975,6 +1022,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     expr
   }
   
+  // https://tc39.github.io/ecma262/#sec-left-hand-side-expressions
   def parseArguments(): Array[Node.ArgumentListElement] = {
     this.expect("(")
     val args = ArrayBuffer.empty[Node.ArgumentListElement]
@@ -998,9 +1046,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   }
   
   def isIdentifierName(token: RawToken) = {
-    token.`type` == Identifier || token.`type` == Keyword || token.`type` == BooleanLiteral || token.`type` == NullLiteral
+    token.`type` == Identifier ||  /*Identifier */token.`type` == Keyword ||  /*Keyword */token.`type` == BooleanLiteral ||  /*BooleanLiteral */token.`type` == NullLiteral
   }
   
+   /*NullLiteral */
   def parseIdentifierName() = {
     val node = this.createNode()
     val token = this.nextToken()
@@ -1018,7 +1067,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var expr: Node.Expression = null
     if (this.`match`(".")) {
       this.nextToken()
-      if (this.lookahead.`type` == Identifier && this.context.inFunctionBody && this.lookahead.value === "target") {
+      if (this.lookahead.`type` == Identifier &&  /*Identifier */this.context.inFunctionBody && this.lookahead.value === "target") {
         val property = this.parseIdentifierName()
         expr = new Node.MetaProperty(id, property)
       } else {
@@ -1071,7 +1120,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.scanner.scanComments()
       val next = this.scanner.lex()
       this.scanner.restoreState(state)
-      `match` = next.`type` == Punctuator && next.value === "("
+      `match` = next.`type` == Punctuator &&  /*Punctuator */next.value === "("
     }
     `match`
   }
@@ -1132,7 +1181,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           val property = this.isolateCoverGrammar(this.parseExpression)
           this.expect("]")
           exprNode = this.finalize(this.startNode(startToken), new Node.ComputedMemberExpression(exprNode, property))
-        } else if (this.lookahead.`type` == Template && this.lookahead.head) {
+        } else if (this.lookahead.`type` == Template &&  /*Template */this.lookahead.head) {
           val quasi = this.parseTemplateLiteral()
           exprNode = this.finalize(this.startNode(startToken), new Node.TaggedTemplateExpression(exprNode, quasi))
         } else {
@@ -1172,7 +1221,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           this.expect(".")
           val property = this.parseIdentifierName()
           expr = this.finalize(node, new Node.StaticMemberExpression(expr, property))
-        } else if (this.lookahead.`type` == Template && this.lookahead.head) {
+        } else if (this.lookahead.`type` == Template &&  /*Template */this.lookahead.head) {
           val quasi = this.parseTemplateLiteral()
           expr = this.finalize(node, new Node.TaggedTemplateExpression(expr, quasi))
         } else {
@@ -1183,6 +1232,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     expr
   }
   
+  // https://tc39.github.io/ecma262/#sec-update-expressions
   def parseUpdateExpression() = {
     var expr: Node.Expression = null
     val startToken = this.lookahead
@@ -1202,7 +1252,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.context.isBindingElement = false
     } else {
       expr = this.inheritCoverGrammar(this.parseLeftHandSideExpressionAllowCall)
-      if (!this.hasLineTerminator && this.lookahead.`type` == Punctuator) {
+      if (!this.hasLineTerminator && this.lookahead.`type` == Punctuator)  /*Punctuator */{
         if (this.`match`("++") || this.`match`("--")) {
           if (this.context.strict && expr.isInstanceOf[Node.Identifier] && this.scanner.isRestrictedWord(expr.asInstanceOf[Node.Identifier].name)) {
             this.tolerateError(Messages.StrictLHSPostfix)
@@ -1221,6 +1271,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     expr
   }
   
+  // https://tc39.github.io/ecma262/#sec-unary-operators
   def parseAwaitExpression(): Node.AwaitExpression = {
     val node = this.createNode()
     this.nextToken()
@@ -1263,12 +1314,20 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     expr
   }
   
+  // https://tc39.github.io/ecma262/#sec-exp-operator
+  // https://tc39.github.io/ecma262/#sec-multiplicative-operators
+  // https://tc39.github.io/ecma262/#sec-additive-operators
+  // https://tc39.github.io/ecma262/#sec-bitwise-shift-operators
+  // https://tc39.github.io/ecma262/#sec-relational-operators
+  // https://tc39.github.io/ecma262/#sec-equality-operators
+  // https://tc39.github.io/ecma262/#sec-binary-bitwise-operators
+  // https://tc39.github.io/ecma262/#sec-binary-logical-operators
   def binaryPrecedence(token: RawToken): Int = {
     val op: String = token.value
     var precedence: Int = 0
-    if (token.`type` == Punctuator) {
+    if (token.`type` == Punctuator)  /*Punctuator */{
       precedence = this.operatorPrecedence(op)
-    } else if (token.`type` == Keyword) {
+    } else if (token.`type` == Keyword)  /*Keyword */{
       precedence = if (op == "instanceof" || this.context.allowIn && op == "in") 7 else 0
     } else {
       precedence = 0
@@ -1330,6 +1389,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     expr
   }
   
+  // https://tc39.github.io/ecma262/#sec-conditional-operator
   def parseConditionalExpression(): Node.Expression = {
     val startToken = this.lookahead
     var expr = this.inheritCoverGrammar(this.parseBinaryExpression)
@@ -1435,8 +1495,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       val startToken = this.lookahead
       var token = startToken
       exprTemp = this.parseConditionalExpression()
-      if (token.`type` == Identifier && token.lineNumber == this.lookahead.lineNumber && token.value === "async") {
-        if (this.lookahead.`type` == Identifier || this.matchKeyword("yield")) {
+      if (token.`type` == Identifier &&  /*Identifier */token.lineNumber == this.lookahead.lineNumber && token.value === "async") {
+        if (this.lookahead.`type` == Identifier ||  /*Identifier */this.matchKeyword("yield")) {
           val arg = this.parsePrimaryExpression()
           val argT = this.reinterpretExpressionAsArrayPattern(arg).asInstanceOf[Node.ArgumentListElement]
           exprTemp = new Node.ArrowParameterPlaceHolder {
@@ -1522,7 +1582,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       }
     }
   }
-
+  // https://tc39.github.io/ecma262/#sec-comma-operator
   def parseExpression(): Node.Expression = {
     val startToken = this.lookahead
     var expr: Node.Expression = this.isolateCoverGrammar(this.parseAssignmentExpression)
@@ -1530,7 +1590,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       val expressions = ArrayBuffer.empty[Node.Expression]
       expressions.push(expr)
       breakable {
-        while (this.lookahead.`type` != EOF) {
+        while (this.lookahead.`type` != EOF)  /*EOF */{
           if (!this.`match`(",")) {
             break
           }
@@ -1543,11 +1603,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     expr
   }
   
+  // https://tc39.github.io/ecma262/#sec-block
   def parseStatementListItem(): Node.StatementListItem = {
     var statement: Node.StatementListItem = null
     this.context.isAssignmentTarget = true
     this.context.isBindingElement = true
-    if (this.lookahead.`type` == Keyword) {
+    if (this.lookahead.`type` == Keyword)  /*Keyword */{
       this.lookahead.value.get[String] match {
         case "export" =>
           if (!this.context.isModule) {
@@ -1600,6 +1661,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.BlockStatement(block))
   }
   
+  // https://tc39.github.io/ecma262/#sec-let-and-const-declarations
   def parseLexicalBinding(kind: String, options: VariableOptions): Node.VariableDeclarator = {
     val node = this.createNode()
     val params = ArrayBuffer.empty[RawToken]
@@ -1641,7 +1703,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.scanner.scanComments()
     val next = this.scanner.lex()
     this.scanner.restoreState(state)
-    next.`type` == Identifier || next.`type` == Punctuator && next.value === "[" || next.`type` == Punctuator && next.value === "{" || next.`type` == Keyword && next.value === "let" || next.`type` == Keyword && next.value === "yield"
+    next.`type` == Identifier ||  /*Identifier */next.`type` == Punctuator &&  /*Punctuator */next.value === "[" || next.`type` == Punctuator &&  /*Punctuator */next.value === "{" || next.`type` == Keyword &&  /*Keyword */next.value === "let" || next.`type` == Keyword &&  /*Keyword */next.value === "yield"
   }
   
   def parseLexicalDeclaration(options: VariableOptions): Node.VariableDeclaration = {
@@ -1653,6 +1715,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.VariableDeclaration(declarations, kind))
   }
   
+  // https://tc39.github.io/ecma262/#sec-destructuring-binding-patterns
   def parseBindingRestElement(params: ArrayBuffer[RawToken], kind: String): Node.RestElement = {
     val node = this.createNode()
     this.expect("...")
@@ -1693,7 +1756,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val method = false
     var key: Node.PropertyKey = null
     var value: Node.PropertyValue = null
-    if (this.lookahead.`type` == Identifier) {
+    if (this.lookahead.`type` == Identifier)  /*Identifier */{
       val keyToken = this.lookahead
       key = this.parseVariableIdentifier()
       val init = this.finalize(node, new Node.Identifier(keyToken.value))
@@ -1778,24 +1841,25 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
   }
   
+  // https://tc39.github.io/ecma262/#sec-variable-statement
   def parseVariableIdentifier(kind: String = ""): Node.Identifier = {
     val node = this.createNode()
     val token = this.nextToken()
-    if (token.`type` == Keyword && token.value === "yield") {
+    if (token.`type` == Keyword &&  /*Keyword */token.value === "yield") {
       if (this.context.strict) {
         this.tolerateUnexpectedToken(token, Messages.StrictReservedWord)
       } else if (!this.context.allowYield) {
         this.throwUnexpectedToken(token)
       }
-    } else if (token.`type` != Identifier) {
-      if (this.context.strict && token.`type` == Keyword && this.scanner.isStrictModeReservedWord(token.value)) {
+    } else if (token.`type` != Identifier)  /*Identifier */{
+      if (this.context.strict && token.`type` == Keyword &&  /*Keyword */this.scanner.isStrictModeReservedWord(token.value)) {
         this.tolerateUnexpectedToken(token, Messages.StrictReservedWord)
       } else {
         if (this.context.strict || (token.value !== "let") || kind != "var") {
           this.throwUnexpectedToken(token)
         }
       }
-    } else if ((this.context.isModule || this.context.await) && token.`type` == Identifier && token.value === "await") {
+    } else if ((this.context.isModule || this.context.await) && token.`type` == Identifier &&  /*Identifier */token.value === "await") {
       this.tolerateUnexpectedToken(token)
     }
     this.finalize(node, new Node.Identifier(token.value))
@@ -1844,12 +1908,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.VariableDeclaration(declarations, "var"))
   }
   
+  // https://tc39.github.io/ecma262/#sec-empty-statement
   def parseEmptyStatement(): Node.EmptyStatement = {
     val node = this.createNode()
     this.expect(";")
     this.finalize(node, new Node.EmptyStatement())
   }
   
+  // https://tc39.github.io/ecma262/#sec-expression-statement
   def parseExpressionStatement(): Node.ExpressionStatement = {
     val node = this.createNode()
     val expr = this.parseExpression()
@@ -1857,6 +1923,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.ExpressionStatement(expr))
   }
   
+  // https://tc39.github.io/ecma262/#sec-if-statement
   def parseIfClause(): Node.Statement = {
     if (this.context.strict && this.matchKeyword("function")) {
       this.tolerateError(Messages.StrictFunction)
@@ -1885,6 +1952,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.IfStatement(test, consequent, alternate))
   }
   
+  // https://tc39.github.io/ecma262/#sec-do-while-statement
   def parseDoWhileStatement() = {
     val node = this.createNode()
     this.expectKeyword("do")
@@ -1906,6 +1974,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.DoWhileStatement(body, test))
   }
   
+  // https://tc39.github.io/ecma262/#sec-while-statement
   def parseWhileStatement() = {
     val node = this.createNode()
     var body: Node.Statement = null
@@ -1925,6 +1994,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.WhileStatement(test, body))
   }
   
+  // https://tc39.github.io/ecma262/#sec-for-statement
+  // https://tc39.github.io/ecma262/#sec-for-in-and-for-of-statements
   def parseForStatement() = {
     var init: Marker = null
     var test: Marker = null
@@ -2066,11 +2137,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     if (left == null) this.finalize(node, new Node.ForStatement(initNode, testNode, updateNode, body)) else if (forIn) this.finalize(node, new Node.ForInStatement(left, right, body)) else this.finalize(node, new Node.ForOfStatement(left, right, body))
   }
   
+  // https://tc39.github.io/ecma262/#sec-continue-statement
   def parseContinueStatement(): Node.ContinueStatement = {
     val node = this.createNode()
     this.expectKeyword("continue")
     var label: Node.Identifier = null
-    if (this.lookahead.`type` == Identifier && !this.hasLineTerminator) {
+    if (this.lookahead.`type` == Identifier &&  /*Identifier */!this.hasLineTerminator) {
       val id = this.parseVariableIdentifier()
       label = id
       val key = "$" + id.name
@@ -2085,11 +2157,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.ContinueStatement(label))
   }
   
+  // https://tc39.github.io/ecma262/#sec-break-statement
   def parseBreakStatement(): Node.BreakStatement = {
     val node = this.createNode()
     this.expectKeyword("break")
     var label: Node.Identifier = null
-    if (this.lookahead.`type` == Identifier && !this.hasLineTerminator) {
+    if (this.lookahead.`type` == Identifier &&  /*Identifier */!this.hasLineTerminator) {
       val id = this.parseVariableIdentifier()
       val key = "$" + id.name
       if (!(this.context.labelSet contains key)) {
@@ -2104,18 +2177,20 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.BreakStatement(label))
   }
   
+  // https://tc39.github.io/ecma262/#sec-return-statement
   def parseReturnStatement(): Node.ReturnStatement = {
     if (!this.context.inFunctionBody) {
       this.tolerateError(Messages.IllegalReturn)
     }
     val node = this.createNode()
     this.expectKeyword("return")
-    val hasArgument = !this.`match`(";") && !this.`match`("}") && !this.hasLineTerminator && this.lookahead.`type` != EOF || this.lookahead.`type` == Template
-    val argument = if (hasArgument) this.parseExpression() else null
+    val hasArgument = !this.`match`(";") && !this.`match`("}") && !this.hasLineTerminator && this.lookahead.`type` != EOF ||  /*EOF */this.lookahead.`type` == Template
+     /*Template */val argument = if (hasArgument) this.parseExpression() else null
     this.consumeSemicolon()
     this.finalize(node, new Node.ReturnStatement(argument))
   }
   
+  // https://tc39.github.io/ecma262/#sec-with-statement
   def parseWithStatement() = {
     if (this.context.strict) {
       this.tolerateError(Messages.StrictModeWith)
@@ -2135,6 +2210,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.WithStatement(`object`, body))
   }
   
+  // https://tc39.github.io/ecma262/#sec-switch-statement
   def parseSwitchCase(): Node.SwitchCase = {
     val node = this.createNode()
     var test: Node.Expression = null
@@ -2189,6 +2265,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.SwitchStatement(discriminant, cases))
   }
   
+  // https://tc39.github.io/ecma262/#sec-labelled-statements
   def parseLabelledStatement(): Node.Statement = {
     val node = this.createNode()
     val expr = this.parseExpression()
@@ -2227,6 +2304,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, statement)
   }
   
+  // https://tc39.github.io/ecma262/#sec-throw-statement
   def parseThrowStatement(): Node.ThrowStatement = {
     val node = this.createNode()
     this.expectKeyword("throw")
@@ -2238,6 +2316,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.ThrowStatement(argument))
   }
   
+  // https://tc39.github.io/ecma262/#sec-try-statement
   def parseCatchClause(): Node.CatchClause = {
     val node = this.createNode()
     this.expectKeyword("catch")
@@ -2283,6 +2362,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.TryStatement(block, handler, finalizer))
   }
   
+  // https://tc39.github.io/ecma262/#sec-debugger-statement
   def parseDebuggerStatement(): Node.DebuggerStatement = {
     val node = this.createNode()
     this.expectKeyword("debugger")
@@ -2290,6 +2370,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.DebuggerStatement())
   }
   
+  // https://tc39.github.io/ecma262/#sec-ecmascript-language-statements-and-declarations
   def parseStatement(): Node.Statement = {
     var statement: Node.Statement = null
     this.lookahead.`type` match {
@@ -2307,9 +2388,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           statement = this.parseExpressionStatement()
         }
       case Identifier =>
-        statement = if (this.matchAsyncFunction()) this.parseFunctionDeclaration() else this.parseLabelledStatement()
+         /*Identifier */statement = if (this.matchAsyncFunction()) this.parseFunctionDeclaration() else this.parseLabelledStatement()
       case Keyword =>
-        this.lookahead.value.get[String] match {
+         /*Keyword */this.lookahead.value.get[String] match {
           case "break" =>
             statement = this.parseBreakStatement()
           case "continue" =>
@@ -2347,6 +2428,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     statement
   }
   
+  // https://tc39.github.io/ecma262/#sec-function-definitions
   def parseFunctionSourceElements() = {
     val node = this.createNode()
     this.expect("{")
@@ -2360,7 +2442,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.context.inSwitch = false
     this.context.inFunctionBody = true
     breakable {
-      while (this.lookahead.`type` != EOF) {
+      while (this.lookahead.`type` != EOF)  /*EOF */{
         if (this.`match`("}")) {
           break
         }
@@ -2434,7 +2516,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     if (!this.`match`(")")) {
       options.paramSet = mutable.Map.empty
       breakable {
-        while (this.lookahead.`type` != EOF) {
+        while (this.lookahead.`type` != EOF)  /*EOF */{
           this.parseFormalParameter(options)
           if (this.`match`(")")) {
             break
@@ -2463,7 +2545,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.scanner.scanComments()
       val next = this.scanner.lex()
       this.scanner.restoreState(state)
-      `match` = state.lineNumber == next.lineNumber && next.`type` == Keyword && next.value === "function"
+      `match` = state.lineNumber == next.lineNumber && next.`type` == Keyword &&  /*Keyword */next.value === "function"
     }
     `match`
   }
@@ -2586,6 +2668,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     if (isAsync) this.finalize(node, new Node.AsyncFunctionExpression(id, params, body)) else this.finalize(node, new Node.FunctionExpression(id, params, body, isGenerator))
   }
   
+  // https://tc39.github.io/ecma262/#sec-directive-prologues-and-the-use-strict-directive
   def parseDirective(): Node.StatementListItem = {
     val token = this.lookahead
     val node = this.createNode()
@@ -2601,7 +2684,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     breakable {
       while (true) {
         val token = this.lookahead
-        if (token.`type` != StringLiteral) {
+        if (token.`type` != StringLiteral)  /*StringLiteral */{
           break
         }
         val statement = this.parseDirective()
@@ -2630,6 +2713,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     body
   }
   
+  // https://tc39.github.io/ecma262/#sec-method-definitions
   def qualifiedPropertyName(token: RawToken): Boolean = {
     token.`type` match {
       case Identifier | StringLiteral | BooleanLiteral | NullLiteral | NumericLiteral | Keyword =>
@@ -2683,14 +2767,15 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.FunctionExpression(null, params.params, method, isGenerator))
   }
   
+  // https://tc39.github.io/ecma262/#sec-generator-function-definitions
   def isStartOfExpression() = {
     var start = true
     val value: String = this.lookahead.value
     this.lookahead.`type` match {
       case Punctuator =>
-        start = value == "[" || value == "(" || value == "{" || value == "+" || value == "-" || value == "!" || value == "~" || value == "++" || value == "--" || value == "/" || value == "/="
+         /*Punctuator */start = value == "[" || value == "(" || value == "{" || value == "+" || value == "-" || value == "!" || value == "~" || value == "++" || value == "--" || value == "/" || value == "/=" // regular expression literal
       case Keyword =>
-        start = value == "class" || value == "delete" || value == "function" || value == "let" || value == "new" || value == "super" || value == "this" || value == "typeof" || value == "void" || value == "yield"
+         /*Keyword */start = value == "class" || value == "delete" || value == "function" || value == "let" || value == "new" || value == "super" || value == "this" || value == "typeof" || value == "void" || value == "yield"
       case _ =>
     }
     start
@@ -2716,6 +2801,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.YieldExpression(argument, delegate))
   }
   
+  // https://tc39.github.io/ecma262/#sec-class-definitions
   def parseClassElement(hasConstructor: ByRef[Boolean]): Node.MethodDefinition = {
     var token = this.lookahead
     val node = this.createNode()
@@ -2742,13 +2828,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           key = this.parseObjectPropertyKey()
         }
       }
-      if (token.`type` == Identifier && !this.hasLineTerminator && token.value === "async") {
+      if (token.`type` == Identifier &&  /*Identifier */!this.hasLineTerminator && token.value === "async") {
         val punctuator: String = this.lookahead.value
         if (punctuator != ":" && punctuator != "(" && punctuator != "*") {
           isAsync = true
           token = this.lookahead
           key = this.parseObjectPropertyKey()
-          if (token.`type` == Identifier) {
+          if (token.`type` == Identifier)  /*Identifier */{
             if (token.value === "get" || token.value === "set") {
               this.tolerateUnexpectedToken(token)
             } else if (token.value === "constructor") {
@@ -2759,7 +2845,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       }
     }
     val lookaheadPropertyKey = this.qualifiedPropertyName(this.lookahead)
-    if (token.`type` == Identifier) {
+    if (token.`type` == Identifier)  /*Identifier */{
       if (token.value === "get" && lookaheadPropertyKey) {
         kind = "get"
         computed = this.`match`("[")
@@ -2772,7 +2858,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         key = this.parseObjectPropertyKey()
         value = this.parseSetterMethod()
       }
-    } else if (token.`type` == Punctuator && token.value === "*" && lookaheadPropertyKey) {
+    } else if (token.`type` == Punctuator &&  /*Punctuator */token.value === "*" && lookaheadPropertyKey) {
       kind = "init"
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
@@ -2835,7 +2921,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val previousStrict = this.context.strict
     this.context.strict = true
     this.expectKeyword("class")
-    val id = if (identifierIsOptional && this.lookahead.`type` != Identifier) null else this.parseVariableIdentifier()
+    val id = if (identifierIsOptional && this.lookahead.`type` != Identifier)  /*Identifier */null else this.parseVariableIdentifier()
     var superClass: Node.Identifier = null
     if (this.matchKeyword("extends")) {
       this.nextToken()
@@ -2851,7 +2937,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val previousStrict = this.context.strict
     this.context.strict = true
     this.expectKeyword("class")
-    val id = if (this.lookahead.`type` == Identifier) this.parseVariableIdentifier() else null
+    val id = if (this.lookahead.`type` == Identifier)  /*Identifier */this.parseVariableIdentifier() else null
     var superClass: Node.Identifier = null
     if (this.matchKeyword("extends")) {
       this.nextToken()
@@ -2862,13 +2948,15 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.ClassExpression(id, superClass, classBody))
   }
   
+  // https://tc39.github.io/ecma262/#sec-scripts
+  // https://tc39.github.io/ecma262/#sec-modules
   def parseModule(): Node.Module = {
     this.context.strict = true
     this.context.isModule = true
     this.scanner.isModule = true
     val node = this.createNode()
     val body = this.parseDirectivePrologues()
-    while (this.lookahead.`type` != EOF) {
+    while (this.lookahead.`type` != EOF)  /*EOF */{
       body.push(this.parseStatementListItem())
     }
     this.finalize(node, new Node.Module(body))
@@ -2877,15 +2965,16 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   def parseScript(): Node.Script = {
     val node = this.createNode()
     val body = this.parseDirectivePrologues()
-    while (this.lookahead.`type` != EOF) {
+    while (this.lookahead.`type` != EOF)  /*EOF */{
       body.push(this.parseStatementListItem())
     }
     this.finalize(node, new Node.Script(body))
   }
   
+  // https://tc39.github.io/ecma262/#sec-imports
   def parseModuleSpecifier(): Node.Literal = {
     val node = this.createNode()
-    if (this.lookahead.`type` != StringLiteral) {
+    if (this.lookahead.`type` != StringLiteral)  /*StringLiteral */{
       this.throwError(Messages.InvalidModuleSpecifier)
     }
     val token = this.nextToken()
@@ -2893,11 +2982,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.Literal(token.value, raw))
   }
   
+  // import {<foo as bar>} ...;
   def parseImportSpecifier(): Node.ImportSpecifier = {
     val node = this.createNode()
     var imported: Node.Identifier = null
     var local: Node.Identifier = null
-    if (this.lookahead.`type` == Identifier) {
+    if (this.lookahead.`type` == Identifier)  /*Identifier */{
       imported = this.parseVariableIdentifier()
       local = imported
       if (this.matchContextualKeyword("as")) {
@@ -2917,6 +3007,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.ImportSpecifier(local, imported))
   }
   
+  // {foo, bar as bas}
   def parseNamedImports(): ArrayBuffer[Node.ImportSpecifier] = {
     this.expect("{")
     val specifiers = ArrayBuffer.empty[Node.ImportSpecifier]
@@ -2930,12 +3021,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     specifiers
   }
   
+  // import <foo> ...;
   def parseImportDefaultSpecifier() = {
     val node = this.createNode()
     val local = this.parseIdentifierName()
     this.finalize(node, new Node.ImportDefaultSpecifier(local))
   }
   
+  // import <* as foo> ...;
   def parseImportNamespaceSpecifier() = {
     val node = this.createNode()
     this.expect("*")
@@ -2955,7 +3048,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.expectKeyword("import")
     var src: Node.Literal = null
     var specifiers = ArrayBuffer.empty[Node.ImportDeclarationSpecifier]
-    if (this.lookahead.`type` == StringLiteral) {
+    if (this.lookahead.`type` == StringLiteral)  /*StringLiteral */{
       // import 'foo';
       src = this.parseModuleSpecifier()
     } else {
@@ -2994,6 +3087,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.ImportDeclaration(specifiers, src))
   }
   
+  // https://tc39.github.io/ecma262/#sec-exports
   def parseExportSpecifier(): Node.ExportSpecifier = {
     val node = this.createNode()
     val local = this.parseIdentifierName()
@@ -3052,7 +3146,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       val src = this.parseModuleSpecifier()
       this.consumeSemicolon()
       exportDeclaration = this.finalize(node, new Node.ExportAllDeclaration(src))
-    } else if (this.lookahead.`type` == Keyword) {
+    } else if (this.lookahead.`type` == Keyword)  /*Keyword */{
       // export var f = 1;
       var declaration: Node.ExportableNamedDeclaration = null
       this.lookahead.value.get[String] match {

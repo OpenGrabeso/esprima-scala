@@ -1,9 +1,10 @@
 /*
-ScalaFromJS: 2017-12-06 21:28:23.723
+ScalaFromJS: Dev 2018-01-16 17:57:51
 types.js
 */
 
 package types.js
+
 // Introduce types which can serve as interfaces
 /* import {SourceLocation} from "./src/scanner" */
 import esprima.SourceLocation
@@ -39,7 +40,7 @@ class Comment() {
 
 class RawToken() {
   var `type`: Double = 0
-  var value: String = undefined
+  var value = undefined
   var pattern: String = ""
   var flags: String = ""
   var regex = "/.*/g".r

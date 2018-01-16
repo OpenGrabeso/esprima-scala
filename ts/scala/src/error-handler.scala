@@ -1,23 +1,17 @@
 /*
-ScalaFromJS: 2017-12-05 14:33:13.940
+ScalaFromJS: Dev 2018-01-16 17:57:51
 error-handler.js
 */
 
 package com.github.opengrabeso.esprima
-"use strict"
-/*tslint:disable:max-classes-per-file */
-Object.defineProperty(exports, "__esModule", new {
-  var value = true
-})
-
 class ErrorHandler() {
-  var errors = Array.empty[Error]
+  var errors = Array.empty[Unit]
   var tolerant: Boolean = false
-  def recordError(error: Error) = {
+  def recordError(error: Any) = {
     this.errors.push(error)
   }
   
-  def tolerate(error: Error) = {
+  def tolerate(error: Any) = {
     if (this.tolerant) {
       this.recordError(error)
     } else {
@@ -25,7 +19,7 @@ class ErrorHandler() {
     }
   }
   
-  def constructError(msg: String, column: Any) = {
+  def constructError(msg: String, column: Double) = {
     var error = new Error(msg)
     try {
       throw error
@@ -43,7 +37,7 @@ class ErrorHandler() {
     error
   }
   
-  def createError(index: Any, line: Any, col: Any, description: Any) = {
+  def createError(index: Double, line: Double, col: Double, description: Any) = {
     val msg = "Line " + line + ": " + description
     val error = this.constructError(msg, col)
     error.index = index
@@ -52,11 +46,11 @@ class ErrorHandler() {
     error
   }
   
-  def throwError(index: Any, line: Any, col: Any, description: Any) = {
+  def throwError(index: Double, line: Double, col: Double, description: Any) = {
     throw this.createError(index, line, col, description)
   }
   
-  def tolerateError(index: Any, line: Any, col: Any, description: Any) = {
+  def tolerateError(index: Double, line: Double, col: Double, description: Any) = {
     val error = this.createError(index, line, col, description)
     if (this.tolerant) {
       this.recordError(error)
@@ -67,4 +61,3 @@ class ErrorHandler() {
   
 }
 
-exports.ErrorHandler = ErrorHandler
