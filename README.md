@@ -16,3 +16,20 @@ resolvers += Resolver.sonatypeRepo("snapshots")
 
 libraryDependencies += "com.github.opengrabeso" %% "esprimascala" % "0.0.1-SNAPSHOT"
 ```
+
+
+### Conversion workflow
+
+- switch to branch `untouched`
+- place current Esprima TypeScript sources in `/ts/src`
+- compile TypeScript to JavaScript (using `tsconfig.json`, in IntelliJ IDEA use context action on this file to compile)
+- use `ScalaFromJS` to convert the files, result will be placed in `/ts/scala`
+ - `java -jar ScalaFromJS.jar ts/esprima-convert.js ts/scala/esprima-convert.scala`
+- switch to branch `port`
+- merge `untouched` to `port`
+- cleanup as necessary
+ - once it compiles and passes tests,  commit
+
+...
+- merge into master, publish
+ 
