@@ -9,3 +9,4 @@ project/plugins/project/
 .cache
 .lib/
 .idea/
+/ScalaFromJS.jar
