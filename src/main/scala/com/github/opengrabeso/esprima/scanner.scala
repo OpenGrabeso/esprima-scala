@@ -901,7 +901,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
               case "f" =>
                 str += "\f"
               case "v" =>
-                str += "\013"
+                str += "\u000b"
               case "8" | "9" =>
                 str += ch
                 this.tolerateUnexpectedToken()
@@ -1012,14 +1012,14 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
               case "f" =>
                 cooked += "\f"
               case "v" =>
-                cooked += "\013"
+                cooked += "\u000b"
               case _ =>
                 if (ch == "0") {
                   if (Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
                     // Illegal: \01 \02 and so on
                     this.throwUnexpectedToken(Messages.TemplateOctalLiteral)
                   }
-                  cooked += "\00"
+                  cooked += "\u0000"
                 } else if (Character.isOctalDigit(ch.charCodeAt(0))) {
                   // Illegal: \1 \2
                   this.throwUnexpectedToken(Messages.TemplateOctalLiteral)
@@ -1265,7 +1265,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
     // Template literals start with ` (U+0060) for template head
     // or } (U+007D) for template middle or template tail.
-    if (cp == 0x60 || cp == 0x7D && this.curlyStack(this.curlyStack.length - 1) == "${") {
+    if (cp == 0x60 || cp == 0x7D && this.curlyStack.nonEmpty && this.curlyStack(this.curlyStack.length - 1) == "${") {
       return this.scanTemplate()
     }
     // Possible identifier start in a surrogate pair.

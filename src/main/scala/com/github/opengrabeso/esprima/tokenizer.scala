@@ -13,10 +13,10 @@ import Token._
 
 class Reader() {
   var paren: Int = -1
-  var values = ArrayBuffer.empty[Any]
+  var values = ArrayBuffer.empty[OrType]
   var curly: Int = paren
   // A function following one of those tokens is an expression.
-  def beforeFunctionExpression(t: Any) = {
+  def beforeFunctionExpression(t: String) = {
     Array("(", "{", "[", "in", "typeof", "instanceof", "new", "return", "case", "delete", "throw", "void",
     // assignment operators
     "=", "+=", "-=", "*=", "**=", "/=", "%=", "<<=", ">>=", ">>>=", "&=", "|=", "^=", ",",
@@ -27,26 +27,26 @@ class Reader() {
   // Determine if forward slash (/) is an operator or part of a regular expression
   // https://github.com/mozilla/sweet.js/wiki/design
   def isRegexStart() = {
-    val previous = this.values(this.values.length - 1)
+    val previous = this.values(this.values.length - 1).get[String]
     var regex = previous != null
     previous match {
       case "this" | "]" =>
         regex = false
       case ")" =>
-        val keyword = this.values(this.paren - 1)
+        val keyword = this.values(this.paren - 1).get[String]
         regex = keyword == "if" || keyword == "while" || keyword == "for" || keyword == "with"
       case "}" =>
         // Dividing a function by anything makes little sense,
         // but we have to check for that.
         regex = true
-        if (this.values(this.curly - 3) == "function") {
+        if (this.values(this.curly - 3) === "function") {
           // Anonymous function, e.g. function(){} /42
           val check = this.values(this.curly - 4)
-          regex = if (check == true) !this.beforeFunctionExpression(check) else false
-        } else if (this.values(this.curly - 4) == "function") {
+          regex = if (check.is[String]) !this.beforeFunctionExpression(check.get[String]) else false
+        } else if (this.values(this.curly - 4) === "function") {
           // Named function, e.g. function f(){} /42/
           val check = this.values(this.curly - 5)
-          regex = if (check == true) !this.beforeFunctionExpression(check) else true
+          regex = if (check.is[String]) !this.beforeFunctionExpression(check.get[String]) else true
         }
       case _ =>
     }
@@ -62,7 +62,7 @@ class Reader() {
       }
       this.values.push(token.value)
     } else {
-      this.values.push(null)
+      this.values.push(OrType(null))
     }
   }
   

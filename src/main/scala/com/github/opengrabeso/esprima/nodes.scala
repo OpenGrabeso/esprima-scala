@@ -79,7 +79,7 @@ object Node {
   class ArrowParameterPlaceHolder extends Node.Node with Node.Expression with Node.FunctionParameter {
     override def toString = simpleName
 
-    var params: Seq[Node.ArgumentListElement] = _
+    var params: collection.Seq[Node.ArgumentListElement] = _
     var async: Boolean = _
   }
 
@@ -93,19 +93,19 @@ object Node {
     def multiline: Boolean
   }
 
-  case class ArrayExpression(var elements: Seq[ArrayExpressionElement]) extends Node with Expression {
+  case class ArrayExpression(var elements: collection.Seq[ArrayExpressionElement]) extends Node with Expression {
     override def clone = copy().copyNode(this)
 
   }
 
 
-  case class ArrayPattern(var elements: Seq[ArrayPatternElement]) extends Node with BindingPattern {
+  case class ArrayPattern(var elements: collection.Seq[ArrayPatternElement]) extends Node with BindingPattern {
     override def clone = copy().copyNode(this)
 
   }
 
 
-  case class ArrowFunctionExpression(var params: Seq[FunctionParameter], var body: BlockStatementOrExpression, var expression: Boolean) extends Node with HasGenerator with Expression {
+  case class ArrowFunctionExpression(var params: collection.Seq[FunctionParameter], var body: BlockStatementOrExpression, var expression: Boolean) extends Node with HasGenerator with Expression {
     override def clone = copy().copyNode(this)
 
     var id = null
@@ -127,7 +127,7 @@ object Node {
   }
 
 
-  case class AsyncArrowFunctionExpression(var params: Seq[FunctionParameter], var body: BlockStatementOrExpression, var expression: Boolean) extends Node
+  case class AsyncArrowFunctionExpression(var params: collection.Seq[FunctionParameter], var body: BlockStatementOrExpression, var expression: Boolean) extends Node
     with HasGenerator with Expression {
 
     var id = null
@@ -138,7 +138,7 @@ object Node {
   /* ported: added StatementListItem because of parseFunctionDeclaration, Statement because of parseLabelledStatement */
   trait AFunctionDeclaration extends Node with HasGenerator with StatementListItem with Statement with ExportableNamedDeclaration with ExportableDefaultDeclaration
 
-  case class AsyncFunctionDeclaration(var id: Identifier, var params: Seq[FunctionParameter], var body: BlockStatement) extends Node
+  case class AsyncFunctionDeclaration(var id: Identifier, var params: collection.Seq[FunctionParameter], var body: BlockStatement) extends Node
     with AFunctionDeclaration with Declaration with ExportableNamedDeclaration with Statement {
     override def clone = copy().copyNode(this)
 
@@ -148,7 +148,7 @@ object Node {
   }
 
 
-  case class AsyncFunctionExpression(var id: Identifier, var params: Seq[FunctionParameter], var body: BlockStatement) extends Node
+  case class AsyncFunctionExpression(var id: Identifier, var params: collection.Seq[FunctionParameter], var body: BlockStatement) extends Node
     with HasGenerator with Expression with PropertyValue {
 
     override def clone = copy().copyNode(this)
@@ -172,7 +172,7 @@ object Node {
 
 
   /* ported: type adjusted */
-  case class BlockStatement(var body: Seq[StatementListItem]) extends Node with Statement with BlockStatementOrExpression {
+  case class BlockStatement(var body: collection.Seq[StatementListItem]) extends Node with Statement with BlockStatementOrExpression {
 
     override def clone = copy().copyNode(this)
   }
@@ -184,7 +184,7 @@ object Node {
   }
 
 
-  case class CallExpression(var callee: ExpressionOrImport, var arguments: Seq[ArgumentListElement]) extends Node with Expression {
+  case class CallExpression(var callee: ExpressionOrImport, var arguments: collection.Seq[ArgumentListElement]) extends Node with Expression {
 
     override def clone = copy().copyNode(this)
   }
@@ -196,7 +196,7 @@ object Node {
   }
 
   // actually MethodDefinition seems to work
-  case class ClassBody(var body: Seq[ClassBodyElement]) extends Node {
+  case class ClassBody(var body: collection.Seq[ClassBodyElement]) extends Node {
 
     override def clone = copy().copyNode(this)
   }
@@ -272,7 +272,7 @@ object Node {
   }
 
 
-  case class ExportNamedDeclaration(var declaration: ExportableNamedDeclaration, var specifiers: Seq[ExportSpecifier], var source: Literal) extends Node with ExportDeclaration {
+  case class ExportNamedDeclaration(var declaration: ExportableNamedDeclaration, var specifiers: collection.Seq[ExportSpecifier], var source: Literal) extends Node with ExportDeclaration {
 
     override def clone = copy().copyNode(this)
   }
@@ -309,7 +309,7 @@ object Node {
   }
 
 
-  case class FunctionDeclaration(var id: Identifier, var params: Seq[FunctionParameter], var body: BlockStatement, var generator: Boolean) extends Node
+  case class FunctionDeclaration(var id: Identifier, var params: collection.Seq[FunctionParameter], var body: BlockStatement, var generator: Boolean) extends Node
     with AFunctionDeclaration with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration with Statement {
 
     override def clone = copy().copyNode(this)
@@ -318,7 +318,7 @@ object Node {
   }
 
 
-  case class FunctionExpression(var id: Identifier, var params: Seq[FunctionParameter], var body: BlockStatement, var generator: Boolean) extends Node
+  case class FunctionExpression(var id: Identifier, var params: collection.Seq[FunctionParameter], var body: BlockStatement, var generator: Boolean) extends Node
     with HasGenerator with Expression with PropertyValue {
 
     override def clone = copy().copyNode(this)
@@ -345,7 +345,7 @@ object Node {
   }
 
 
-  case class ImportDeclaration(var specifiers: Seq[ImportDeclarationSpecifier], var source: Literal) extends Node with Declaration {
+  case class ImportDeclaration(var specifiers: collection.Seq[ImportDeclarationSpecifier], var source: Literal) extends Node with Declaration {
 
     override def clone = copy().copyNode(this)
   }
@@ -394,7 +394,7 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
-  abstract class Program(var body: Seq[StatementListItem]) extends Node {
+  abstract class Program(var body: collection.Seq[StatementListItem]) extends Node {
 
 
     def sourceType: String
@@ -413,28 +413,28 @@ object Node {
   }
 
   object Program {
-    def unapply(arg: Program): Option[Seq[StatementListItem]] = Some(arg.body)
+    def unapply(arg: Program): Option[collection.Seq[StatementListItem]] = Some(arg.body)
   }
 
-  class Module(bodyInit: Seq[StatementListItem]) extends Program(bodyInit) {
+  class Module(bodyInit: collection.Seq[StatementListItem]) extends Program(bodyInit) {
     def sourceType: String = "module"
     override def clone = new Module(body).copyNode(this)
   }
 
-  case class NewExpression(var callee: Expression, var arguments: Seq[ArgumentListElement]) extends Node with Expression {
+  case class NewExpression(var callee: Expression, var arguments: collection.Seq[ArgumentListElement]) extends Node with Expression {
 
     override def clone = copy().copyNode(this)
   }
 
 
-  case class ObjectExpression(var properties: Seq[ObjectExpressionProperty]) extends Node with Expression {
+  case class ObjectExpression(var properties: collection.Seq[ObjectExpressionProperty]) extends Node with Expression {
 
     override def clone = copy().copyNode(this)
   }
 
 
   /* ported: added ObjectPatternProperty because of reinterpretExpressionAsObjectPattern */
-  case class ObjectPattern(var properties: Seq[ObjectPatternProperty]) extends Node with BindingPattern with ObjectPatternProperty {
+  case class ObjectPattern(var properties: collection.Seq[ObjectPatternProperty]) extends Node with BindingPattern with ObjectPatternProperty {
 
     override def clone = copy().copyNode(this)
   }
@@ -467,12 +467,12 @@ object Node {
   }
 
 
-  class Script(bodyInit: Seq[StatementListItem]) extends Program(bodyInit) {
+  class Script(bodyInit: collection.Seq[StatementListItem]) extends Program(bodyInit) {
     def sourceType: String = "script"
     override def clone = new Script(body).copyNode(this)
   }
 
-  case class SequenceExpression(var expressions: Seq[Expression]) extends Node with Expression {
+  case class SequenceExpression(var expressions: collection.Seq[Expression]) extends Node with Expression {
 
     override def clone = copy().copyNode(this)
   }
@@ -497,13 +497,13 @@ object Node {
   }
 
 
-  case class SwitchCase(var test: Expression, var consequent: Seq[Statement]) extends Node {
+  case class SwitchCase(var test: Expression, var consequent: collection.Seq[Statement]) extends Node {
 
     override def clone = copy().copyNode(this)
   }
 
 
-  case class SwitchStatement(var discriminant: Expression, var cases: Seq[SwitchCase]) extends Node with Statement {
+  case class SwitchStatement(var discriminant: Expression, var cases: collection.Seq[SwitchCase]) extends Node with Statement {
 
     override def clone = copy().copyNode(this)
   }
@@ -527,7 +527,7 @@ object Node {
 
 
   /* ported: added Expression because of parsePrimaryExpression */
-  case class TemplateLiteral(var quasis: Seq[TemplateElement], var expressions: Seq[Expression]) extends Node with Expression {
+  case class TemplateLiteral(var quasis: collection.Seq[TemplateElement], var expressions: collection.Seq[Expression]) extends Node with Expression {
 
     override def clone = copy().copyNode(this)
   }
@@ -564,7 +564,7 @@ object Node {
   }
 
 
-  case class VariableDeclaration(var declarations: Seq[VariableDeclarator], var kind: String) extends Node
+  case class VariableDeclaration(var declarations: collection.Seq[VariableDeclarator], var kind: String) extends Node
     with Declaration with ExportableNamedDeclaration with Statement with ExportableDefaultDeclaration {
 
     override def clone = copy().copyNode(this)

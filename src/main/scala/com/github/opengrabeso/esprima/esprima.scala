@@ -38,7 +38,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 def parse(code: String, options: Parser.Options = Parser.DefaultOptions, delegate: (Node.Node, Metadata) => Unit = null) = {
   var commentHandler: CommentHandler = null
-  def proxyDelegate(node: Node.Node, metadata: Metadata) = {
+  def proxyDelegate(node: Node.Node, metadata: Metadata): Unit = {
     if (delegate) {
       delegate(node, metadata)
     }

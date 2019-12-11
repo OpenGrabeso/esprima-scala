@@ -22,9 +22,7 @@ trait ArrayOps {
       r
     }
     def pop(): T = {
-      val ret = a.last
-      a.reduceToSize(a.length - 1)
-      ret
+      a.remove(a.length - 1)
     }
     def concat(b: TraversableOnce[T]): ArrayBuffer[T] = {
       a.appendAll(b)
@@ -44,7 +42,7 @@ trait ArrayOps {
     def setLength: Int = a.length // getter not needed, but othewise we cannot defined the setter
     def setLength_= (l: Int) = {
       assert(l <= a.length) // verify we are shrinking only
-      a.reduceToSize(l)
+      a.remove(l, a.size - l)
     }
   }
 

@@ -983,7 +983,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
             }
           }
           if (!arrow) {
-            expr = this.finalize(this.startNode(startToken), new Node.SequenceExpression(expressions.asInstanceOf[Seq[Node.Expression]]))
+            expr = this.finalize(this.startNode(startToken), new Node.SequenceExpression(expressions.asInstanceOf[ArrayBuffer[Node.Expression]]))
           }
         }
         if (!arrow) {
@@ -1433,7 +1433,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   }
   
   def reinterpretAsCoverFormalsList(expr: Node.ArrowParameterPlaceHolder): ParameterOptions = {
-    var paramsSource = ArrayBuffer(expr.params:_*)
+    var paramsSource = ArrayBuffer(expr.params.toSeq:_*)
     var paramsTarget = new ArrayBuffer[Node.FunctionParameter](paramsSource.size)
     var asyncArrow = expr.async
     object options extends ParameterOptions {

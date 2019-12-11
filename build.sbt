@@ -1,16 +1,16 @@
 name := "esprimascala"
 
-version := "0.0.1-SNAPSHOT"
+version := "0.1.1"
 
 organization := "com.github.opengrabeso"
 
-scalaVersion := "2.11.12"
+scalaVersion := "2.12.10"
 
-crossScalaVersions := Seq("2.12.4", "2.11.12", "2.10.6")
+crossScalaVersions := Seq("2.12.10", "2.11.12", "2.13.1")
 
 libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
 
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.4" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.8" % "test"
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature")
 

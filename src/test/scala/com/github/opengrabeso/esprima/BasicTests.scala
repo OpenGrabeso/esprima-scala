@@ -6,32 +6,32 @@ import org.scalatest.FlatSpec
 class BasicTests extends FlatSpec with TestInputs {
   "Tokenizer" should "process simple input" in {
     val tokens = tokenize(answer42)
-    println(tokens)
+    assert(tokens._1.nonEmpty)
   }
 
   it should "process more complex es6 input" in {
     val tokens = tokenize(es6)
-    println(tokens)
+    assert(tokens._1.nonEmpty)
   }
 
   "Parser" should "process simple input" in {
     val tree = parse(answer42)
-    println(tree)
+    assert(tree.body.nonEmpty)
   }
 
   it should "process more complex es6 input" in {
     val tree = parse(es6)
-    println(tree)
+    assert(tree.body.nonEmpty)
   }
 
   it should "process esprima.js" in {
     val tree = parse(esprimaSource)
-    println(tree)
+    assert(tree.body.nonEmpty)
   }
 
   it should "process three.js" in {
     val tree = parse(threeSource)
-    println(tree)
+    assert(tree.body.nonEmpty)
   }
 
   behavior of "Parser"
