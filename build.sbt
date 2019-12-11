@@ -1,6 +1,6 @@
 name := "esprimascala"
 
-version := "0.1.1"
+version := "0.1.2-SNAPSHOT"
 
 organization := "com.github.opengrabeso"
 
@@ -21,11 +21,15 @@ publishArtifact in (Compile, packageDoc) := false
 publish := (publish dependsOn (test in Test)).value
 
 publishTo := {
-  val sonatype = "https://oss.sonatype.org/"
-  if (isSnapshot.value)
-    Some("Gamatron Snapshots Nexus" at sonatype + "content/repositories/snapshots")
-  else
-    Some("Gamatron Releases Nexus"  at sonatype + "service/local/staging/deploy/maven2")
+  if (isSnapshot.value) {
+    val sonatype = "https://oss.sonatype.org/"
+    Some("Sonatues Snapshots" at sonatype + "content/repositories/snapshots")
+  } else {
+    // TODO: provide all which is necessary for Sonatype releases
+    // see https://central.sonatype.org/pages/requirements.html
+    val gamatron = "https://www.gamatron.net/nexus/"
+    Some("Gamatron Releases Nexus" at gamatron + "service/local/staging/deploy/maven2")
+  }
 }
 
 credentials += Credentials(Path.userHome / ".ivy2" / "oss.credentials")
