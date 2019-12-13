@@ -56,7 +56,8 @@ trait TestInputs {
       """
 
   def fromResource(str: String): String = {
-    scala.io.Source.fromInputStream(getClass.getResourceAsStream("/" + str)).mkString
+    val absPath = if (str.startsWith("/")) str else "/" + str
+    scala.io.Source.fromInputStream(getClass.getResourceAsStream(absPath)).mkString
   }
 
   lazy val threeSource = fromResource("three.js")
