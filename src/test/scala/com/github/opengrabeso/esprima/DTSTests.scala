@@ -10,6 +10,65 @@ class DTSTests extends FlatSpec with TestInputs {
     tolerant = true
   }
 
+  behavior of "Parsing simple d.ts"
+
+  it should "Parse a variable with a type annotation" in {
+    val input ="var answer: number = 42"
+
+    pendingUntilFixed {
+      val tree = parse(input, DTSOptions)
+      assert(tree.body.nonEmpty)
+    }
+
+  }
+
+  it should "Parse a class with a typed member" in {
+    val input ="""
+        export class Range {
+          max: number;
+          min: number;
+        }
+        """.stripMargin
+
+    pendingUntilFixed {
+      val tree = parse(input, DTSOptions)
+      assert(tree.body.nonEmpty)
+    }
+
+  }
+
+  it should "Parse a class with a constructor" in {
+    val input ="""
+        export class Range {
+          constructor( min: number, max: number );
+        }
+        """
+
+    pendingUntilFixed {
+      val tree = parse(input, DTSOptions)
+      assert(tree.body.nonEmpty)
+    }
+
+  }
+
+  it should "Parse a class with a typed member functions" in {
+    val input ="""
+        export class Range {
+          set(min: number, max: number): boolean;
+          isEmpty(): boolean;
+          clone(): Range;
+          copy(box: Range): Range;
+        	equals( box: Range ): boolean;
+        }
+        """
+
+    pendingUntilFixed {
+      val tree = parse(input, DTSOptions)
+      assert(tree.body.nonEmpty)
+    }
+
+  }
+
   behavior of "Parsing Three.js d.ts"
 
   it should "process Box2" in {
