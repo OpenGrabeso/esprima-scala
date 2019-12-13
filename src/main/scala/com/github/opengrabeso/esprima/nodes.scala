@@ -67,6 +67,7 @@ object Node {
   trait StatementListItem extends Node with ExportableNamedDeclaration //= Declaration | Statement;
 
   trait BindingIdentifierOrPattern extends Node // BindingIdentifier | BindingPattern
+  trait TypeAnnotation extends Node
 
   trait ExpressionOrImport extends Node // Expression | Import
 
@@ -98,6 +99,11 @@ object Node {
 
   }
 
+  object TypeScriptType extends Enumeration {
+    type TypeScriptType = Value
+    val any, number, boolean, string, symbol, void = Value
+  }
+  case class SimpleType(t: TypeScriptType.Value) extends TypeAnnotation
 
   case class ArrayPattern(var elements: collection.Seq[ArrayPatternElement]) extends Node with BindingPattern {
     override def clone = copy().copyNode(this)
@@ -571,7 +577,7 @@ object Node {
   }
 
 
-  case class VariableDeclarator(var id: BindingIdentifierOrPattern, var init: Expression) extends Node {
+  case class VariableDeclarator(var id: BindingIdentifierOrPattern, var init: Expression, var `type`: TypeAnnotation) extends Node {
 
     override def clone = copy().copyNode(this)
   }

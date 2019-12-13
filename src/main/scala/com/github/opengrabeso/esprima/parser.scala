@@ -15,6 +15,8 @@ import scala.util.control.Breaks._
 import Token._
 import Node.{ArrayPattern, AssignmentPattern, RestElement}
 
+import scala.util.Try
+
 object Parser {
 
   class Options {
@@ -1673,6 +1675,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       }
     }
     var init: Node.Expression = null
+    var `type`: Node.TypeAnnotation = null
     if (kind == "const") {
       if (!this.matchKeyword("in") && !this.matchContextualKeyword("of")) {
         if (this.`match`("=")) {
@@ -1686,7 +1689,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.expect("=")
       init = this.isolateCoverGrammar(this.parseAssignmentExpression)
     }
-    this.finalize(node, new Node.VariableDeclarator(id, init))
+    this.finalize(node, new Node.VariableDeclarator(id, init, `type`))
   }
   
   def parseBindingList(kind: String, options: VariableOptions): Array[Node.VariableDeclarator] = {
@@ -1876,13 +1879,30 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       }
     }
     var init: Node.Expression = null
+    var typeAnnotation: Node.TypeAnnotation = null
+    if (this.`match`(":")) {
+      this.nextToken()
+      // TODO: parse complex type annotations
+      if (this.lookahead.`type` == Token.Identifier) {
+        val token = this.nextToken()
+        val typeString = token.value.get[String]
+        val t = Try(Node.TypeScriptType.withName(typeString))
+        typeAnnotation = t.map { t =>
+          Node.SimpleType(t)
+        }.getOrElse {
+          tolerateUnexpectedToken(this.lookahead, "Type annotation expected")
+          this.lookahead.`type` = Token.TypeAnnotation
+          null
+        }
+      }
+    }
     if (this.`match`("=")) {
       this.nextToken()
       init = this.isolateCoverGrammar(this.parseAssignmentExpression)
     } else if (!id.isInstanceOf[Node.Identifier] && !options.inFor) {
       this.expect("=")
     }
-    this.finalize(node, new Node.VariableDeclarator(id, init))
+    this.finalize(node, new Node.VariableDeclarator(id, init, typeAnnotation))
   }
   
   def parseVariableDeclarationList(options: VariableOptions) = {

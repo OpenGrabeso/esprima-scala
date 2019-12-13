@@ -17,7 +17,8 @@ object TokenName {
     "Punctuator",
     "String",
     "RegularExpression",
-    "Template"
+    "Template",
+    "TypeAnnotation"
   )
 
   def apply(i: Token.Token) = a.apply(i.id)
@@ -37,5 +38,7 @@ object Token extends Enumeration {
   Punctuator, // 7
   StringLiteral, // 8
   RegularExpression, // 9
-  Template = Value // 10
+  Template, // 10
+  TypeAnnotation // 11 - TypeScript
+  = Value
 }

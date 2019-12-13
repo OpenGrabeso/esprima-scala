@@ -1,9 +1,9 @@
 package com.github.opengrabeso.esprima
 
 import com.github.opengrabeso.esprima.Esprima._
-import org.scalatest.FlatSpec
+import org.scalatest.{FlatSpec, Matchers}
 
-class DTSTests extends FlatSpec with TestInputs {
+class DTSTests extends FlatSpec with TestInputs with Matchers {
   object DTSOptions extends Parser.Options {
     range = true
     attachComment = true
@@ -14,12 +14,11 @@ class DTSTests extends FlatSpec with TestInputs {
 
   it should "Parse a variable with a type annotation" in {
     val input ="var answer: number = 42"
-
-    pendingUntilFixed {
-      val tree = parse(input, DTSOptions)
-      assert(tree.body.nonEmpty)
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    tree.body.head should matchPattern {
+      case Node.VariableDeclaration(Seq(Node.VariableDeclarator(Node.Identifier("answer"), _, Node.SimpleType(Node.TypeScriptType.number))), _) =>
     }
-
   }
 
   it should "Parse a class with a typed member" in {
