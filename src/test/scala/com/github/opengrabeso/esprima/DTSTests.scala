@@ -1,6 +1,7 @@
 package com.github.opengrabeso.esprima
 
-import com.github.opengrabeso.esprima.Esprima._
+import Esprima._
+import Node._
 import org.scalatest.{FlatSpec, Matchers}
 
 class DTSTests extends FlatSpec with TestInputs with Matchers {
@@ -17,7 +18,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     val tree = parse(input, DTSOptions)
     assert(tree.body.nonEmpty)
     tree.body.head should matchPattern {
-      case Node.VariableDeclaration(Seq(Node.VariableDeclarator(Node.Identifier("answer"), _, Node.SimpleType(Node.TypeScriptType.number))), _) =>
+      case VariableDeclaration(Seq(VariableDeclarator(Identifier("answer"), _, SimpleType(TypeScriptType.number))), _) =>
     }
   }
 
@@ -29,9 +30,13 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         }
         """.stripMargin
 
-    pendingUntilFixed {
-      val tree = parse(input, DTSOptions)
-      assert(tree.body.nonEmpty)
+    val tree = parse(input, DTSOptions)
+
+    tree.body.head should matchPattern {
+      case ExportNamedDeclaration(ClassDeclaration(Identifier("Range"), null, ClassBody(Seq(
+        MethodDefinition(Identifier("max"), SimpleType(TypeScriptType.number), _, _, _, false),
+        MethodDefinition(Identifier("min"), SimpleType(TypeScriptType.number), _, _, _, false)
+      ))), _, _) =>
     }
 
   }

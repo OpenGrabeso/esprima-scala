@@ -13,7 +13,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.Breaks._
 import Token._
-import Node.{ArrayPattern, AssignmentPattern, RestElement}
+import Node.{ArrayPattern, AssignmentPattern, RestElement, TypeAnnotation}
 
 import scala.util.Try
 
@@ -1882,19 +1882,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var typeAnnotation: Node.TypeAnnotation = null
     if (this.`match`(":")) {
       this.nextToken()
-      // TODO: parse complex type annotations
-      if (this.lookahead.`type` == Token.Identifier) {
-        val token = this.nextToken()
-        val typeString = token.value.get[String]
-        val t = Try(Node.TypeScriptType.withName(typeString))
-        typeAnnotation = t.map { t =>
-          Node.SimpleType(t)
-        }.getOrElse {
-          tolerateUnexpectedToken(this.lookahead, "Type annotation expected")
-          this.lookahead.`type` = Token.TypeAnnotation
-          null
-        }
-      }
+      typeAnnotation = parseTypeAnnotation()
     }
     if (this.`match`("=")) {
       this.nextToken()
@@ -2820,7 +2808,27 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     this.finalize(node, new Node.YieldExpression(argument, delegate))
   }
-  
+
+  def parseTypeAnnotation(): Node.TypeAnnotation = {
+    val node = this.createNode()
+    // TODO: parse complex type annotations
+    val value = if (this.lookahead.`type` == Token.Identifier) {
+      val token = this.nextToken()
+      val typeString = token.value.get[String]
+      val t = Try(Node.TypeScriptType.withName(typeString))
+      t.map { t =>
+        Node.SimpleType(t)
+      }.getOrElse {
+        tolerateUnexpectedToken(this.lookahead, "A known type expected")
+        Node.SimpleType(Node.TypeScriptType.any)
+      }
+    } else {
+      tolerateUnexpectedToken(this.lookahead, "Type annotation expected")
+      Node.SimpleType(Node.TypeScriptType.any)
+    }
+    this.finalize(node, value)
+  }
+
   // https://tc39.github.io/ecma262/#sec-class-definitions
   def parseClassElement(hasConstructor: ByRef[Boolean]): Node.MethodDefinition = {
     var token = this.lookahead
@@ -2828,6 +2836,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var kind: String = null
     var key: Node.PropertyKey = null
     var value: Node.PropertyValue = null
+    var `type`: TypeAnnotation = null
     var computed = false
     var method = false
     var isStatic = false
@@ -2877,9 +2886,16 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         computed = this.`match`("[")
         key = this.parseObjectPropertyKey()
         value = this.parseSetterMethod()
+      } else if (this.`match`(":")) {
+        this.nextToken()
+        `type` = parseTypeAnnotation()
+        kind = "init"
+        // TODO: value may follow (ts) or may not (ts.d PropertySignature)
       }
+
     } else if (token.`type` == Punctuator &&  /*Punctuator */token.value === "*" && lookaheadPropertyKey) {
-      kind = "init"
+      // pretend it is a getter, as that means an access without paramerers
+      kind = "get" // TODO: try making it Property instead
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
       value = this.parseGeneratorMethod()
@@ -2912,7 +2928,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         kind = "constructor"
       }
     }
-    this.finalize(node, new Node.MethodDefinition(key, computed, value, kind, isStatic))
+    this.finalize(node, new Node.MethodDefinition(key, `type`, computed, value, kind, isStatic))
   }
   
   def parseClassElementList(): Array[Node.MethodDefinition] = {
