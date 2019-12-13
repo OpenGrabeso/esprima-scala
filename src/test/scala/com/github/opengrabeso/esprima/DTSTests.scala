@@ -83,7 +83,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     }
   }
 
-  ignore should "process Quaternion" in {
+  it should "process Quaternion" in {
     val input = fromResource("/threejs/d.ts/Quaternion.d.ts")
     pendingUntilFixed {
       val tree = parse(input, DTSOptions)
@@ -91,7 +91,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     }
   }
 
-  ignore should "process Object3D" in {
+  it should "process Object3D" in {
     val input = fromResource("/threejs/d.ts/Object3D.d.ts")
     pendingUntilFixed {
       val tree = parse(input, DTSOptions)
