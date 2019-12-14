@@ -122,14 +122,32 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
 
   }
 
+  it should "Parse a class with an array members" in {
+    val input ="""
+        export class A {
+          a: number[];
+          set(v: number[]): void;
+        }
+        """
+
+    val tree = parse(input, DTSOptions)
+    tree.body.head should matchPattern {
+      case ExportNamedDeclaration(ClassDeclaration(Identifier("A"), null, ClassBody(Seq(
+        MethodDefinition(Identifier("a"), ArrayType(NamedType("number")), _, _, _, false),
+        Method("set", Seq(("v", ArrayType(NamedType("number")), null, false)), NamedType("void"), _),
+      ))), _, _) =>
+    }
+    assert(tree.errors.isEmpty)
+
+  }
+
   behavior of "Parsing Three.js d.ts"
 
   it should "process Box2" in {
     val input = fromResource("/threejs/d.ts/Box2.d.ts")
-    pendingUntilFixed {
-      val tree = parse(input, DTSOptions)
-      assert(tree.body.nonEmpty)
-    }
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
   }
 
   it should "process Quaternion" in {

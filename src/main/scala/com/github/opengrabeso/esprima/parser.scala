@@ -2853,7 +2853,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   def parseTypeAnnotation(): Node.TypeAnnotation = {
     val node = this.createNode()
     // TODO: parse complex type annotations
-    val value = if (this.lookahead.`type` == Token.Identifier) {
+    val value = if (this.lookahead.`type` == Token.Identifier || this.lookahead.`type` == Token.Keyword) {
       val token = this.nextToken()
       val typeString = token.value.get[String]
       Node.SimpleType(Node.Identifier(typeString))
@@ -2861,7 +2861,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       tolerateUnexpectedToken(this.lookahead, "Type annotation expected")
       Node.SimpleType(null)
     }
-    this.finalize(node, value)
+    if (this.`match`("[")) {
+      this.nextToken()
+      this.expect("]")
+      this.finalize(node, Node.ArrayType(value))
+    } else {
+      this.finalize(node, value)
+    }
   }
 
   // https://tc39.github.io/ecma262/#sec-class-definitions
