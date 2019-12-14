@@ -100,11 +100,15 @@ object Node {
   }
 
   // TypeScript grammar: https://github.com/rbuckton/grammarkdown/blob/master/spec/typescript.grammar
-  case class SimpleType(t: Node.Identifier) extends TypeAnnotation {
+  case class TypeName(t: Node.Identifier) extends TypeAnnotation {
     override def clone = copy().copyNode(this)
   }
 
   case class ArrayType(t: TypeAnnotation) extends TypeAnnotation {
+    override def clone = copy().copyNode(this)
+  }
+
+  case class TypeReference(t: TypeName, arg: TypeAnnotation) extends TypeAnnotation {
     override def clone = copy().copyNode(this)
   }
 

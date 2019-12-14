@@ -2850,24 +2850,41 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.YieldExpression(argument, delegate))
   }
 
-  def parseTypeAnnotation(): Node.TypeAnnotation = {
+  def parseTypeReference(): Node.TypeAnnotation = {
     val node = this.createNode()
-    // TODO: parse complex type annotations
     val value = if (this.lookahead.`type` == Token.Identifier || this.lookahead.`type` == Token.Keyword) {
       val token = this.nextToken()
       val typeString = token.value.get[String]
-      Node.SimpleType(Node.Identifier(typeString))
+      Node.TypeName(Node.Identifier(typeString))
     } else {
       tolerateUnexpectedToken(this.lookahead, "Type annotation expected")
-      Node.SimpleType(null)
+      Node.TypeName(null)
     }
-    if (this.`match`("[")) {
+    if (this.`match`("<")) {
       this.nextToken()
-      this.expect("]")
-      this.finalize(node, Node.ArrayType(value))
+      val typeArg = parseTypeAnnotation()
+      this.expect(">")
+      this.finalize(node, Node.TypeReference(value, typeArg))
     } else {
       this.finalize(node, value)
     }
+  }
+
+  def parseTypeAnnotation(): Node.TypeAnnotation = {
+    val node = this.createNode()
+    val tpe = parseTypeReference()
+
+    def parseArray(tpe: TypeAnnotation): TypeAnnotation = { // recursive, so that we handle multi-dimensional arrays
+      if (this.`match`("[")) {
+        this.nextToken()
+        this.expect("]")
+        parseArray(Node.ArrayType(tpe))
+      } else {
+        tpe
+      }
+    }
+
+    this.finalize(node, parseArray(tpe))
   }
 
   // https://tc39.github.io/ecma262/#sec-class-definitions

@@ -19,7 +19,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     val tree = parse(input, DTSOptions)
     assert(tree.body.nonEmpty)
     tree.body.head should matchPattern {
-      case VariableDeclaration(Seq(VariableDeclarator(Identifier("answer"), _, SimpleType(Identifier("number")))), _) =>
+      case VariableDeclaration(Seq(VariableDeclarator(Identifier("answer"), _, TypeName(Identifier("number")))), _) =>
     }
     assert(tree.errors.isEmpty)
   }
@@ -37,8 +37,8 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     }
   }
   object NamedType {
-    def unapply(arg: SimpleType): Option[String] = arg match {
-      case SimpleType(Identifier(name)) =>
+    def unapply(arg: TypeName): Option[String] = arg match {
+      case TypeName(Identifier(name)) =>
         Some(name)
       case _ =>
         None
@@ -141,6 +141,23 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
 
   }
 
+  it should "Parse a class member with generic parameters" in {
+    val input ="""
+        export class C {
+          set(a: ArrayLike<number>): void;
+        }
+        """
+
+    val tree = parse(input, DTSOptions)
+    tree.body.head should matchPattern {
+      case ExportNamedDeclaration(ClassDeclaration(Identifier("C"), null, ClassBody(Seq(
+      Method("set", Seq(("a", TypeReference(NamedType("ArrayLike"), NamedType("number")), null, false)), NamedType("void"), _),
+      ))), _, _) =>
+    }
+    assert(tree.errors.isEmpty)
+
+  }
+
   behavior of "Parsing Three.js d.ts"
 
   it should "process Box2" in {
@@ -152,10 +169,9 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
 
   it should "process Quaternion" in {
     val input = fromResource("/threejs/d.ts/Quaternion.d.ts")
-    pendingUntilFixed {
-      val tree = parse(input, DTSOptions)
-      assert(tree.body.nonEmpty)
-    }
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
   }
 
   it should "process Object3D" in {
