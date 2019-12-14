@@ -158,6 +158,25 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
 
   }
 
+  it should "Parse a class with a union type members" in {
+    val input ="""
+        export class A {
+          a: number | null;
+          b: number | string | A;
+        }
+        """
+
+    val tree = parse(input, DTSOptions)
+    tree.body.head should matchPattern {
+      case ExportNamedDeclaration(ClassDeclaration(Identifier("A"), null, ClassBody(Seq(
+      MethodDefinition(Identifier("a"), UnionType(NamedType("number"), NamedType("null")), _, _, _, false),
+      MethodDefinition(Identifier("b"), UnionType(UnionType(NamedType("number"), NamedType("string")), NamedType("A")), _, _, _, false),
+      ))), _, _) =>
+    }
+    assert(tree.errors.isEmpty)
+
+  }
+
   behavior of "Parsing Three.js d.ts"
 
   it should "process Box2" in {

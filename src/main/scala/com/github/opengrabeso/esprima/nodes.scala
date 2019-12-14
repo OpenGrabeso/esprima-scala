@@ -107,6 +107,9 @@ object Node {
   case class ArrayType(t: TypeAnnotation) extends TypeAnnotation {
     override def clone = copy().copyNode(this)
   }
+  case class UnionType(left: TypeAnnotation, right: TypeAnnotation) extends TypeAnnotation {
+    override def clone = copy().copyNode(this)
+  }
 
   case class TypeReference(t: TypeName, arg: TypeAnnotation) extends TypeAnnotation {
     override def clone = copy().copyNode(this)

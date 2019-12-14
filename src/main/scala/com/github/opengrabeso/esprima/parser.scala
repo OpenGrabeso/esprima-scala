@@ -2856,7 +2856,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
 
   def parseTypeReference(): Node.TypeAnnotation = {
     val node = this.createNode()
-    val value = if (this.lookahead.`type` == Token.Identifier || this.lookahead.`type` == Token.Keyword) {
+    val value = if (this.lookahead.`type` == Identifier || this.lookahead.`type` == Keyword || this.lookahead.`type` == NullLiteral) {
       val token = this.nextToken()
       val typeString = token.value.get[String]
       Node.TypeName(Node.Identifier(typeString))
@@ -2874,21 +2874,39 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
   }
 
-  def parseTypeAnnotation(): Node.TypeAnnotation = {
+  def parsePrimaryType(): Node.TypeAnnotation = {
     val node = this.createNode()
     val tpe = parseTypeReference()
 
+    @scala.annotation.tailrec
     def parseArray(tpe: TypeAnnotation): TypeAnnotation = { // recursive, so that we handle multi-dimensional arrays
+      val node = this.createNode()
       if (this.`match`("[")) {
         this.nextToken()
         this.expect("]")
-        parseArray(Node.ArrayType(tpe))
+        parseArray(this.finalize(node, Node.ArrayType(tpe)))
       } else {
         tpe
       }
     }
-
     this.finalize(node, parseArray(tpe))
+  }
+
+  def parseTypeAnnotation(): Node.TypeAnnotation = {
+    val node = this.createNode()
+    val tpe = parsePrimaryType()
+    @scala.annotation.tailrec
+    def parseUnion(tpe: TypeAnnotation): TypeAnnotation = {
+      val node = this.createNode()
+      if (this.`match`("|")) {
+        this.nextToken()
+        val right = parsePrimaryType()
+        parseUnion(this.finalize(node, Node.UnionType(tpe, right)))
+      } else {
+        tpe
+      }
+    }
+    this.finalize(node, parseUnion(tpe))
   }
 
   // https://tc39.github.io/ecma262/#sec-class-definitions
