@@ -99,15 +99,13 @@ object Node {
 
   }
 
-  object TypeScriptType extends Enumeration {
-    type TypeScriptType = Value
-    val any, number, boolean, string, symbol, void = Value
+  // TypeScript grammar: https://github.com/rbuckton/grammarkdown/blob/master/spec/typescript.grammar
+  case class SimpleType(t: Node.Identifier) extends TypeAnnotation {
+    override def clone = copy().copyNode(this)
   }
-  case class SimpleType(t: TypeScriptType.Value) extends TypeAnnotation
 
   case class ArrayPattern(var elements: collection.Seq[ArrayPatternElement]) extends Node with BindingPattern {
     override def clone = copy().copyNode(this)
-
   }
 
 

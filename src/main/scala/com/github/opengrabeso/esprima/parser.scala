@@ -2851,16 +2851,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val value = if (this.lookahead.`type` == Token.Identifier) {
       val token = this.nextToken()
       val typeString = token.value.get[String]
-      val t = Try(Node.TypeScriptType.withName(typeString))
-      t.map { t =>
-        Node.SimpleType(t)
-      }.getOrElse {
-        tolerateUnexpectedToken(this.lookahead, "A known type expected")
-        Node.SimpleType(Node.TypeScriptType.any)
-      }
+      Node.SimpleType(Node.Identifier(typeString))
     } else {
       tolerateUnexpectedToken(this.lookahead, "Type annotation expected")
-      Node.SimpleType(Node.TypeScriptType.any)
+      Node.SimpleType(null)
     }
     this.finalize(node, value)
   }

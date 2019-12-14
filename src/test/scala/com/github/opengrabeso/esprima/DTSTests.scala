@@ -19,9 +19,30 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     val tree = parse(input, DTSOptions)
     assert(tree.body.nonEmpty)
     tree.body.head should matchPattern {
-      case VariableDeclaration(Seq(VariableDeclarator(Identifier("answer"), _, SimpleType(TypeScriptType.number))), _) =>
+      case VariableDeclaration(Seq(VariableDeclarator(Identifier("answer"), _, SimpleType(Identifier("number")))), _) =>
     }
     assert(tree.errors.isEmpty)
+  }
+
+  object Method {
+    def unapply(arg: MethodDefinition) = arg match {
+      case MethodDefinition(Identifier(name), _, _, FunctionExpression(_, pars, _, _, ret), kind, false) =>
+        val p = pars.map {
+          case FunctionParameterWithType(Identifier(name), t, defValue) =>
+            (name, t, defValue)
+        }
+        Some(name, p, ret, kind)
+      case _ =>
+        None
+    }
+  }
+  object NamedType {
+    def unapply(arg: SimpleType): Option[String] = arg match {
+      case SimpleType(Identifier(name)) =>
+        Some(name)
+      case _ =>
+        None
+    }
   }
 
   it should "Parse a class with a typed member" in {
@@ -36,8 +57,8 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
 
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("Range"), null, ClassBody(Seq(
-        MethodDefinition(Identifier("max"), SimpleType(TypeScriptType.number), _, _, _, false),
-        MethodDefinition(Identifier("min"), SimpleType(TypeScriptType.number), _, _, _, false)
+        MethodDefinition(Identifier("max"), NamedType("number"), _, _, _, false),
+        MethodDefinition(Identifier("min"), NamedType("number"), _, _, _, false)
       ))), _, _) =>
     }
     assert(tree.errors.isEmpty)
@@ -53,10 +74,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     val tree = parse(input, DTSOptions)
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("Range"), null, ClassBody(Seq(
-        MethodDefinition(Identifier("constructor"), _, _, FunctionExpression(_, Seq(
-          FunctionParameterWithType(Identifier("min"), SimpleType(TypeScriptType.number), null),
-          FunctionParameterWithType(Identifier("max"), SimpleType(TypeScriptType.number), null)
-          ), _, _, _), "constructor", false),
+        Method("constructor", Seq(("min", NamedType("number"), null), ("max", NamedType("number"), null)), null, "constructor"),
       ))), _, _) =>
     }
     assert(tree.errors.isEmpty)
@@ -67,22 +85,20 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         export class Range {
           set(min: number, max: number): boolean;
           isEmpty(): boolean;
-          /*
           clone(): Range;
           copy(box: Range): Range;
         	equals( box: Range ): boolean;
-          */
         }
         """
 
     val tree = parse(input, DTSOptions)
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("Range"), null, ClassBody(Seq(
-        MethodDefinition(Identifier("set"), _, _, FunctionExpression(_, Seq(
-          FunctionParameterWithType(Identifier("min"), SimpleType(TypeScriptType.number), null),
-          FunctionParameterWithType(Identifier("max"), SimpleType(TypeScriptType.number), null)
-        ), _, _, SimpleType(TypeScriptType.boolean)), _, false),
-        MethodDefinition(Identifier("isEmpty"), _, _, FunctionExpression(_, Seq(), _, _, SimpleType(TypeScriptType.boolean)), _, false),
+        Method("set", Seq(("min", NamedType("number"), null), ("max", NamedType("number"), null)), NamedType("boolean"), _),
+        Method("isEmpty", Seq(), NamedType("boolean"), _),
+        Method("clone", Seq(), NamedType("Range"), _),
+        Method("copy", Seq(("box", NamedType("Range"), null)), NamedType("Range"), _),
+        Method("equals", Seq(("box", NamedType("Range"), null)), NamedType("boolean"), _),
       ))), _, _) =>
     }
     assert(tree.errors.isEmpty)
