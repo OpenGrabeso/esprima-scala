@@ -28,8 +28,8 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     def unapply(arg: MethodDefinition) = arg match {
       case MethodDefinition(Identifier(name), _, _, FunctionExpression(_, pars, _, _, ret), kind, false) =>
         val p = pars.map {
-          case FunctionParameterWithType(Identifier(name), t, defValue) =>
-            (name, t, defValue)
+          case FunctionParameterWithType(Identifier(name), t, defValue, optional) =>
+            (name, t, defValue, optional)
         }
         Some(name, p, ret, kind)
       case _ =>
@@ -74,7 +74,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     val tree = parse(input, DTSOptions)
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("Range"), null, ClassBody(Seq(
-        Method("constructor", Seq(("min", NamedType("number"), null), ("max", NamedType("number"), null)), null, "constructor"),
+        Method("constructor", Seq(("min", NamedType("number"), null, false), ("max", NamedType("number"), null, false)), null, "constructor"),
       ))), _, _) =>
     }
     assert(tree.errors.isEmpty)
@@ -94,11 +94,28 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     val tree = parse(input, DTSOptions)
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("Range"), null, ClassBody(Seq(
-        Method("set", Seq(("min", NamedType("number"), null), ("max", NamedType("number"), null)), NamedType("boolean"), _),
+        Method("set", Seq(("min", NamedType("number"), null, false), ("max", NamedType("number"), null, false)), NamedType("boolean"), _),
         Method("isEmpty", Seq(), NamedType("boolean"), _),
         Method("clone", Seq(), NamedType("Range"), _),
-        Method("copy", Seq(("box", NamedType("Range"), null)), NamedType("Range"), _),
-        Method("equals", Seq(("box", NamedType("Range"), null)), NamedType("boolean"), _),
+        Method("copy", Seq(("box", NamedType("Range"), null, false)), NamedType("Range"), _),
+        Method("equals", Seq(("box", NamedType("Range"), null, false)), NamedType("boolean"), _),
+      ))), _, _) =>
+    }
+    assert(tree.errors.isEmpty)
+
+  }
+
+  it should "Parse a class member with optional parameters" in {
+    val input ="""
+        export class Range {
+          set(min?: number, max?: number): boolean;
+        }
+        """
+
+    val tree = parse(input, DTSOptions)
+    tree.body.head should matchPattern {
+      case ExportNamedDeclaration(ClassDeclaration(Identifier("Range"), null, ClassBody(Seq(
+        Method("set", Seq(("min", NamedType("number"), null, true), ("max", NamedType("number"), null, true)), NamedType("boolean"), _),
       ))), _, _) =>
     }
     assert(tree.errors.isEmpty)

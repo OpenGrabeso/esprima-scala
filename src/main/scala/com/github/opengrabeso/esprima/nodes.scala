@@ -446,7 +446,7 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
-  case class FunctionParameterWithType(var name: Identifier, var `type`: TypeAnnotation, var defValue: Expression) extends Node
+  case class FunctionParameterWithType(name: Identifier, `type`: TypeAnnotation, defValue: Expression, optional: Boolean) extends Node
     with FunctionParameter {
 
     override def clone = copy().copyNode(this)

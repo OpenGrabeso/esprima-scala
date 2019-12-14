@@ -1861,6 +1861,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val identifier = this.parseVariableIdentifier(kind)
     var `type`: Node.TypeAnnotation = null
     var init: Node.Expression = null
+    var optional = false
+    if (this.`match`("?")) {
+      this.nextToken()
+      optional = true
+    }
     if (this.`match`(":")) {
       this.nextToken()
       `type` = this.parseTypeAnnotation()
@@ -1873,8 +1878,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.context.allowYield = previousAllowYield
     }
 
-    if (`type` != null) {
-      this.finalize(this.startNode(startToken), new Node.FunctionParameterWithType(identifier, `type`, init))
+    if (`type` != null || init != null || optional) {
+      this.finalize(this.startNode(startToken), new Node.FunctionParameterWithType(identifier, `type`, init, optional))
     } else {
       identifier
     }
