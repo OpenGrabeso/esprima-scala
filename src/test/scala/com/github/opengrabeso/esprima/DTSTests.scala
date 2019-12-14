@@ -195,10 +195,9 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
 
   it should "process Object3D" in {
     val input = fromResource("/threejs/d.ts/Object3D.d.ts")
-    pendingUntilFixed {
-      val tree = parse(input, DTSOptions)
-      assert(tree.body.nonEmpty)
-    }
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
   }
 
 }

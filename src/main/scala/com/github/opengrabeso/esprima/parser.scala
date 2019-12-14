@@ -876,7 +876,6 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   }
 
   def reinterpretExpressionAsArrayPattern(expr: Node.Node): Node.ArrayPatternElement = {
-    // TODO: reallocation needed
     (expr: @unchecked) match {
       case ex: Node.Identifier => ex
       case ex: Node.ComputedMemberExpression => ex
@@ -884,8 +883,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       case ex: Node.AssignmentPattern => ex
 
       case expr: Node.SpreadElement =>
-        val retypedArg =this.reinterpretExpressionAsArrayPattern(expr.argument)
-        new Node.RestElement(retypedArg)
+        val retypedArg = this.reinterpretExpressionAsArrayPattern(expr.argument)
+        new Node.RestElement(retypedArg, null)
       case expr: Node.ArrayExpression =>
         val elementsResult = expr.elements.flatMap { i =>
           Option(i).map { i =>
@@ -906,7 +905,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     (expr: @unchecked) match {
       case expr: Node.SpreadElement =>
 
-        new RestElement(this.reinterpretExpressionAsObjectPattern(expr.argument))
+        new RestElement(this.reinterpretExpressionAsObjectPattern(expr.argument), null)
 
       case expr: Node.ObjectExpression =>
         val elementsResult = for (property <- expr.properties) yield {
@@ -1738,7 +1737,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val node = this.createNode()
     this.expect("...")
     val arg = this.parsePattern(params, kind)
-    this.finalize(node, new Node.RestElement(arg))
+    this.finalize(node, new Node.RestElement(arg, null))
   }
   
   def parseArrayPattern(params: ArrayBuffer[RawToken], kind: String): Node.ArrayPattern = {
@@ -1811,7 +1810,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     if (!this.`match`("}")) {
       this.throwError(Messages.PropertyAfterRestProperty)
     }
-    this.finalize(node, new Node.RestElement(arg))
+    this.finalize(node, new Node.RestElement(arg, null))
   }
   
   def parseObjectPattern(params: ArrayBuffer[RawToken], kind: String): Node.ObjectPattern = {
@@ -2540,13 +2539,18 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val node = this.createNode()
     this.expect("...")
     val arg = this.parsePattern(params)
+    var `type`: Node.TypeAnnotation = null
+    if (this.`match`(":")) {
+      this.nextToken()
+      `type` = this.parseTypeAnnotation()
+    }
     if (this.`match`("=")) {
       this.throwError(Messages.DefaultRestParameter)
     }
     if (!this.`match`(")")) {
       this.throwError(Messages.ParameterAfterRestParameter)
     }
-    this.finalize(node, new Node.RestElement(arg))
+    this.finalize(node, new Node.RestElement(arg, `type`))
   }
   
   def parseFormalParameter(options: ParameterOptions) = {
@@ -2856,7 +2860,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
 
   def parseTypeReference(): Node.TypeAnnotation = {
     val node = this.createNode()
-    val value = if (this.lookahead.`type` == Identifier || this.lookahead.`type` == Keyword || this.lookahead.`type` == NullLiteral) {
+    val value = if (
+      this.lookahead.`type` == Identifier || this.lookahead.`type` == Keyword ||
+        this.lookahead.`type` == NullLiteral || this.lookahead.`type` == BooleanLiteral
+    ) {
       val token = this.nextToken()
       val typeString = token.value.get[String]
       Node.TypeName(Node.Identifier(typeString))
@@ -2874,9 +2881,48 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
   }
 
+  def parseObjectType(): Node.TypeAnnotation = {
+    val node = this.createNode()
+    // TODO: proper parsing
+    var level = 1
+    do {
+      this.nextToken()
+      if (this.`match`("{")) level = level - 1
+      else if (this.`match`("}")) level = level - 1
+    } while (level > 0 && this.lookahead.`type` != EOF)
+    this.nextToken()
+
+    this.finalize(node, Node.TypeName(Node.Identifier("jsObject")))
+  }
+
+  def parseFunctionType(): Node.TypeAnnotation = {
+    // TODO: may be a ParenthesizedType as well
+    val node = this.createNode()
+    // TODO: proper parsing
+    var level = 1
+    do {
+      this.nextToken()
+      if (this.`match`("(")) level = level - 1
+      else if (this.`match`(")")) level = level - 1
+    } while (level > 0 && this.lookahead.`type` != EOF)
+    this.nextToken()
+
+    this.expect("=>")
+
+    val ret = parseTypeAnnotation()
+    this.finalize(node, Node.TypeName(Node.Identifier("jsFunction")))
+  }
+
   def parsePrimaryType(): Node.TypeAnnotation = {
     val node = this.createNode()
-    val tpe = parseTypeReference()
+
+    val tpe = if (this.`match`("{")) {
+      parseObjectType()
+    } else if (this.`match`("(")) {
+      parseFunctionType()
+    } else {
+      parseTypeReference()
+    }
 
     @scala.annotation.tailrec
     def parseArray(tpe: TypeAnnotation): TypeAnnotation = { // recursive, so that we handle multi-dimensional arrays
