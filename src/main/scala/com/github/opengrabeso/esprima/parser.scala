@@ -1686,7 +1686,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       }
     }
     var init: Node.Expression = null
-    var `type`: Node.TypeAnnotation = null
+    var typeAnnotation: Node.TypeAnnotation = null
+    if (this.`match`(":")) {
+      this.nextToken()
+      typeAnnotation = parseTypeAnnotation()
+    }
     if (kind == "const") {
       if (!this.matchKeyword("in") && !this.matchContextualKeyword("of")) {
         if (this.`match`("=")) {
@@ -1700,7 +1704,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.expect("=")
       init = this.isolateCoverGrammar(this.parseAssignmentExpression)
     }
-    this.finalize(node, new Node.VariableDeclarator(id, init, `type`))
+    this.finalize(node, new Node.VariableDeclarator(id, init, typeAnnotation))
   }
   
   def parseBindingList(kind: String, options: VariableOptions): Array[Node.VariableDeclarator] = {
