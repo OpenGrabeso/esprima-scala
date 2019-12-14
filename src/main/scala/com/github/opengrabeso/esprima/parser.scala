@@ -678,15 +678,26 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     body
   }
   
-  def parsePropertyMethodFunction() = {
+  def parsePropertyMethodFunction(): Node.FunctionExpression = {
     val isGenerator = false
     val node = this.createNode()
     val previousAllowYield = this.context.allowYield
     this.context.allowYield = true
     val params = this.parseFormalParameters()
-    val method = this.parsePropertyMethod(params)
-    this.context.allowYield = previousAllowYield
-    this.finalize(node, new Node.FunctionExpression(null, params.params, method, isGenerator))
+    var `type`: Node.TypeAnnotation = null
+    // parse return type
+    if (this.`match`(":")) {
+      this.nextToken()
+      `type` = this.parseTypeAnnotation()
+    }
+    if (this.`match`("{")) {
+      val method = this.parsePropertyMethod(params)
+      this.context.allowYield = previousAllowYield
+      this.finalize(node, new Node.FunctionExpression(null, params.params, method, isGenerator, `type`))
+    } else {
+      // ts.d: function with no body
+      this.finalize(node, new Node.FunctionExpression(null, params.params, null, isGenerator, `type`))
+    }
   }
   
   def parsePropertyMethodAsyncFunction() = {
@@ -1740,7 +1751,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
             elements.push(this.parseBindingRestElement(params, kind))
             break
           } else {
-            elements.push(this.parsePatternWithDefault(params, kind).asInstanceOf[Node.ArrayPatternElement])
+            elements.push(this.parsePatternWithDefault(params, kind))
           }
           if (!this.`match`("]")) {
             this.expect(",")
@@ -1775,13 +1786,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         value = init
       } else {
         this.expect(":")
-        value = this.parsePatternWithDefault(params, kind).asInstanceOf[Node.PropertyValue]
+        value = this.parsePatternWithDefault(params, kind)
       }
     } else {
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
       this.expect(":")
-      value = this.parsePatternWithDefault(params, kind).asInstanceOf[Node.PropertyValue]
+      value = this.parsePatternWithDefault(params, kind)
     }
     this.finalize(node, new Node.Property("init", key, computed, value, method, shorthand))
   }
@@ -1828,22 +1839,47 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     pattern
   }
-  
-  def parsePatternWithDefault(params: ArrayBuffer[RawToken], kind: String = ""): Node.BindingIdentifierOrPattern = {
+
+  def parsePatternWithDefault(params: ArrayBuffer[RawToken], kind: String = ""): Node.ArrayPatternElement with Node.PropertyValue = {
     val startToken = this.lookahead
-    var pattern = this.parsePattern(params, kind)
+    val pattern = this.parsePattern(params, kind)
     if (this.`match`("=")) {
       this.nextToken()
       val previousAllowYield = this.context.allowYield
       this.context.allowYield = true
       val right = this.isolateCoverGrammar(this.parseAssignmentExpression)
       this.context.allowYield = previousAllowYield
-      this.finalize[Node.BindingIdentifierOrPattern](this.startNode(startToken), new Node.AssignmentPattern(pattern, right))
+      this.finalize(this.startNode(startToken), new Node.AssignmentPattern(pattern, right))
     } else {
       pattern.asInstanceOf[Node.BindingIdentifier]
     }
   }
-  
+
+  def parseFunctionParameter(params: ArrayBuffer[RawToken], kind: String = ""): Node.FunctionParameter = {
+    val startToken = this.lookahead
+    params.push(this.lookahead)
+    val identifier = this.parseVariableIdentifier(kind)
+    var `type`: Node.TypeAnnotation = null
+    var init: Node.Expression = null
+    if (this.`match`(":")) {
+      this.nextToken()
+      `type` = this.parseTypeAnnotation()
+    }
+    if (this.`match`("=")) {
+      this.nextToken()
+      val previousAllowYield = this.context.allowYield
+      this.context.allowYield = true
+      init = this.isolateCoverGrammar(this.parseAssignmentExpression)
+      this.context.allowYield = previousAllowYield
+    }
+
+    if (`type` != null) {
+      this.finalize(this.startNode(startToken), new Node.FunctionParameterWithType(identifier, `type`, init))
+    } else {
+      identifier
+    }
+  }
+
   // https://tc39.github.io/ecma262/#sec-variable-statement
   def parseVariableIdentifier(kind: String = ""): Node.Identifier = {
     val node = this.createNode()
@@ -2506,7 +2542,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   
   def parseFormalParameter(options: ParameterOptions) = {
     val params = ArrayBuffer.empty[RawToken]
-    val param = if (this.`match`("...")) this.parseRestElement(params) else this.parsePatternWithDefault(params).asInstanceOf[Node.FunctionParameter]
+    val param: Node.FunctionParameter = if (this.`match`("...")) this.parseRestElement(params) else this.parseFunctionParameter(params)
     for (i <- params) {
       this.validateParam(options, i, i.value)
     }
@@ -2617,7 +2653,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     if (isAsync) this.finalize(node, new Node.AsyncFunctionDeclaration(id, params, body)) else this.finalize(node, new Node.FunctionDeclaration(id, params, body, isGenerator))
   }
   
-  def parseFunctionExpression() = {
+  def parseFunctionExpression(): Node.Expression = {
     val node = this.createNode()
     val isAsync = this.matchContextualKeyword("async")
     if (isAsync) {
@@ -2673,7 +2709,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.context.allowStrictDirective = previousAllowStrictDirective
     this.context.await = previousAllowAwait
     this.context.allowYield = previousAllowYield
-    if (isAsync) this.finalize(node, new Node.AsyncFunctionExpression(id, params, body)) else this.finalize(node, new Node.FunctionExpression(id, params, body, isGenerator))
+    if (isAsync) this.finalize(node, new Node.AsyncFunctionExpression(id, params, body)) else this.finalize(node, new Node.FunctionExpression(id, params, body, isGenerator, null))
   }
   
   // https://tc39.github.io/ecma262/#sec-directive-prologues-and-the-use-strict-directive
@@ -2744,7 +2780,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     val method = this.parsePropertyMethod(formalParameters)
     this.context.allowYield = previousAllowYield
-    this.finalize(node, new Node.FunctionExpression(null, formalParameters.params, method, isGenerator))
+    this.finalize(node, new Node.FunctionExpression(null, formalParameters.params, method, isGenerator, null))
   }
   
   def parseSetterMethod() = {
@@ -2760,7 +2796,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     val method = this.parsePropertyMethod(formalParameters)
     this.context.allowYield = previousAllowYield
-    this.finalize(node, new Node.FunctionExpression(null, formalParameters.params, method, isGenerator))
+    this.finalize(node, new Node.FunctionExpression(null, formalParameters.params, method, isGenerator, null))
   }
   
   def parseGeneratorMethod() = {
@@ -2772,7 +2808,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.context.allowYield = false
     val method = this.parsePropertyMethod(params)
     this.context.allowYield = previousAllowYield
-    this.finalize(node, new Node.FunctionExpression(null, params.params, method, isGenerator))
+    this.finalize(node, new Node.FunctionExpression(null, params.params, method, isGenerator, null))
   }
   
   // https://tc39.github.io/ecma262/#sec-generator-function-definitions

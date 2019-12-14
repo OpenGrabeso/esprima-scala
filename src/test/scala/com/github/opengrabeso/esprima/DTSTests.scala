@@ -9,6 +9,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     range = true
     attachComment = true
     tolerant = true
+    sourceType = "module" // allow exports
   }
 
   behavior of "Parsing simple d.ts"
@@ -20,6 +21,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     tree.body.head should matchPattern {
       case VariableDeclaration(Seq(VariableDeclarator(Identifier("answer"), _, SimpleType(TypeScriptType.number))), _) =>
     }
+    assert(tree.errors.isEmpty)
   }
 
   it should "Parse a class with a typed member" in {
@@ -38,7 +40,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         MethodDefinition(Identifier("min"), SimpleType(TypeScriptType.number), _, _, _, false)
       ))), _, _) =>
     }
-
+    assert(tree.errors.isEmpty)
   }
 
   it should "Parse a class with a constructor" in {
@@ -48,11 +50,16 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         }
         """
 
-    pendingUntilFixed {
-      val tree = parse(input, DTSOptions)
-      assert(tree.body.nonEmpty)
+    val tree = parse(input, DTSOptions)
+    tree.body.head should matchPattern {
+      case ExportNamedDeclaration(ClassDeclaration(Identifier("Range"), null, ClassBody(Seq(
+        MethodDefinition(Identifier("constructor"), _, _, FunctionExpression(_, Seq(
+          FunctionParameterWithType(Identifier("min"), SimpleType(TypeScriptType.number), null),
+          FunctionParameterWithType(Identifier("max"), SimpleType(TypeScriptType.number), null)
+          ), _, _, _), "constructor", false),
+      ))), _, _) =>
     }
-
+    assert(tree.errors.isEmpty)
   }
 
   it should "Parse a class with a typed member functions" in {
@@ -60,16 +67,25 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         export class Range {
           set(min: number, max: number): boolean;
           isEmpty(): boolean;
+          /*
           clone(): Range;
           copy(box: Range): Range;
         	equals( box: Range ): boolean;
+          */
         }
         """
 
-    pendingUntilFixed {
-      val tree = parse(input, DTSOptions)
-      assert(tree.body.nonEmpty)
+    val tree = parse(input, DTSOptions)
+    tree.body.head should matchPattern {
+      case ExportNamedDeclaration(ClassDeclaration(Identifier("Range"), null, ClassBody(Seq(
+        MethodDefinition(Identifier("set"), _, _, FunctionExpression(_, Seq(
+          FunctionParameterWithType(Identifier("min"), SimpleType(TypeScriptType.number), null),
+          FunctionParameterWithType(Identifier("max"), SimpleType(TypeScriptType.number), null)
+        ), _, _, SimpleType(TypeScriptType.boolean)), _, false),
+        MethodDefinition(Identifier("isEmpty"), _, _, FunctionExpression(_, Seq(), _, _, SimpleType(TypeScriptType.boolean)), _, false),
+      ))), _, _) =>
     }
+    assert(tree.errors.isEmpty)
 
   }
 

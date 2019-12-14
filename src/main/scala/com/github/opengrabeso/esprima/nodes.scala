@@ -324,7 +324,10 @@ object Node {
   }
 
 
-  case class FunctionExpression(var id: Identifier, var params: collection.Seq[FunctionParameter], var body: BlockStatement, var generator: Boolean) extends Node
+  case class FunctionExpression(
+    var id: Identifier, var params: collection.Seq[FunctionParameter], var body: BlockStatement, var generator: Boolean,
+    var ret: Node.TypeAnnotation
+  ) extends Node
     with HasGenerator with Expression with PropertyValue {
 
     override def clone = copy().copyNode(this)
@@ -445,6 +448,11 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
+  case class FunctionParameterWithType(var name: Identifier, var `type`: TypeAnnotation, var defValue: Expression) extends Node
+    with FunctionParameter {
+
+    override def clone = copy().copyNode(this)
+  }
 
   case class Property(var kind: String, var key: PropertyKey, var computed: Boolean, var value: PropertyValue, var method: Boolean, var shorthand: Boolean) extends Node
     with ObjectExpressionProperty with ObjectPatternProperty {
