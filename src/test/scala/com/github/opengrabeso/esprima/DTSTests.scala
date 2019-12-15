@@ -12,6 +12,42 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     sourceType = "module" // allow exports
   }
 
+  def extractPars(pars: Seq[FunctionParameter]) = {
+    pars.map {
+      case FunctionParameterWithType(Identifier(name), t, defValue, optional) =>
+        (name, t, defValue, optional)
+      case Identifier(name) =>
+        (name, null, null, false)
+    }
+  }
+
+  object Method {
+    def unapply(arg: MethodDefinition) = arg match {
+      case MethodDefinition(Identifier(name), _, _, FunctionExpression(_, pars, _, _, ret), kind, false) =>
+        Some(name, extractPars(pars), ret, kind)
+      case _ =>
+        None
+    }
+  }
+  object FunctionDecl {
+    def unapply(arg: FunctionDeclaration) = arg match {
+      case FunctionDeclaration(Identifier(name), pars, _, _, ret) =>
+        Some(name, extractPars(pars), ret)
+      case _ =>
+        None
+    }
+  }
+  object NamedType {
+    def unapply(arg: TypeName): Option[String] = arg match {
+      case TypeName(Identifier(name)) =>
+        Some(name)
+      case _ =>
+        None
+    }
+  }
+
+
+
   behavior of "Parsing simple d.ts"
 
   it should "Parse a variable with a type annotation" in {
@@ -24,24 +60,28 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
-  object Method {
-    def unapply(arg: MethodDefinition) = arg match {
-      case MethodDefinition(Identifier(name), _, _, FunctionExpression(_, pars, _, _, ret), kind, false) =>
-        val p = pars.map {
-          case FunctionParameterWithType(Identifier(name), t, defValue, optional) =>
-            (name, t, defValue, optional)
-        }
-        Some(name, p, ret, kind)
-      case _ =>
-        None
+  it should "Parse a function with a type annotation" in {
+    val input =
+      """
+        export function f(): number;
+        export function g();
+        export function h(x: string): void;
+        """
+    val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
+    assert(tree.body.nonEmpty)
+    val exports = tree.body.collect {
+      case e: ExportNamedDeclaration =>
+        e.declaration
     }
-  }
-  object NamedType {
-    def unapply(arg: TypeName): Option[String] = arg match {
-      case TypeName(Identifier(name)) =>
-        Some(name)
-      case _ =>
-        None
+    exports(0) should matchPattern {
+      case FunctionDecl("f", Nil, NamedType("number")) =>
+    }
+    exports(1) should matchPattern {
+      case FunctionDecl("g", Nil, null) =>
+    }
+    exports(2) should matchPattern {
+      case FunctionDecl("h", Seq(("x", NamedType("string"), null, false) ), NamedType("void")) =>
     }
   }
 

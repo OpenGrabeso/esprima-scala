@@ -324,7 +324,10 @@ object Node {
   }
 
 
-  case class FunctionDeclaration(var id: Identifier, var params: collection.Seq[FunctionParameter], var body: BlockStatement, var generator: Boolean) extends Node
+  case class FunctionDeclaration(
+    var id: Identifier, var params: collection.Seq[FunctionParameter], var body: BlockStatement, var generator: Boolean,
+    var ret: Node.TypeAnnotation
+  ) extends Node
     with AFunctionDeclaration with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration with Statement {
 
     override def clone = copy().copyNode(this)

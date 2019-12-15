@@ -690,14 +690,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.nextToken()
       `type` = this.parseTypeAnnotation()
     }
-    if (this.`match`("{")) {
-      val method = this.parsePropertyMethod(params)
-      this.context.allowYield = previousAllowYield
-      this.finalize(node, new Node.FunctionExpression(null, params.params, method, isGenerator, `type`))
-    } else {
-      // ts.d: function with no body
-      this.finalize(node, new Node.FunctionExpression(null, params.params, null, isGenerator, `type`))
-    }
+    val method = this.parsePropertyMethod(params)
+    this.context.allowYield = previousAllowYield
+    this.finalize(node, new Node.FunctionExpression(null, params.params, method, isGenerator, `type`))
   }
   
   def parsePropertyMethodAsyncFunction() = {
@@ -2482,31 +2477,38 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   
   // https://tc39.github.io/ecma262/#sec-function-definitions
   def parseFunctionSourceElements() = {
-    val node = this.createNode()
-    this.expect("{")
-    val body = this.parseDirectivePrologues()
-    val previousLabelSet = this.context.labelSet
-    val previousInIteration = this.context.inIteration
-    val previousInSwitch = this.context.inSwitch
-    val previousInFunctionBody = this.context.inFunctionBody
-    this.context.labelSet = mutable.Map.empty
-    this.context.inIteration = false
-    this.context.inSwitch = false
-    this.context.inFunctionBody = true
-    breakable {
-      while (this.lookahead.`type` != EOF)  /*EOF */{
-        if (this.`match`("}")) {
-          break
+    if (this.`match`("{")) {
+      val node = this.createNode()
+      this.expect("{")
+      val body = this.parseDirectivePrologues()
+      val previousLabelSet = this.context.labelSet
+      val previousInIteration = this.context.inIteration
+      val previousInSwitch = this.context.inSwitch
+      val previousInFunctionBody = this.context.inFunctionBody
+      this.context.labelSet = mutable.Map.empty
+      this.context.inIteration = false
+      this.context.inSwitch = false
+      this.context.inFunctionBody = true
+      breakable {
+        while (this.lookahead.`type` != EOF) /*EOF */ {
+          if (this.`match`("}")) {
+            break
+          }
+          body.push(this.parseStatementListItem())
         }
-        body.push(this.parseStatementListItem())
       }
+      this.expect("}")
+      this.context.labelSet = previousLabelSet
+      this.context.inIteration = previousInIteration
+      this.context.inSwitch = previousInSwitch
+      this.context.inFunctionBody = previousInFunctionBody
+      this.finalize(node, new Node.BlockStatement(body))
+    } else {
+      // function with no body - common in ts/d.ts (interfaces, type declarations)
+      // note: we currently parse it as an empty bodied function, which is wrong - we may accept invalid JS input
+      val node = this.createNode()
+      this.finalize(node, new Node.BlockStatement(Nil))
     }
-    this.expect("}")
-    this.context.labelSet = previousLabelSet
-    this.context.inIteration = previousInIteration
-    this.context.inSwitch = previousInSwitch
-    this.context.inFunctionBody = previousInFunctionBody
-    this.finalize(node, new Node.BlockStatement(body))
   }
   
   def validateParam(options: ParameterOptions, param: RawToken, name: String) = {
@@ -2620,6 +2622,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     var message: String = null
     var id: Node.Identifier = null
+    var typeAnnotation: Node.TypeAnnotation = null
     var firstRestricted: RawToken = null
     if (!identifierIsOptional || !this.`match`("(")) {
       val token = this.lookahead
@@ -2649,6 +2652,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     if (formalParameters.message) {
       message = formalParameters.message
     }
+    if (this.`match`(":")) {
+      this.nextToken()
+      typeAnnotation = parseTypeAnnotation()
+    }
     val previousStrict = this.context.strict
     val previousAllowStrictDirective = this.context.allowStrictDirective
     this.context.allowStrictDirective = formalParameters.simple
@@ -2663,7 +2670,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.context.allowStrictDirective = previousAllowStrictDirective
     this.context.await = previousAllowAwait
     this.context.allowYield = previousAllowYield
-    if (isAsync) this.finalize(node, new Node.AsyncFunctionDeclaration(id, params, body)) else this.finalize(node, new Node.FunctionDeclaration(id, params, body, isGenerator))
+    if (isAsync) this.finalize(node, new Node.AsyncFunctionDeclaration(id, params, body)) else this.finalize(node, new Node.FunctionDeclaration(id, params, body, isGenerator, typeAnnotation))
   }
   
   def parseFunctionExpression(): Node.Expression = {
