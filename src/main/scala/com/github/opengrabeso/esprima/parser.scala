@@ -2900,8 +2900,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var level = 1
     do {
       this.nextToken()
-      if (this.`match`("{")) level = level - 1
-      else if (this.`match`("}")) level = level - 1
+      if (this.`match`("{")) level += 1
+      else if (this.`match`("}")) level -= 1
     } while (level > 0 && this.lookahead.`type` != EOF)
     this.nextToken()
 
@@ -2915,8 +2915,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var level = 1
     do {
       this.nextToken()
-      if (this.`match`("(")) level = level - 1
-      else if (this.`match`(")")) level = level - 1
+      if (this.`match`("(")) level += 1
+      else if (this.`match`(")")) level -= 1
     } while (level > 0 && this.lookahead.`type` != EOF)
     this.nextToken()
 
@@ -3110,10 +3110,21 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.expectKeyword(keyword)
     val id = if (identifierIsOptional && this.lookahead.`type` != Identifier)  /*Identifier */null else this.parseVariableIdentifier()
     var superClass: Node.Identifier = null
+    var implementsClass = ArrayBuffer.empty[Node.Identifier]
     if (this.matchKeyword("extends")) {
       this.nextToken()
       superClass = this.isolateCoverGrammar(this.parseLeftHandSideExpressionAllowCall).asInstanceOf[Node.Identifier]
+      // more tolerant than specs: we use the same parses for class and interface, therefore we allow anything to extend multiple parents
+      while (this.`match`(",")) {
+        this.nextToken()
+        implementsClass.push(this.parseIdentifierName())
+      }
     }
+    while (this.matchKeyword(keyword = "implements")) {
+      this.nextToken()
+      implementsClass.push(this.parseIdentifierName())
+    }
+    //  TODO: store implementsClass somewhere
     val classBody = this.parseClassBody()
     this.context.strict = previousStrict
     this.finalize(node, new Node.ClassDeclaration(id, superClass, classBody))
@@ -3342,7 +3353,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       val src = this.parseModuleSpecifier()
       this.consumeSemicolon()
       exportDeclaration = this.finalize(node, new Node.ExportAllDeclaration(src))
-    } else if (this.lookahead.`type` == Keyword)  /*Keyword */{
+    } else if (this.lookahead.`type` == Keyword || this.lookahead.`type` == Identifier)  /*Keyword */{
       // export var f = 1;
       var declaration: Node.ExportableNamedDeclaration = null
       this.lookahead.value.get[String] match {

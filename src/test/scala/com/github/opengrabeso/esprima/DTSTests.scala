@@ -51,12 +51,28 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
   behavior of "Parsing simple d.ts"
 
   it should "Parse a variable with a type annotation" in {
-    val input ="var answer: number = 42"
+    val input = "var answer: number = 42"
     val tree = parse(input, DTSOptions)
     assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
     tree.body.head should matchPattern {
       case VariableDeclaration(Seq(VariableDeclarator(Identifier("answer"), _, TypeName(Identifier("number")))), _) =>
     }
+  }
+
+  it should "Parse exported variables with type annotations" in {
+    val input = """
+        export let a: number;
+        export var b: string;
+        export let c: {
+          o: {
+            s: string;
+            n: number;
+          };
+        };
+        """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
     assert(tree.errors.isEmpty)
   }
 
@@ -252,6 +268,25 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     val tree = parse(input, DTSOptions)
     assert(tree.errors.isEmpty)
   }
+
+  it should "Parse a class implementing interfaces" in {
+    val input = """
+        class C extends A implements B {
+          b: string;
+        }
+        class D implements B {
+          b: string;
+        }
+        interface I extends A, B {
+          i: number;
+        }
+        """
+
+    val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
+
+  }
+
 
   behavior of "Parsing Three.js d.ts"
 
