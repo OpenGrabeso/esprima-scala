@@ -162,6 +162,18 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
 
   }
 
+  it should "Parse a class with optional members" in {
+    val input ="""
+        export class Range {
+          memberA ?: number;
+          memberB ? : number;
+        }
+        """
+
+    val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
+  }
+
   it should "Parse a class with an array members" in {
     val input ="""
         export class A {

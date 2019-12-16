@@ -3031,13 +3031,19 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         computed = this.`match`("[")
         key = this.parseObjectPropertyKey()
         value = this.parseSetterMethod()
-      } else if (this.`match`(":")) {
+      } else {
+        // normal member may be optional
+        if (this.`match`("?")) {
+          // TODO: store optionality
+          this.nextToken()
+        }
+      }
+
+      if (this.`match`(":")) {
         this.nextToken()
         `type` = parseTypeAnnotation()
         kind = "init"
-        // TODO: value may follow (ts) or may not (ts.d PropertySignature)
       }
-
     } else if (token.`type` == Punctuator &&  /*Punctuator */token.value === "*" && lookaheadPropertyKey) {
       // pretend it is a getter, as that means an access without paramerers
       kind = "get" // TODO: try making it Property instead
