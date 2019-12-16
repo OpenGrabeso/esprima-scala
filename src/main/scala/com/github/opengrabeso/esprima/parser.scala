@@ -2953,6 +2953,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
 
   def parseTypeAnnotation(): Node.TypeAnnotation = {
     val node = this.createNode()
+
+    // silently skip leading | - this seems invalid, but some d.ts files contain it
+    if (this.`match`("|")) {
+      this.nextToken()
+    }
+
     val tpe = parsePrimaryType()
     @scala.annotation.tailrec
     def parseUnion(tpe: TypeAnnotation): TypeAnnotation = {
