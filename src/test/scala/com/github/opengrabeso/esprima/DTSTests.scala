@@ -257,13 +257,13 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         """
 
     val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("A"), null, ClassBody(Seq(
       MethodDefinition(Identifier("a"), UnionType(NamedType("number"), NamedType("null")), _, _, _, false),
       MethodDefinition(Identifier("b"), UnionType(UnionType(NamedType("number"), NamedType("string")), NamedType("A")), _, _, _, false),
       ))), _, _) =>
     }
-    assert(tree.errors.isEmpty)
 
   }
 
@@ -274,6 +274,13 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     tree.body.head should matchPattern {
       case TypeAliasDeclaration(Identifier("T"), UnionType(NamedType("A"), NamedType("B"))) =>
     }
+  }
+
+  it should "Parse a parenthesised type" in {
+    val input = "type T = (A | B)[]"
+    val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
+    assert(tree.body.nonEmpty)
   }
 
   it should "Parse interface declarations" in {

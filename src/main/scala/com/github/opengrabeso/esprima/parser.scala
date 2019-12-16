@@ -1057,9 +1057,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   }
   
    /*NullLiteral */
-  def parseIdentifierName() = {
-    val node = this.createNode()
-    val token = this.nextToken()
+  def parseIdentifierName(token: RawToken = this.nextToken()) = {
+    val node = this.startNode(token)
     if (!this.isIdentifierName(token)) {
       this.throwUnexpectedToken(token)
     }
@@ -1639,9 +1638,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           statement = this.parseFunctionDeclaration()
         case "class" =>
           statement = this.parseClassDeclaration()
-        case "interface" =>
+        case "interface" if this.isLexicalDeclaration() =>
           statement = this.parseClassDeclaration(keyword = "interface")
-        case "type" =>
+        case "type" if this.isLexicalDeclaration() => // may be normal identifier when not in ts
           statement = this.parseTypeAliasDeclaration()
         case "let" =>
           statement = if (this.isLexicalDeclaration()) this.parseLexicalDeclaration(new VariableOptions {
@@ -2871,18 +2870,17 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.YieldExpression(argument, delegate))
   }
 
-  def parseTypeReference(): Node.TypeAnnotation = {
-    val node = this.createNode()
+  def parseTypeReference(token: RawToken): Node.TypeAnnotation = {
+    val node = this.startNode(token)
     val value = if (
-      this.lookahead.`type` == Identifier || this.lookahead.`type` == Keyword ||
-        this.lookahead.`type` == NullLiteral || this.lookahead.`type` == BooleanLiteral ||
-        this.lookahead.`type` == StringLiteral || this.lookahead.`type` == NumericLiteral
+      token.`type` == Identifier || token.`type` == Keyword ||
+        token.`type` == NullLiteral || token.`type` == BooleanLiteral ||
+        token.`type` == StringLiteral || token.`type` == NumericLiteral
     ) {
-      val token = this.nextToken()
       val typeString = token.value.get[String]
       Node.TypeName(Node.Identifier(typeString))
     } else {
-      tolerateUnexpectedToken(this.lookahead, "Type annotation expected")
+      tolerateUnexpectedToken(token, "Type annotation expected")
       Node.TypeName(null)
     }
     if (this.`match`("<")) {
@@ -2895,36 +2893,62 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
   }
 
-  def parseObjectType(): Node.TypeAnnotation = {
-    val node = this.createNode()
+  def parseObjectType(token: RawToken): Node.TypeAnnotation = {
+    val node = this.startNode(token)
     // TODO: proper parsing
     var level = 1
     do {
-      this.nextToken()
       if (this.`match`("{")) level += 1
       else if (this.`match`("}")) level -= 1
+      this.nextToken()
     } while (level > 0 && this.lookahead.`type` != EOF)
-    this.nextToken()
 
     this.finalize(node, Node.TypeName(Node.Identifier("jsObject")))
   }
 
-  def parseFunctionType(): Node.TypeAnnotation = {
-    // TODO: may be a ParenthesizedType as well
-    val node = this.createNode()
-    // TODO: proper parsing
-    var level = 1
-    do {
+  def parseFunctionType(token: RawToken): Node.TypeAnnotation = {
+    val node = this.startNode(token)
+    assert(token.`type` == Identifier)
+    var pars = mutable.ArrayBuffer.empty[(Node.Identifier, Node.TypeAnnotation)]
+
+    // TODO: maybe we could use parseFormalParameters or other existing method?
+    val name = this.parseIdentifierName(token)
+    val tpe = if (this.`match`(":")) {
       this.nextToken()
-      if (this.`match`("(")) level += 1
-      else if (this.`match`(")")) level -= 1
-    } while (level > 0 && this.lookahead.`type` != EOF)
-    this.nextToken()
+      this.parseTypeAnnotation()
+    } else null
+    pars += name -> tpe
+    while (this.`match`(",")) {
+      this.nextToken()
+      val name = this.parseIdentifierName()
+      val tpe = if (this.`match`(":")) {
+        this.nextToken()
+        this.parseTypeAnnotation()
+      } else null
+      pars += name -> tpe
+    }
+    this.expect(")")
 
     this.expect("=>")
 
     val ret = parseTypeAnnotation()
+    // TODO: store pars and ret
     this.finalize(node, Node.TypeName(Node.Identifier("jsFunction")))
+  }
+
+  // may be a function type or a parenthesised type
+  def parseTypeStartingWithParen(parenToken: RawToken): Node.TypeAnnotation = {
+    val node = this.startNode(parenToken)
+    val types = ArrayBuffer.empty[TypeAnnotation]
+    val token = this.nextToken()
+    val tpe = if (token.`type` == Identifier && this.`match`(":")) {
+      parseFunctionType(token)
+    } else {
+      val t = parseTypeAnnotation(token)
+      this.expect(")")
+      t
+    }
+    this.finalize(node, tpe)
   }
 
   def parseNamespace(): Node.Declaration = {
@@ -2945,15 +2969,15 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, Node.ClassDeclaration(name, null, null))
   }
 
-  def parsePrimaryType(): Node.TypeAnnotation = {
-    val node = this.createNode()
+  def parsePrimaryType(token: RawToken): Node.TypeAnnotation = {
+    val node = this.startNode(token)
 
-    val tpe = if (this.`match`("{")) {
-      parseObjectType()
-    } else if (this.`match`("(")) {
-      parseFunctionType()
+    val tpe = if (token.`match`("{")) {
+      parseObjectType(token)
+    } else if (token.`match`("(")) {
+      parseTypeStartingWithParen(token)
     } else {
-      parseTypeReference()
+      parseTypeReference(token)
     }
 
     @scala.annotation.tailrec
@@ -2970,21 +2994,21 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, parseArray(tpe))
   }
 
-  def parseTypeAnnotation(): Node.TypeAnnotation = {
-    val node = this.createNode()
+  def parseTypeAnnotation(token: RawToken = this.nextToken()): Node.TypeAnnotation = {
+    val node = this.startNode(token)
 
     // silently skip leading | - this seems invalid, but some d.ts files contain it
-    if (this.`match`("|")) {
+    if (token.`match`("|")) {
       this.nextToken()
     }
 
-    val tpe = parsePrimaryType()
+    val tpe = parsePrimaryType(token)
     @scala.annotation.tailrec
     def parseUnion(tpe: TypeAnnotation): TypeAnnotation = {
       val node = this.createNode()
       if (this.`match`("|")) {
         this.nextToken()
-        val right = parsePrimaryType()
+        val right = parsePrimaryType(this.nextToken())
         parseUnion(this.finalize(node, Node.UnionType(tpe, right)))
       } else {
         tpe
