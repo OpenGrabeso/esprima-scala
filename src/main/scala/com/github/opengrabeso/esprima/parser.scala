@@ -3132,9 +3132,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         if (kind != "method" || !method || value.isInstanceOf[Node.HasGenerator] && value.asInstanceOf[Node.HasGenerator].generator) {
           this.throwUnexpectedToken(token, Messages.ConstructorSpecialMethod)
         }
-        if (hasConstructor.value) {
+        // multiple constructors possible with TS
+        /*if (hasConstructor.value) {
           this.throwUnexpectedToken(token, Messages.DuplicateConstructor)
-        } else {
+        } else*/ {
           hasConstructor.value = true
         }
         kind = "constructor"
