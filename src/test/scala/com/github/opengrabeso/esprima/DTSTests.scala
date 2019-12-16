@@ -226,6 +226,21 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     }
   }
 
+  it should "Parse interface declarations" in {
+    val input = """
+        interface A {
+          a: number | null;
+        }
+
+        export interface B {
+          b: string;
+        }
+        """
+
+    val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
+  }
+
   behavior of "Parsing Three.js d.ts"
 
   it should "process Box2" in {

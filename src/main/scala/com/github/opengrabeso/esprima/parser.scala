@@ -1639,6 +1639,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           statement = this.parseFunctionDeclaration()
         case "class" =>
           statement = this.parseClassDeclaration()
+        case "interface" =>
+          statement = this.parseClassDeclaration(keyword = "interface")
         case "type" =>
           statement = this.parseTypeAliasDeclaration()
         case "let" =>
@@ -2329,9 +2331,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       }
       this.context.labelSet(key) = true
       var body: Node.Statement = null
-      if (this.matchKeyword("class")) {
+      if (this.matchKeyword("class") || this.matchContextualKeyword("interface")) {
         this.tolerateUnexpectedToken(this.lookahead)
-        body = this.parseClassDeclaration()
+        body = this.parseClassDeclaration(keyword = this.lookahead.value)
       } else if (this.matchKeyword("function")) {
         val token = this.lookahead
         val declaration = this.parseFunctionDeclaration()
@@ -3089,11 +3091,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.ClassBody(elementList))
   }
   
-  def parseClassDeclaration(identifierIsOptional: Boolean = false): Node.ClassDeclaration = {
+  def parseClassDeclaration(identifierIsOptional: Boolean = false, keyword: String = "class"): Node.ClassDeclaration = {
     val node = this.createNode()
     val previousStrict = this.context.strict
     this.context.strict = true
-    this.expectKeyword("class")
+    this.expectKeyword(keyword)
     val id = if (identifierIsOptional && this.lookahead.`type` != Identifier)  /*Identifier */null else this.parseVariableIdentifier()
     var superClass: Node.Identifier = null
     if (this.matchKeyword("extends")) {
@@ -3296,9 +3298,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         // export default function () {}
         val declaration = this.parseFunctionDeclaration(true)
         exportDeclaration = this.finalize(node, new Node.ExportDefaultDeclaration(declaration))
-      } else if (this.matchKeyword("class")) {
+      } else if (this.matchKeyword("class") || this.matchContextualKeyword("interface")) {
         // export default class foo {}
-        val declaration = this.parseClassDeclaration(true)
+        val declaration = this.parseClassDeclaration(true, keyword = this.lookahead.value)
         exportDeclaration = this.finalize(node, new Node.ExportDefaultDeclaration(declaration))
       } else if (this.matchContextualKeyword("async")) {
         // export default async function f () {}
@@ -3336,7 +3338,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           declaration = this.parseLexicalDeclaration(new VariableOptions {
             inFor = false
           })
-        case "var" | "class" | "function" =>
+        case "var" | "class" | "function" | "interface" | "type" | "enum" =>
           declaration = this.parseStatementListItem()
         case _ =>
           this.throwUnexpectedToken(this.lookahead)
