@@ -2875,7 +2875,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val node = this.createNode()
     val value = if (
       this.lookahead.`type` == Identifier || this.lookahead.`type` == Keyword ||
-        this.lookahead.`type` == NullLiteral || this.lookahead.`type` == BooleanLiteral
+        this.lookahead.`type` == NullLiteral || this.lookahead.`type` == BooleanLiteral ||
+        this.lookahead.`type` == StringLiteral || this.lookahead.`type` == NumericLiteral
     ) {
       val token = this.nextToken()
       val typeString = token.value.get[String]
