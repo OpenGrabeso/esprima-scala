@@ -172,7 +172,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   }
   def throwError(messageFormat: String, args: String*) = {
     val msg = "%(\\d)".r.replaceAllIn(messageFormat, m => {
-      val idx = m.source.toString.toInt
+      val idx = m.toString.drop(1).toInt
       assert(idx < args.length, "Message reference must be in range")
       args(idx)
     }
@@ -185,7 +185,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   
   def tolerateError(messageFormat: String, args: String*) = {
     val msg = "%(\\d)".r.replaceAllIn(messageFormat, m => {
-      val idx = m.source.toString.toInt
+      val idx = m.toString.drop(1).toInt
       assert(idx < args.length, "Message reference must be in range")
       args(idx)
     }
