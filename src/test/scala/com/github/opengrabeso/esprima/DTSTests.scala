@@ -217,6 +217,15 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
 
   }
 
+  it should "Parse a type declaration" in {
+    val input = "type T = A | B"
+    val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
+    tree.body.head should matchPattern {
+      case TypeAliasDeclaration(Identifier("T"), UnionType(NamedType("A"), NamedType("B"))) =>
+    }
+  }
+
   behavior of "Parsing Three.js d.ts"
 
   it should "process Box2" in {

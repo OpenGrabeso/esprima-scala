@@ -438,7 +438,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   // If not, an exception will be thrown.
   def expectKeyword(keyword: String) = {
     val token = this.nextToken()
-    if (token.`type` != Keyword || (token.value !== keyword)) {
+    if (token.`type` != Keyword && token.`type` != Identifier || (token.value !== keyword)) {
       this.throwUnexpectedToken(token)
     }
   }
@@ -456,7 +456,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   // Return true if the next token matches the specified contextual keyword
   // (where an identifier is sometimes a keyword depending on the context)
   def matchContextualKeyword(keyword: String) = {
-    this.lookahead.`type` == Identifier &&  /*Identifier */this.lookahead.value === keyword
+    (this.lookahead.`type` == Keyword || this.lookahead.`type` == Identifier) && this.lookahead.value === keyword
   }
   
   // Return true if the next token is an assignment operator
@@ -1615,7 +1615,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var statement: Node.StatementListItem = null
     this.context.isAssignmentTarget = true
     this.context.isBindingElement = true
-    if (this.lookahead.`type` == Keyword)  /*Keyword */{
+    if (this.lookahead.`type` == Keyword || this.lookahead.`type` == Identifier)  /*Keyword */{
       this.lookahead.value.get[String] match {
         case "export" =>
           if (!this.context.isModule) {
@@ -1639,6 +1639,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           statement = this.parseFunctionDeclaration()
         case "class" =>
           statement = this.parseClassDeclaration()
+        case "type" =>
+          statement = this.parseTypeAliasDeclaration()
         case "let" =>
           statement = if (this.isLexicalDeclaration()) this.parseLexicalDeclaration(new VariableOptions {
             inFor = false
@@ -2344,6 +2346,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       }
       this.context.labelSet -= key
       statement = new Node.LabeledStatement(id, body)
+    } else if (this.matchContextualKeyword("type")) {
+      statement = parseTypeAliasDeclaration()
     } else {
       this.consumeSemicolon()
       statement = new Node.ExpressionStatement(expr)
@@ -3099,6 +3103,15 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val classBody = this.parseClassBody()
     this.context.strict = previousStrict
     this.finalize(node, new Node.ClassDeclaration(id, superClass, classBody))
+  }
+
+  def parseTypeAliasDeclaration(): Node.TypeAliasDeclaration = {
+    val node = this.createNode()
+    this.expectKeyword("type")
+    val name = this.parseIdentifierName()
+    this.expect("=")
+    val tpe = this.parseTypeAnnotation()
+    this.finalize(node, new Node.TypeAliasDeclaration(name, tpe))
   }
   
   def parseClassExpression(): Node.ClassExpression = {

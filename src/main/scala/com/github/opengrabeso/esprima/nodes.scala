@@ -224,6 +224,9 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
+  case class TypeAliasDeclaration(id: Identifier, tpe: TypeAnnotation) extends Node with Declaration with Statement {
+    override def clone = copy().copyNode(this)
+  }
 
   case class ClassExpression(var id: Identifier, var superClass: Identifier, var body: ClassBody) extends Node with Expression {
 
