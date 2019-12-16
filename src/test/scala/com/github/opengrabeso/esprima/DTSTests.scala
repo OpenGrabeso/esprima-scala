@@ -299,6 +299,16 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
 
   }
 
+  it should "Parse export const declarations" in {
+    val input = """
+      export const A: number;
+      export const B: number;
+      """
+
+    val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
+
+  }
 
   behavior of "Parsing Three.js d.ts"
 

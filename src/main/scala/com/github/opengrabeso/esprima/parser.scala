@@ -1694,7 +1694,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         if (this.`match`("=")) {
           this.nextToken()
           init = this.isolateCoverGrammar(this.parseAssignmentExpression)
-        } else {
+        } else if (typeAnnotation == null) {
           this.throwError(Messages.DeclarationMissingInitializer, "const")
         }
       }
