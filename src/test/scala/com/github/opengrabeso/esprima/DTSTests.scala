@@ -76,6 +76,18 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
+  it should "Parse exported namespace" in {
+    val input = """
+        export namespace A {
+          export function f(u: any[]): any;
+          export function g(u: any): any;
+        };
+        """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
   it should "Parse a function with a type annotation" in {
     val input =
       """

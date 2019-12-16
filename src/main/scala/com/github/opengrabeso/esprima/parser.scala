@@ -2926,6 +2926,24 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, Node.TypeName(Node.Identifier("jsFunction")))
   }
 
+  def parseNamespace(): Node.Declaration = {
+    val node = this.createNode()
+    this.expectKeyword("namespace")
+    val name = this.parseIdentifierName()
+    this.expect("{")
+
+    // TODO: proper parsing
+    var level = 1
+    do {
+      this.nextToken()
+      if (this.`match`("{")) level += 1
+      else if (this.`match`("}")) level -= 1
+    } while (level > 0 && this.lookahead.`type` != EOF)
+    this.nextToken()
+
+    this.finalize(node, Node.ClassDeclaration(name, null, null))
+  }
+
   def parsePrimaryType(): Node.TypeAnnotation = {
     val node = this.createNode()
 
@@ -3363,6 +3381,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           })
         case "var" | "class" | "function" | "interface" | "type" | "enum" =>
           declaration = this.parseStatementListItem()
+        case "namespace" =>
+          declaration = this.parseNamespace()
         case _ =>
           this.throwUnexpectedToken(this.lookahead)
       }
