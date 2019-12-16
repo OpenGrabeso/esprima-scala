@@ -2993,6 +2993,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, parseUnion(tpe))
   }
 
+
   // https://tc39.github.io/ecma262/#sec-class-definitions
   def parseClassElement(hasConstructor: ByRef[Boolean]): Node.MethodDefinition = {
     var token = this.lookahead
@@ -3051,6 +3052,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         key = this.parseObjectPropertyKey()
         value = this.parseSetterMethod()
       } else {
+        // normal member may be generic
+        if (this.`match`("<")) {
+          val typePars = this.parseTypeParameterList()
+          // TODO: store typePars
+        }
+
         // normal member may be optional
         if (this.`match`("?")) {
           // TODO: store optionality
@@ -3157,7 +3164,22 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val tpe = this.parseTypeAnnotation()
     this.finalize(node, new Node.TypeAliasDeclaration(name, tpe))
   }
-  
+
+  def parseTypeParameterList(): Node.Identifier = {
+    val node = this.createNode()
+    this.expect("<")
+    // TODO: proper parsing with extends constraints
+    val name = parseIdentifierName()
+    var level = 1
+    do {
+      this.nextToken()
+      if (this.`match`("<")) level += 1
+      else if (this.`match`(">")) level -= 1
+    } while (level > 0 && this.lookahead.`type` != EOF)
+    this.nextToken()
+    this.finalize(node, name)
+  }
+
   def parseClassExpression(): Node.ClassExpression = {
     val node = this.createNode()
     val previousStrict = this.context.strict

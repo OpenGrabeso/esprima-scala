@@ -122,6 +122,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         """.stripMargin
 
     val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
 
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("Range"), null, ClassBody(Seq(
@@ -129,7 +130,6 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         MethodDefinition(Identifier("min"), NamedType("number"), _, _, _, false)
       ))), _, _) =>
     }
-    assert(tree.errors.isEmpty)
   }
 
   it should "Parse a class with a constructor" in {
@@ -140,12 +140,12 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         """
 
     val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("Range"), null, ClassBody(Seq(
         Method("constructor", Seq(("min", NamedType("number"), null, false), ("max", NamedType("number"), null, false)), null, "constructor"),
       ))), _, _) =>
     }
-    assert(tree.errors.isEmpty)
   }
 
   it should "Parse a class with a typed member functions" in {
@@ -160,6 +160,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         """
 
     val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("Range"), null, ClassBody(Seq(
         Method("set", Seq(("min", NamedType("number"), null, false), ("max", NamedType("number"), null, false)), NamedType("boolean"), _),
@@ -169,7 +170,6 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         Method("equals", Seq(("box", NamedType("Range"), null, false)), NamedType("boolean"), _),
       ))), _, _) =>
     }
-    assert(tree.errors.isEmpty)
 
   }
 
@@ -211,13 +211,13 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         """
 
     val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("A"), null, ClassBody(Seq(
         MethodDefinition(Identifier("a"), ArrayType(NamedType("number")), _, _, _, false),
         Method("set", Seq(("v", ArrayType(NamedType("number")), null, false)), NamedType("void"), _),
       ))), _, _) =>
     }
-    assert(tree.errors.isEmpty)
 
   }
 
@@ -229,13 +229,23 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         """
 
     val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("C"), null, ClassBody(Seq(
       Method("set", Seq(("a", TypeReference(NamedType("ArrayLike"), NamedType("number")), null, false)), NamedType("void"), _),
       ))), _, _) =>
     }
-    assert(tree.errors.isEmpty)
+  }
 
+  it should "Parse a class with generic member methods" in {
+    val input ="""
+      export class C {
+        fun<T extends Object3D>(data: T): T;
+      }
+      """
+
+    val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
   }
 
   it should "Parse a class with a union type members" in {
@@ -278,6 +288,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         """
 
     val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
     assert(tree.errors.isEmpty)
   }
 
@@ -306,8 +317,8 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
       """
 
     val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
     assert(tree.errors.isEmpty)
-
   }
 
   behavior of "Parsing Three.js d.ts"
