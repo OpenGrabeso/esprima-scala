@@ -202,7 +202,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
-  it should "Parse a class with an array members" in {
+  it should "Parse a class with array members" in {
     val input ="""
         export class A {
           a: number[];
@@ -248,7 +248,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
-  it should "Parse a class with a union type members" in {
+  it should "Parse a class with union type members" in {
     val input ="""
         export class A {
           a: number | null;
@@ -265,6 +265,19 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
       ))), _, _) =>
     }
 
+  }
+
+  it should "Parse a class with function members" in {
+    val input ="""
+        export class A {
+          a: () => void;
+          b: (x: number) => number;
+        }
+        """
+
+    val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
+    assert(tree.body.nonEmpty)
   }
 
   it should "Parse a type declaration" in {
