@@ -81,8 +81,18 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         export namespace A {
           export function f(u: any[]): any;
           export function g(u: any): any;
+          export class C {
+            m: number;
+          };
         };
         """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
+  it should "Parse a variable with a qualified type annotation" in {
+    val input = "var answer: Some.Value"
     val tree = parse(input, DTSOptions)
     assert(tree.body.nonEmpty)
     assert(tree.errors.isEmpty)
@@ -235,6 +245,17 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
       Method("set", Seq(("a", TypeReference(NamedType("ArrayLike"), NamedType("number")), null, false)), NamedType("void"), _),
       ))), _, _) =>
     }
+  }
+
+  it should "Parse a class with static member methods" in {
+    val input ="""
+      export class C {
+        static fun(data: string): string;
+      }
+      """
+
+    val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
   }
 
   it should "Parse a class with generic member methods" in {

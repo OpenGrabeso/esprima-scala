@@ -2878,7 +2878,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         token.`type` == StringLiteral || token.`type` == NumericLiteral
     ) {
       val typeString = token.value.get[String]
-      Node.TypeName(Node.Identifier(typeString))
+      if (token.`type` == Identifier && this.`match`(".")) {
+        // TODO: store package name properly
+        this.nextToken()
+        Node.TypeName(parseIdentifierName())
+      } else {
+        Node.TypeName(this.finalize(node, Node.Identifier(typeString)))
+      }
+
     } else {
       tolerateUnexpectedToken(token, "Type annotation expected")
       Node.TypeName(null)
