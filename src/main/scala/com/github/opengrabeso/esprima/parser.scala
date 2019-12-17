@@ -726,7 +726,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     case Punctuator =>
       if (token.value === "[") {
         key = this.isolateCoverGrammar(this.parseAssignmentExpression).asInstanceOf[Node.PropertyKey] // PORT: fix incorrect type
-        if (allowType && this.`match`(":")) {
+        if (options.typescript && allowType && this.`match`(":")) {
           this.nextToken()
           `type` = this.parseTypeAnnotation()
         }
@@ -1656,11 +1656,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           }
         case "class" =>
           statement = this.parseClassDeclaration()
-        case "interface" if this.isLexicalDeclaration() =>
+        case "interface" if options.typescript && this.isLexicalDeclaration() =>
           statement = this.parseClassDeclaration(keyword = "interface")
-        case "type" if this.isLexicalDeclaration() => // may be normal identifier when not in ts
+        case "type" if options.typescript && this.isLexicalDeclaration() => // may be normal identifier when not in ts
           statement = this.parseTypeAliasDeclaration()
-        case "enum" if this.isLexicalDeclaration() =>
+        case "enum" if options.typescript && this.isLexicalDeclaration() =>
           statement = this.parseEnumDeclaration()
         case "let" =>
           statement = if (this.isLexicalDeclaration()) this.parseLexicalDeclaration(new VariableOptions {
@@ -1704,7 +1704,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     var init: Node.Expression = null
     var typeAnnotation: Node.TypeAnnotation = null
-    if (this.`match`(":")) {
+    if (self.options.typescript && this.`match`(":")) {
       this.nextToken()
       typeAnnotation = parseTypeAnnotation()
     }
@@ -1887,7 +1887,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.nextToken()
       optional = true
     }
-    if (this.`match`(":")) {
+    if (options.typescript && this.`match`(":")) {
       this.nextToken()
       `type` = this.parseTypeAnnotation()
     }
@@ -1942,7 +1942,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     var init: Node.Expression = null
     var typeAnnotation: Node.TypeAnnotation = null
-    if (this.`match`(":")) {
+    if (self.options.typescript && this.`match`(":")) {
       this.nextToken()
       typeAnnotation = parseTypeAnnotation()
     }
@@ -2350,7 +2350,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       }
       this.context.labelSet(key) = true
       var body: Node.Statement = null
-      if (this.matchKeyword("class") || this.matchContextualKeyword("interface") || matchTwoKeywords("abstract", "class")) {
+      if (this.matchKeyword("class") || this.matchContextualKeyword("interface") || options.typescript && matchTwoKeywords("abstract", "class")) {
         this.tolerateUnexpectedToken(this.lookahead)
         body = this.parseClassDeclaration(keyword = this.lookahead.value)
       } else if (this.matchKeyword("function")) {
@@ -2567,7 +2567,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.expect("...")
     val arg = this.parsePattern(params)
     var `type`: Node.TypeAnnotation = null
-    if (this.`match`(":")) {
+    if (options.typescript && this.`match`(":")) {
       this.nextToken()
       `type` = this.parseTypeAnnotation()
     }
@@ -2677,7 +2677,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     if (formalParameters.message) {
       message = formalParameters.message
     }
-    if (this.`match`(":")) {
+    if (options.typescript && this.`match`(":")) {
       this.nextToken()
       typeAnnotation = parseTypeAnnotation()
     }
@@ -2910,7 +2910,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       tolerateUnexpectedToken(token, "Type annotation expected")
       Node.TypeName(null)
     }
-    if (this.`match`("<")) {
+    if (options.typescript && this.`match`("<")) {
       this.nextToken()
       // TODO: multiple type arguments
       val typeArg = parseTypeAnnotation()
@@ -2942,7 +2942,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
 
       // TODO: maybe we could use parseFormalParameters or other existing method?
       val name = this.parseIdentifierName(token)
-      val tpe = if (this.`match`(":")) {
+      val tpe = if (options.typescript && this.`match`(":")) {
         this.nextToken()
         this.parseTypeAnnotation()
       } else null
@@ -2950,7 +2950,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       while (this.`match`(",")) {
         this.nextToken()
         val name = this.parseIdentifierName()
-        val tpe = if (this.`match`(":")) {
+        val tpe = if (options.typescript && this.`match`(":")) {
           this.nextToken()
           this.parseTypeAnnotation()
         } else null
@@ -3493,7 +3493,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         // export default function () {}
         val declaration = this.parseFunctionDeclaration(true)
         exportDeclaration = this.finalize(node, new Node.ExportDefaultDeclaration(declaration))
-      } else if (this.matchKeyword("class") || this.matchContextualKeyword("interface") || matchTwoKeywords("abstract", "class")) {
+      } else if (this.matchKeyword("class") || options.typescript && this.matchContextualKeyword("interface") || options.typescript && matchTwoKeywords("abstract", "class")) {
         // export default class foo {}
         val declaration = this.parseClassDeclaration(true, keyword = this.lookahead.value)
         exportDeclaration = this.finalize(node, new Node.ExportDefaultDeclaration(declaration))
@@ -3533,7 +3533,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           declaration = this.parseLexicalDeclaration(new VariableOptions {
             inFor = false
           })
-        case "abstract" =>
+        case "abstract" if options.typescript =>
           this.nextToken()
           if (this.matchKeyword("class")) {
             declaration = this.parseStatementListItem()
