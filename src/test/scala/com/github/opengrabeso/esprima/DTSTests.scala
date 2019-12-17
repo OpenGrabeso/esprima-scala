@@ -9,6 +9,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     range = true
     attachComment = true
     tolerant = true
+    typescript = true
     sourceType = "module" // allow exports
   }
 
@@ -279,6 +280,20 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     val input ="""
       export class C {
         fun<T extends Object3D>(data: T): T;
+      }
+      """
+
+    val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
+  }
+
+  it should "Parse a generic class" in {
+    val input ="""
+      export class A<T> extends B<T> {
+        fun(data: T): T;
+      }
+      class C<T> extends B<T> {
+        fun(data: T): T;
       }
       """
 

@@ -27,6 +27,7 @@ object Parser {
     var tokens: Boolean = false
     var comment: Boolean = false
     var tolerant : Boolean = false
+    var typescript : Boolean = false // sometimes it is neccessary to know it we are parsing TypeScript or JavaScript
     var attachComment: Boolean = false
     var sourceType: String = _
   }
@@ -2911,6 +2912,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     if (this.`match`("<")) {
       this.nextToken()
+      // TODO: multiple type arguments
       val typeArg = parseTypeAnnotation()
       this.expect(">")
       this.finalize(node, Node.TypeReference(value, typeArg))
@@ -3128,7 +3130,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         value = this.parseSetterMethod()
       } else {
         // normal member may be generic
-        if (this.`match`("<")) {
+        if (options.typescript && this.`match`("<")) {
           val typePars = this.parseTypeParameterList()
           // TODO: store typePars
         }
@@ -3204,22 +3206,48 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val elementList = this.parseClassElementList()
     this.finalize(node, new Node.ClassBody(elementList))
   }
+
+  def parseClassParent(): Node.Identifier = {
+    // parent may be specified as a generic type
+    val t = parseTypeAnnotation()
+    t match {
+      case id: Node.Identifier =>
+        id
+      case Node.TypeName(id) =>
+        id
+      case Node.TypeReference(id, arg) =>
+        id.t
+      case _ =>
+        throwError("Class expected as a parent")
+    }
+  }
   
   def parseClassDeclaration(identifierIsOptional: Boolean = false, keyword: String = "class"): Node.ClassDeclaration = {
     val node = this.createNode()
     val previousStrict = this.context.strict
     this.context.strict = true
     this.expectKeyword(keyword)
-    val id = if (identifierIsOptional && this.lookahead.`type` != Identifier)  /*Identifier */null else this.parseVariableIdentifier()
+    val id = if (identifierIsOptional && this.lookahead.`type` != Identifier)  /*Identifier */null else {
+      val name = this.parseVariableIdentifier()
+      if (options.typescript && this.`match`("<")) {
+        // TODO: store parameter list
+        parseTypeParameterList()
+      }
+      name
+    }
     var superClass: Node.Identifier = null
-    var implementsClass = ArrayBuffer.empty[Node.Identifier]
+    val implementsClass = ArrayBuffer.empty[Node.Identifier]
     if (this.matchKeyword("extends")) {
       this.nextToken()
-      superClass = this.isolateCoverGrammar(this.parseLeftHandSideExpressionAllowCall).asInstanceOf[Node.Identifier]
-      // more tolerant than specs: we use the same parses for class and interface, therefore we allow anything to extend multiple parents
-      while (this.`match`(",")) {
-        this.nextToken()
-        implementsClass.push(this.parseIdentifierName())
+      if (options.typescript) {
+        superClass = this.parseClassParent()
+        // more tolerant than specs: we use the same parser for class and interface, therefore we allow anything to extend multiple parents
+        while (this.`match`(",")) {
+          this.nextToken()
+          implementsClass.push(this.parseClassParent())
+        }
+      } else {
+        superClass = this.isolateCoverGrammar(this.parseLeftHandSideExpressionAllowCall).asInstanceOf[Node.Identifier]
       }
     }
     while (this.matchKeyword(keyword = "implements")) {
@@ -3270,11 +3298,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val name = parseIdentifierName()
     var level = 1
     do {
-      this.nextToken()
       if (this.`match`("<")) level += 1
       else if (this.`match`(">")) level -= 1
+      this.nextToken()
     } while (level > 0 && this.lookahead.`type` != EOF)
-    this.nextToken()
+    //this.expect(">")
     this.finalize(node, name)
   }
 
