@@ -3273,7 +3273,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val name = this.parseIdentifierName()
     this.expect("{")
 
-    do {
+    while (this.lookahead.`type` != EOF && !this.`match`("}")) {
       val memberName = this.parseIdentifierName()
       var memberValue: Node.Expression = null
       if (this.`match`("=")) {
@@ -3283,7 +3283,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       if (!this.`match`("}")) {
         this.expectCommaSeparator()
       }
-    } while (this.lookahead.`type` != EOF && !this.`match`("}"))
+    }
     this.expect("}")
     this.finalize(node, new Node.ClassDeclaration(name, null, null))
   }

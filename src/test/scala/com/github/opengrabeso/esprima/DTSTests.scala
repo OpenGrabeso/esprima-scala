@@ -420,6 +420,8 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         B0 = 100,
         B1
       };
+      export enum E {};
+      enum F {};
       """
 
     val tree = parse(input, DTSOptions)
