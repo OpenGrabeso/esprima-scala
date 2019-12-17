@@ -708,32 +708,42 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.AsyncFunctionExpression(null, params.params, method))
   }
   
-  def parseObjectPropertyKey(): Node.PropertyKey = {
+  def parseObjectPropertyKeyWithType(allowType: Boolean = true): (Node.PropertyKey, Node.TypeAnnotation) = {
     val node = this.createNode()
     val token = this.nextToken()
     var key: Node.PropertyKey = null
+    var `type`: Node.TypeAnnotation = null
     token.`type` match {
-       /*StringLiteral */case StringLiteral | NumericLiteral =>
-         /*NumericLiteral */if (this.context.strict && token.octal) {
-          this.tolerateUnexpectedToken(token, Messages.StrictOctalLiteral)
-        }
-        val raw = this.getTokenRaw(token)
-        key = this.finalize(node, new Node.Literal(token.value, raw))
-      case Identifier | BooleanLiteral | NullLiteral | Keyword =>
-        key = this.finalize(node, new Node.Identifier(token.value))
-      case Punctuator =>
-        if (token.value === "[") {
-          key = this.isolateCoverGrammar(this.parseAssignmentExpression).asInstanceOf[Node.PropertyKey] // PORT: fix incorrect type
-          this.expect("]")
-        } else {
-          key = this.throwUnexpectedToken(token)
-        }
-      case _ =>
-        key = this.throwUnexpectedToken(token)
+      /*StringLiteral */case StringLiteral | NumericLiteral =>
+      /*NumericLiteral */if (this.context.strict && token.octal) {
+      this.tolerateUnexpectedToken(token, Messages.StrictOctalLiteral)
     }
-    key
+      val raw = this.getTokenRaw(token)
+      key = this.finalize(node, new Node.Literal(token.value, raw))
+    case Identifier | BooleanLiteral | NullLiteral | Keyword =>
+      key = this.finalize(node, new Node.Identifier(token.value))
+    case Punctuator =>
+      if (token.value === "[") {
+        key = this.isolateCoverGrammar(this.parseAssignmentExpression).asInstanceOf[Node.PropertyKey] // PORT: fix incorrect type
+        if (allowType && this.`match`(":")) {
+          this.nextToken()
+          `type` = this.parseTypeAnnotation()
+        }
+        this.expect("]")
+      } else {
+        key = this.throwUnexpectedToken(token)
+      }
+    case _ =>
+      key = this.throwUnexpectedToken(token)
+    }
+    (key, `type`)
   }
-  
+
+  def parseObjectPropertyKey(): Node.PropertyKey = {
+    parseObjectPropertyKeyWithType(false)._1
+  }
+
+
   def isPropertyKey(key: Node.Node, value: String) = {
     key.isInstanceOf[Node.Identifier] && key.asInstanceOf[Node.Identifier].name == value || key.isInstanceOf[Node.Literal] && key.asInstanceOf[Node.Literal].value === value
   }
@@ -3028,6 +3038,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, parseUnion(tpe))
   }
 
+  def previewToken(): RawToken = {
+    val state = this.scanner.saveState()
+    this.scanner.scanComments()
+    val next = this.scanner.lex()
+    this.scanner.restoreState(state)
+    next
+  }
 
   // https://tc39.github.io/ecma262/#sec-class-definitions
   def parseClassElement(hasConstructor: ByRef[Boolean]): Node.MethodDefinition = {
@@ -3045,7 +3062,21 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.nextToken()
     } else {
       computed = this.`match`("[")
-      key = this.parseObjectPropertyKey()
+
+      val t = this.parseObjectPropertyKeyWithType(computed)
+      if (computed && t._2) { // TS IndexSignature
+        if (this.`match`(":")) {
+          this.nextToken()
+          `type` = parseTypeAnnotation()
+          kind = "init"
+        }
+        key = Node.Identifier("") // TODO: store somehow
+      } else {
+        key = t._1
+      }
+
+      // TODO: handle IndexSignature
+
       val id = key.asInstanceOf[Node.Identifier]
       if (id.name == "static" && (this.qualifiedPropertyName(this.lookahead) || this.`match`("*"))) {
         token = this.lookahead

@@ -212,6 +212,23 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
+  it should "Parse a class with index signature" in {
+    val input ="""
+        var a = {
+          [name]: "value"
+        };
+        export class A {
+          [data: string]: string;
+        }
+        export class B {
+          [data: number]: any;
+        }
+        """
+
+    val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
+  }
+
   it should "Parse a class with array members" in {
     val input ="""
         export class A {
