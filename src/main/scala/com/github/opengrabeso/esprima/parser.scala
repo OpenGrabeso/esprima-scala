@@ -1646,6 +1646,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           })
         case "function" =>
           statement = this.parseFunctionDeclaration()
+        case "abstract" =>
+          this.nextToken()
+          if (this.matchKeyword("class")) {
+            statement = this.parseClassDeclaration()
+          } else {
+            throwUnexpectedToken(lookahead)
+          }
         case "class" =>
           statement = this.parseClassDeclaration()
         case "interface" if this.isLexicalDeclaration() =>
@@ -2340,7 +2347,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       }
       this.context.labelSet(key) = true
       var body: Node.Statement = null
-      if (this.matchKeyword("class") || this.matchContextualKeyword("interface")) {
+      if (this.matchKeyword("class") || this.matchContextualKeyword("interface") || matchTwoKeywords("abstract", "class")) {
         this.tolerateUnexpectedToken(this.lookahead)
         body = this.parseClassDeclaration(keyword = this.lookahead.value)
       } else if (this.matchKeyword("function")) {
@@ -3413,7 +3420,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     this.finalize(node, new Node.ExportSpecifier(local, exported))
   }
-  
+
+  def matchTwoKeywords(s: String, k: String) = {
+    val next = previewToken()
+    this.matchKeyword(s) && next.`type` == Keyword && next.value === k
+  }
+
   def parseExportDeclaration(): Node.ExportDeclaration = {
     if (this.context.inFunctionBody) {
       this.throwError(Messages.IllegalExportDeclaration)
@@ -3429,7 +3441,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         // export default function () {}
         val declaration = this.parseFunctionDeclaration(true)
         exportDeclaration = this.finalize(node, new Node.ExportDefaultDeclaration(declaration))
-      } else if (this.matchKeyword("class") || this.matchContextualKeyword("interface")) {
+      } else if (this.matchKeyword("class") || this.matchContextualKeyword("interface") || matchTwoKeywords("abstract", "class")) {
         // export default class foo {}
         val declaration = this.parseClassDeclaration(true, keyword = this.lookahead.value)
         exportDeclaration = this.finalize(node, new Node.ExportDefaultDeclaration(declaration))
@@ -3469,6 +3481,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           declaration = this.parseLexicalDeclaration(new VariableOptions {
             inFor = false
           })
+        case "abstract" =>
+          this.nextToken()
+          if (this.matchKeyword("class")) {
+            declaration = this.parseStatementListItem()
+          } else {
+            throwUnexpectedToken(lookahead)
+          }
         case "var" | "class" | "function" | "interface" | "type" | "enum" =>
           declaration = this.parseStatementListItem()
         case "namespace" =>

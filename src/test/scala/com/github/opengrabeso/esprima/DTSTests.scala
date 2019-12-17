@@ -350,6 +350,22 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
+  it should "Parse abstract class declarations" in {
+    val input = """
+        abstract class A {
+          a: number | null;
+        }
+
+        export abstract class B {
+          b: string;
+        }
+        """
+
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
   it should "Parse a class implementing interfaces" in {
     val input = """
         class C extends A implements B {
