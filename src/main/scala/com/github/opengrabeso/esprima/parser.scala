@@ -726,7 +726,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     case Punctuator =>
       if (token.value === "[") {
         key = this.isolateCoverGrammar(this.parseAssignmentExpression).asInstanceOf[Node.PropertyKey] // PORT: fix incorrect type
-        if (options.typescript && allowType && this.`match`(":")) {
+        if (options.typescript && allowType && this.`match`(":")) { // encountered IndexSignature
           this.nextToken()
           `type` = this.parseTypeAnnotation()
         }
