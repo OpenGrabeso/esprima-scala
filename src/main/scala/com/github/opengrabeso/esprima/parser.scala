@@ -1659,6 +1659,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           statement = this.parseClassDeclaration(keyword = "interface")
         case "type" if this.isLexicalDeclaration() => // may be normal identifier when not in ts
           statement = this.parseTypeAliasDeclaration()
+        case "enum" if this.isLexicalDeclaration() =>
+          statement = this.parseEnumDeclaration()
         case "let" =>
           statement = if (this.isLexicalDeclaration()) this.parseLexicalDeclaration(new VariableOptions {
             inFor = false
@@ -3237,6 +3239,28 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.expect("=")
     val tpe = this.parseTypeAnnotation()
     this.finalize(node, new Node.TypeAliasDeclaration(name, tpe))
+  }
+
+  def parseEnumDeclaration(): Node.ClassDeclaration = {
+    // TODO: parse properly, create a dedicate enum implementation
+    val node = this.createNode()
+    this.expectKeyword("enum")
+    val name = this.parseIdentifierName()
+    this.expect("{")
+
+    do {
+      val memberName = this.parseIdentifierName()
+      var memberValue: Node.Expression = null
+      if (this.`match`("=")) {
+        this.nextToken()
+        memberValue = parseAssignmentExpression()
+      }
+      if (!this.`match`("}")) {
+        this.expectCommaSeparator()
+      }
+    } while (this.lookahead.`type` != EOF && !this.`match`("}"))
+    this.expect("}")
+    this.finalize(node, new Node.ClassDeclaration(name, null, null))
   }
 
   def parseTypeParameterList(): Node.Identifier = {

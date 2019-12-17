@@ -395,6 +395,23 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
+  it should "Parse export enum declarations" in {
+    val input = """
+      export enum A {
+        A0,
+        A1
+      };
+      enum B {
+        B0 = 100,
+        B1
+      };
+      """
+
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
   behavior of "Parsing Three.js d.ts"
 
   it should "process Box2" in {
