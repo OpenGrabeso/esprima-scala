@@ -687,7 +687,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val params = this.parseFormalParameters()
     var `type`: Node.TypeAnnotation = null
     // parse return type
-    if (this.`match`(":")) {
+    if (options.typescript && this.`match`(":")) {
       this.nextToken()
       `type` = this.parseTypeAnnotation()
     }
@@ -1647,7 +1647,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           })
         case "function" =>
           statement = this.parseFunctionDeclaration()
-        case "abstract" =>
+        case "abstract" if options.typescript =>
           this.nextToken()
           if (this.matchKeyword("class")) {
             statement = this.parseClassDeclaration()
@@ -2367,7 +2367,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       }
       this.context.labelSet -= key
       statement = new Node.LabeledStatement(id, body)
-    } else if (this.matchContextualKeyword("type")) {
+    } else if (options.typescript && this.matchContextualKeyword("type")) {
       statement = parseTypeAliasDeclaration()
     } else {
       this.consumeSemicolon()
@@ -2502,7 +2502,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   
   // https://tc39.github.io/ecma262/#sec-function-definitions
   def parseFunctionSourceElements() = {
-    if (this.`match`("{")) {
+    if (!options.typescript || this.`match`("{")) {
       val node = this.createNode()
       this.expect("{")
       val body = this.parseDirectivePrologues()
@@ -2530,7 +2530,6 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.finalize(node, new Node.BlockStatement(body))
     } else {
       // function with no body - common in ts/d.ts (interfaces, type declarations)
-      // note: we currently parse it as an empty bodied function, which is wrong - we may accept invalid JS input
       val node = this.createNode()
       this.finalize(node, new Node.BlockStatement(Nil))
     }
@@ -3075,7 +3074,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       computed = this.`match`("[")
 
       val t = this.parseObjectPropertyKeyWithType(computed)
-      if (computed && t._2) { // TS IndexSignature
+      if (options.typescript && computed && t._2) { // TS IndexSignature
         if (this.`match`(":")) {
           this.nextToken()
           `type` = parseTypeAnnotation()
@@ -3085,8 +3084,6 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       } else {
         key = t._1
       }
-
-      // TODO: handle IndexSignature
 
       val id = key.asInstanceOf[Node.Identifier]
       if (id.name == "static" && (this.qualifiedPropertyName(this.lookahead) || this.`match`("*"))) {
@@ -3136,13 +3133,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         }
 
         // normal member may be optional
-        if (this.`match`("?")) {
+        if (options.typescript && this.`match`("?")) {
           // TODO: store optionality
           this.nextToken()
         }
       }
 
-      if (this.`match`(":")) {
+      if (options.typescript && this.`match`(":")) {
         this.nextToken()
         `type` = parseTypeAnnotation()
         kind = "init"
@@ -3175,9 +3172,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           this.throwUnexpectedToken(token, Messages.ConstructorSpecialMethod)
         }
         // multiple constructors possible with TS
-        /*if (hasConstructor.value) {
+        if (!options.typescript && hasConstructor.value) {
           this.throwUnexpectedToken(token, Messages.DuplicateConstructor)
-        } else*/ {
+        } else {
           hasConstructor.value = true
         }
         kind = "constructor"
@@ -3250,7 +3247,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         superClass = this.isolateCoverGrammar(this.parseLeftHandSideExpressionAllowCall).asInstanceOf[Node.Identifier]
       }
     }
-    while (this.matchKeyword(keyword = "implements")) {
+    if (options.typescript) while (this.matchKeyword(keyword = "implements")) {
       this.nextToken()
       implementsClass.push(this.parseIdentifierName())
     }
@@ -3540,9 +3537,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           } else {
             throwUnexpectedToken(lookahead)
           }
-        case "var" | "class" | "function" | "interface" | "type" | "enum" =>
+        case "var" | "class" | "function" =>
           declaration = this.parseStatementListItem()
-        case "namespace" =>
+        case "interface" | "type" | "enum" if options.typescript =>
+          declaration = this.parseStatementListItem()
+        case "namespace" if options.typescript =>
           declaration = this.parseNamespace()
         case _ =>
           this.throwUnexpectedToken(this.lookahead)
