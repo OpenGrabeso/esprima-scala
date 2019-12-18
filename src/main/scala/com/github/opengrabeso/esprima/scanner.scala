@@ -580,7 +580,11 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         }
       case "}" =>
         this.index += 1
-        this.curlyStack.pop()
+        if (this.curlyStack.nonEmpty) {
+          this.curlyStack.pop()
+        } else {
+          this.throwUnexpectedToken()
+        }
       case ")" | ";" | "," | "[" | "]" | ":" | "?" | "~" =>
         this.index += 1
       case _ =>
