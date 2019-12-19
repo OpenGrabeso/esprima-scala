@@ -199,7 +199,7 @@ object Node {
 
   case class BreakStatement(var label: Identifier) extends Node with Statement {
 
-    override def clone = copy().copyNode(this).copyNode(this)
+    override def clone = copy().copyNode(this)
   }
 
 
