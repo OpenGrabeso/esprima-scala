@@ -1345,7 +1345,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     if (token.`type` == Punctuator)  /*Punctuator */{
       precedence = this.operatorPrecedence(op)
     } else if (token.`type` == Keyword)  /*Keyword */{
-      precedence = if (op == "instanceof" || this.context.allowIn && op == "in") 7 else 0
+      precedence = if (op == "as" || op == "instanceof" || this.context.allowIn && op == "in") 7 else 0
+    } else if (token.`type` == Identifier && options.typescript)  {
+      precedence = if (op == "as") 7 else 0
     } else {
       precedence = 0
     }
@@ -1642,12 +1644,24 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
             statement = this.parseImportDeclaration()
           }
         case "const" =>
-          statement = this.parseLexicalDeclaration(new VariableOptions {
-            inFor = false
-          })
+          if (options.typescript && previewToken().value === "enum") {
+            this.nextToken()
+            statement = this.parseEnumDeclaration()
+          } else {
+            statement = this.parseLexicalDeclaration(new VariableOptions {
+              inFor = false
+            })
+          }
         case "function" =>
           statement = this.parseFunctionDeclaration()
         case "abstract" if options.typescript =>
+          this.nextToken()
+          if (this.matchKeyword("class")) {
+            statement = this.parseClassDeclaration()
+          } else {
+            throwUnexpectedToken(lookahead)
+          }
+        case "declare" if options.typescript =>
           this.nextToken()
           if (this.matchKeyword("class")) {
             statement = this.parseClassDeclaration()
@@ -3087,6 +3101,16 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var method = false
     var isStatic = false
     var isAsync = false
+    if (options.typescript) {
+      val modifiers = Seq("public", "protected", "private")
+      if ((this.lookahead.`type` == Keyword || this.lookahead.`type` == Identifier) && modifiers.exists(this.lookahead.value === _)) {
+        this.nextToken() // TODO: store in AST
+      }
+      if (this.matchContextualKeyword("readonly")) {
+        this.nextToken() // TODO: store in AST
+      }
+    }
+
     if (this.`match`("*")) {
       this.nextToken()
     } else {
@@ -3550,9 +3574,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       var declaration: Node.ExportableNamedDeclaration = null
       this.lookahead.value.get[String] match {
         case "let" | "const" =>
-          declaration = this.parseLexicalDeclaration(new VariableOptions {
-            inFor = false
-          })
+          if (options.typescript && previewToken().value === "enum") {
+            this.nextToken()
+            declaration = this.parseEnumDeclaration()
+          } else {
+            declaration = this.parseLexicalDeclaration(new VariableOptions {
+              inFor = false
+            })
+          }
         case "abstract" if options.typescript =>
           this.nextToken()
           if (this.matchKeyword("class")) {
