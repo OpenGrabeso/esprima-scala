@@ -2933,6 +2933,23 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, Node.TypeName(Node.Identifier("jsObject")))
   }
 
+  def parseTupleType(token: RawToken): Node.TypeAnnotation = {
+    assert(token.`match`("["))
+    val node = this.startNode(token)
+    val types = mutable.ArrayBuffer.empty[Node.TypeAnnotation]
+    while (!this.`match`("]")) {
+      types += parseTypeAnnotation()
+      if (this.`match`(",")) {
+        this.nextToken()
+      } else if (!this.`match`("]")) {
+        this.throwUnexpectedToken(this.lookahead)
+      }
+    }
+    this.expect("]")
+    this.finalize(node, Node.TupleType(types))
+  }
+
+
   def parseFunctionType(token: RawToken): Node.TypeAnnotation = {
     val node = this.startNode(token)
     var pars = mutable.ArrayBuffer.empty[(Node.Identifier, Node.TypeAnnotation)]
@@ -3005,6 +3022,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       parseObjectType(token)
     } else if (token.`match`("(")) {
       parseTypeStartingWithParen(token)
+    } else if (token.`match`("[")) {
+      parseTupleType(token)
     } else {
       parseTypeReference(token)
     }

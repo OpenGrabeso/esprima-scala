@@ -115,6 +115,10 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
+  case class TupleType(t: Seq[TypeAnnotation]) extends TypeAnnotation {
+    override def clone = copy().copyNode(this)
+  }
+
   case class ArrayPattern(var elements: collection.Seq[ArrayPatternElement]) extends Node with BindingPattern {
     override def clone = copy().copyNode(this)
   }
