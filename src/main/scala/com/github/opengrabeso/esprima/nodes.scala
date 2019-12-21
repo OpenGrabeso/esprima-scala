@@ -120,6 +120,10 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
+  case class FunctionType(var params: collection.Seq[FunctionParameter], var returnType: TypeAnnotation) extends TypeAnnotation {
+    override def clone = copy().copyNode(this)
+  }
+
   case class TypeReference(t: TypeName, arg: TypeAnnotation) extends TypeAnnotation {
     override def clone = copy().copyNode(this)
   }

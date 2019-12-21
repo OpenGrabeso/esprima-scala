@@ -2988,7 +2988,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   }
 
 
-  def parseFunctionType(token: RawToken): Node.TypeAnnotation = {
+  def parseFunctionType(token: RawToken): Node.FunctionType = {
     val node = this.startNode(token)
     var pars = mutable.ArrayBuffer.empty[(Node.Identifier, Node.TypeAnnotation)]
     if (!token.`match`(")")) {
@@ -3016,8 +3016,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.expect("=>")
 
     val ret = parseTypeAnnotation()
-    // TODO: store pars and ret
-    this.finalize(node, Node.TypeName(Node.Identifier("jsFunction")))
+    val paramTypes = pars.map(p => new Node.FunctionParameterWithType(p._1, p._2, null, false))
+    this.finalize(node, Node.FunctionType(paramTypes, ret))
   }
 
   // may be a function type or a parenthesised type
