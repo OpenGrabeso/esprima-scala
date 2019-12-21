@@ -208,6 +208,15 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
+  case class EnumBodyElement(var name: Identifier, var value: Expression) extends Node {
+    override def clone = copy().copyNode(this)
+  }
+  case class EnumBody(var body: Seq[EnumBodyElement]) extends Node {
+    override def clone = copy().copyNode(this)
+  }
+  case class EnumDeclaration(var name: Identifier, var body: EnumBody) extends Node with Declaration {
+    override def clone = copy().copyNode(this)
+  }
 
   case class CatchClause(var param: BindingIdentifierOrPattern, var body: BlockStatement) extends Node {
 

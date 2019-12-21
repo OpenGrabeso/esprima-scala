@@ -3313,26 +3313,37 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.TypeAliasDeclaration(name, tpe))
   }
 
-  def parseEnumDeclaration(): Node.ClassDeclaration = {
-    // TODO: parse properly, create a dedicate enum implementation
+  def parseEnumBodyElement(): Node.EnumBodyElement = {
     val node = this.createNode()
-    this.expectKeyword("enum")
     val name = this.parseIdentifierName()
+    var value: Node.Expression = null
+    if (this.`match`("=")) {
+      this.nextToken()
+      value = parseAssignmentExpression()
+    }
+    this.finalize(node, new Node.EnumBodyElement(name, value))
+  }
+  def parseEnumBody(): Node.EnumBody = {
+    val node = this.createNode()
     this.expect("{")
 
+    val body = mutable.ArrayBuffer.empty[Node.EnumBodyElement]
     while (this.lookahead.`type` != EOF && !this.`match`("}")) {
-      val memberName = this.parseIdentifierName()
-      var memberValue: Node.Expression = null
-      if (this.`match`("=")) {
-        this.nextToken()
-        memberValue = parseAssignmentExpression()
-      }
+      body += parseEnumBodyElement()
       if (!this.`match`("}")) {
         this.expectCommaSeparator()
       }
     }
     this.expect("}")
-    this.finalize(node, new Node.ClassDeclaration(name, null, null))
+    this.finalize(node, new Node.EnumBody(body))
+  }
+  def parseEnumDeclaration(): Node.EnumDeclaration = {
+    val node = this.createNode()
+    this.expectKeyword("enum")
+    val name = this.parseIdentifierName()
+
+    val body = parseEnumBody()
+    this.finalize(node, new Node.EnumDeclaration(name, body))
   }
 
   def parseTypeParameterList(): Node.Identifier = {
