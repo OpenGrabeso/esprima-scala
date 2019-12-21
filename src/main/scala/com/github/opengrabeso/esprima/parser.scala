@@ -2934,17 +2934,41 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
   }
 
-  def parseObjectType(token: RawToken): Node.TypeAnnotation = {
-    val node = this.startNode(token)
-    // TODO: proper parsing
-    var level = 1
-    do {
-      if (this.`match`("{")) level += 1
-      else if (this.`match`("}")) level -= 1
+  def parseTypeMember(): Node.TypeMember = {
+    val node = this.createNode()
+    if (this.`match`("[")) { // IndexSignature, like { [key: string]: any }
       this.nextToken()
-    } while (level > 0 && this.lookahead.`type` != EOF)
+      val ident = parseIdentifierName()
+      this.expect(":")
+      val t = parseIdentifierName()
+      this.expect("]")
+      this.expect(":")
+      // TODO: store ident and t property
+      val itemType = parseTypeAnnotation()
+      this.finalize(node, Node.TypeMember(null, false, itemType))
+    } else {
+      val ident = parseIdentifierName()
+      val optional = this.`match`("?")
+      if (optional) {
+        this.nextToken()
+      }
+      this.expect(":")
+      val t = parseTypeAnnotation()
+      this.finalize(node, Node.TypeMember(ident, optional, t))
+    }
+  }
 
-    this.finalize(node, Node.TypeName(Node.Identifier("jsObject")))
+  def parseObjectType(token: RawToken): Node.ObjectType = {
+    val node = this.startNode(token)
+
+    val body = mutable.ArrayBuffer.empty[Node.TypeMember]
+    while (!this.`match`("}") && this.lookahead.`type` != EOF) {
+      body += parseTypeMember()
+      this.consumeSemicolon()
+    }
+    this.expect("}")
+
+    this.finalize(node, Node.ObjectType(body))
   }
 
   def parseTupleType(token: RawToken): Node.TypeAnnotation = {
@@ -3123,13 +3147,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           `type` = parseTypeAnnotation()
           kind = "init"
         }
-        key = Node.Identifier("") // TODO: store somehow
+        key = null // TODO: store somehow
       } else {
         key = t._1
       }
 
       val id = key.asInstanceOf[Node.Identifier]
-      if (id.name == "static" && (this.qualifiedPropertyName(this.lookahead) || this.`match`("*"))) {
+      if (id != null && id.name == "static" && (this.qualifiedPropertyName(this.lookahead) || this.`match`("*"))) {
         token = this.lookahead
         isStatic = true
         computed = this.`match`("[")
@@ -3234,7 +3258,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val body = ArrayBuffer.empty[Node.MethodDefinition]
     object hasConstructor extends ByRef[Boolean](false)
     this.expect("{")
-    while (!this.`match`("}")) {
+    while (!this.`match`("}") && this.lookahead.`type` != EOF) {
       if (this.`match`(";")) {
         this.nextToken()
       } else {

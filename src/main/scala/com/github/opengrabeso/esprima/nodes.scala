@@ -77,10 +77,10 @@ object Node {
 
   val ArrowParameterPlaceHolder = "ArrowParameterPlaceHolder"
 
-  class ArrowParameterPlaceHolder extends Node.Node with Node.Expression with Node.FunctionParameter {
+  class ArrowParameterPlaceHolder extends Node with Expression with FunctionParameter {
     override def toString = simpleName
 
-    var params: collection.Seq[Node.ArgumentListElement] = _
+    var params: collection.Seq[ArgumentListElement] = _
     var async: Boolean = _
   }
 
@@ -100,14 +100,23 @@ object Node {
   }
 
   // TypeScript grammar: https://github.com/rbuckton/grammarkdown/blob/master/spec/typescript.grammar
-  case class TypeName(t: Node.Identifier) extends TypeAnnotation {
+  case class TypeName(t: Identifier) extends TypeAnnotation {
     override def clone = copy().copyNode(this)
   }
 
   case class ArrayType(t: TypeAnnotation) extends TypeAnnotation {
     override def clone = copy().copyNode(this)
   }
+
   case class UnionType(left: TypeAnnotation, right: TypeAnnotation) extends TypeAnnotation {
+    override def clone = copy().copyNode(this)
+  }
+
+  case class TypeMember(name: Identifier, optional: Boolean, `type`: TypeAnnotation) extends TypeAnnotation {
+    override def clone = copy().copyNode(this)
+  }
+
+  case class ObjectType(body: collection.Seq[TypeMember]) extends TypeAnnotation {
     override def clone = copy().copyNode(this)
   }
 
@@ -115,7 +124,7 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
-  case class TupleType(t: Seq[TypeAnnotation]) extends TypeAnnotation {
+  case class TupleType(t: collection.Seq[TypeAnnotation]) extends TypeAnnotation {
     override def clone = copy().copyNode(this)
   }
 
@@ -211,12 +220,13 @@ object Node {
   case class EnumBodyElement(var name: Identifier, var value: Expression) extends Node {
     override def clone = copy().copyNode(this)
   }
-  case class EnumBody(var body: Seq[EnumBodyElement]) extends Node {
+  case class EnumBody(var body: collection.Seq[EnumBodyElement]) extends Node {
     override def clone = copy().copyNode(this)
   }
   case class EnumDeclaration(var name: Identifier, var body: EnumBody) extends Node with Declaration {
     override def clone = copy().copyNode(this)
   }
+
 
   case class CatchClause(var param: BindingIdentifierOrPattern, var body: BlockStatement) extends Node {
 
@@ -342,7 +352,7 @@ object Node {
 
   case class FunctionDeclaration(
     var id: Identifier, var params: collection.Seq[FunctionParameter], var body: BlockStatement, var generator: Boolean,
-    var ret: Node.TypeAnnotation
+    var ret: TypeAnnotation
   ) extends Node
     with AFunctionDeclaration with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration with Statement {
 
@@ -354,7 +364,7 @@ object Node {
 
   case class FunctionExpression(
     var id: Identifier, var params: collection.Seq[FunctionParameter], var body: BlockStatement, var generator: Boolean,
-    var ret: Node.TypeAnnotation
+    var ret: TypeAnnotation
   ) extends Node
     with HasGenerator with Expression with PropertyValue {
 
