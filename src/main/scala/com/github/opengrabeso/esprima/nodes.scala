@@ -104,6 +104,10 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
+  case class LiteralType(t: Literal) extends TypeAnnotation {
+    override def clone = copy().copyNode(this)
+  }
+
   case class ArrayType(t: TypeAnnotation) extends TypeAnnotation {
     override def clone = copy().copyNode(this)
   }
@@ -245,7 +249,7 @@ object Node {
 
 
   // ported: added Statement because of parseLabelledStatement
-  case class ClassDeclaration(var id: Identifier, var superClass: Identifier, var body: ClassBody) extends Node
+  case class ClassDeclaration(var id: Identifier, var superClass: Identifier, var implements: Seq[Identifier], var body: ClassBody, kind: String) extends Node
     with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration with Statement {
 
     override def clone = copy().copyNode(this)

@@ -556,8 +556,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           this.tolerateUnexpectedToken(this.lookahead)
         }
         expr = if (this.matchAsyncFunction()) this.parseFunctionExpression() else this.finalize(node, new Node.Identifier(this.nextToken().value))
-       /*NumericLiteral */case NumericLiteral | StringLiteral =>
-         /*StringLiteral */if (this.context.strict && this.lookahead.octal) {
+      case NumericLiteral | StringLiteral =>
+        if (this.context.strict && this.lookahead.octal) {
           this.tolerateUnexpectedToken(this.lookahead, Messages.StrictOctalLiteral)
         }
         this.context.isAssignmentTarget = false
@@ -2905,32 +2905,32 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   def parseTypeReference(token: RawToken): Node.TypeAnnotation = {
     val node = this.startNode(token)
     val value = if (
-      token.`type` == Identifier || token.`type` == Keyword ||
-        token.`type` == NullLiteral || token.`type` == BooleanLiteral ||
-        token.`type` == StringLiteral || token.`type` == NumericLiteral
+      token.`type` == NullLiteral || token.`type` == BooleanLiteral ||
+      token.`type` == StringLiteral || token.`type` == NumericLiteral
     ) {
+      val raw = this.getTokenRaw(token)
+      Node.LiteralType(new Node.Literal(token.value, raw)) // TODO: proper literal value parsing (number, boolean)
+    } else if (token.`type` == Identifier || token.`type` == Keyword) {
       val typeString = token.value.get[String]
-      if (token.`type` == Identifier && this.`match`(".")) {
+      val typename = if (token.`type` == Identifier && this.`match`(".")) {
         // TODO: store package name properly
         this.nextToken()
         Node.TypeName(parseIdentifierName())
       } else {
         Node.TypeName(this.finalize(node, Node.Identifier(typeString)))
       }
-
+      if (options.typescript && this.`match`("<")) {
+        this.nextToken()
+        // TODO: multiple type arguments
+        val typeArg = parseTypeAnnotation()
+        this.expect(">")
+        Node.TypeReference(this.finalize(node, typename), typeArg)
+      } else typename
     } else {
       tolerateUnexpectedToken(token, "Type annotation expected")
       Node.TypeName(null)
     }
-    if (options.typescript && this.`match`("<")) {
-      this.nextToken()
-      // TODO: multiple type arguments
-      val typeArg = parseTypeAnnotation()
-      this.expect(">")
-      this.finalize(node, Node.TypeReference(value, typeArg))
-    } else {
-      this.finalize(node, value)
-    }
+    this.finalize(node, value)
   }
 
   def parseTypeMember(): Node.TypeMember = {
@@ -3054,7 +3054,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     } while (level > 0 && this.lookahead.`type` != EOF)
     this.nextToken()
 
-    this.finalize(node, Node.ClassDeclaration(name, null, null))
+    this.finalize(node, Node.ClassDeclaration(name, null, Nil, null, "namespace"))
   }
 
   def parsePrimaryType(token: RawToken): Node.TypeAnnotation = {
@@ -3312,7 +3312,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     if (this.matchKeyword("extends")) {
       this.nextToken()
       if (options.typescript) {
-        superClass = this.parseClassParent()
+        val extendsCls = this.parseClassParent()
+        superClass = if (keyword == "class") {
+          extendsCls
+        } else {
+          Option(extendsCls).foreach(implementsClass.push)
+          null
+        }
         // more tolerant than specs: we use the same parser for class and interface, therefore we allow anything to extend multiple parents
         while (this.`match`(",")) {
           this.nextToken()
@@ -3326,10 +3332,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.nextToken()
       implementsClass.push(this.parseIdentifierName())
     }
-    //  TODO: store implementsClass somewhere
     val classBody = this.parseClassBody()
     this.context.strict = previousStrict
-    this.finalize(node, new Node.ClassDeclaration(id, superClass, classBody))
+    this.finalize(node, new Node.ClassDeclaration(id, superClass, implementsClass, classBody, keyword))
   }
 
   def parseTypeAliasDeclaration(): Node.TypeAliasDeclaration = {
