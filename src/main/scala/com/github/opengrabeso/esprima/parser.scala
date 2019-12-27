@@ -2964,7 +2964,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val body = mutable.ArrayBuffer.empty[Node.TypeMember]
     while (!this.`match`("}") && this.lookahead.`type` != EOF) {
       body += parseTypeMember()
-      this.consumeSemicolon()
+      // accept a comma instead of a semicolon (workaround for Esprima RegexLiteral - see https://github.com/jquery/esprima/issues/2008)
+      if (this.`match`(",") && options.tolerant) {
+        this.nextToken()
+      } else {
+        this.consumeSemicolon()
+      }
     }
     this.expect("}")
 

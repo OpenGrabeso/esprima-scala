@@ -363,6 +363,18 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     assert(tree.body.nonEmpty)
   }
 
+  it should "Parse an object type" in {
+    val input =
+      """
+        export class C {
+          member: {n: number; s: string};
+        };
+        """
+    val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
+    assert(tree.body.nonEmpty)
+  }
+
   it should "Parse interface declarations" in {
     val input = """
         interface A {
