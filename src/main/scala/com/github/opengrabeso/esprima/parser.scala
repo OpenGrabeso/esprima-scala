@@ -2544,8 +2544,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.finalize(node, new Node.BlockStatement(body))
     } else {
       // function with no body - common in ts/d.ts (interfaces, type declarations)
-      val node = this.createNode()
-      this.finalize(node, new Node.BlockStatement(Nil))
+      null
     }
   }
   
