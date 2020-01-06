@@ -830,7 +830,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.expect("{")
     val properties = ArrayBuffer.empty[Node.ObjectExpressionProperty]
     object hasProto extends ByRef[Boolean](false)
-    while (!this.`match`("}")) {
+    while (this.lookahead.`type` != EOF && !this.`match`("}")) {
       properties.push(if (this.`match`("...")) this.parseSpreadElement() else this.parseObjectProperty(hasProto))
       if (!this.`match`("}")) {
         this.expectCommaSeparator()
@@ -1849,7 +1849,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val node = this.createNode()
     val properties = ArrayBuffer.empty[Node.ObjectPatternProperty]
     this.expect("{")
-    while (!this.`match`("}")) {
+    while (this.lookahead.`type` != EOF && !this.`match`("}")) {
       properties.push(if (this.`match`("...")) this.parseRestProperty(params, kind) else this.parsePropertyPattern(params, kind))
       if (!this.`match`("}")) {
         this.expect(",")
@@ -3043,18 +3043,18 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val node = this.createNode()
     this.expectKeyword("namespace")
     val name = this.parseIdentifierName()
+
+    val bodyNode = this.createNode()
     this.expect("{")
 
-    // TODO: proper parsing
-    var level = 1
-    do {
-      this.nextToken()
-      if (this.`match`("{")) level += 1
-      else if (this.`match`("}")) level -= 1
-    } while (level > 0 && this.lookahead.`type` != EOF)
-    this.nextToken()
+    var exports = mutable.ArrayBuffer.empty[Node.ExportDeclaration]
+    while (this.lookahead.`type` != EOF && !this.`match`("}")) {
+      exports += parseExportDeclaration()
+      this.consumeSemicolon()
+    }
+    this.expect("}")
 
-    this.finalize(node, Node.ClassDeclaration(name, null, Nil, null, "namespace"))
+    this.finalize(node, Node.NamespaceDeclaration(name, this.finalize(bodyNode, Node.NamespaceBody(exports))))
   }
 
   def parsePrimaryType(token: RawToken): Node.TypeAnnotation = {
@@ -3473,7 +3473,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   def parseNamedImports(): ArrayBuffer[Node.ImportSpecifier] = {
     this.expect("{")
     val specifiers = ArrayBuffer.empty[Node.ImportSpecifier]
-    while (!this.`match`("}")) {
+    while (this.lookahead.`type` != EOF && !this.`match`("}")) {
       specifiers.push(this.parseImportSpecifier())
       if (!this.`match`("}")) {
         this.expect(",")
@@ -3651,7 +3651,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       var source: Node.Literal = null
       var isExportFromIdentifier = false
       this.expect("{")
-      while (!this.`match`("}")) {
+      while (this.lookahead.`type` != EOF && !this.`match`("}")) {
         isExportFromIdentifier = isExportFromIdentifier || this.matchKeyword("default")
         specifiers.push(this.parseExportSpecifier())
         if (!this.`match`("}")) {

@@ -255,6 +255,18 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
+  case class NamespaceBody(var body: collection.Seq[Declaration]) extends Node
+    with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration with Statement {
+
+    override def clone = copy().copyNode(this)
+  }
+
+  case class NamespaceDeclaration(var id: Identifier, var body: NamespaceBody) extends Node
+    with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration with Statement {
+
+    override def clone = copy().copyNode(this)
+  }
+
   case class TypeAliasDeclaration(id: Identifier, tpe: TypeAnnotation) extends Node with Declaration with Statement {
     override def clone = copy().copyNode(this)
   }
