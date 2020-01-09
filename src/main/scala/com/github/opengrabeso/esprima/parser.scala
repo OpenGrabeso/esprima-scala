@@ -3122,9 +3122,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var token = this.lookahead
     val node = this.createNode()
     var kind: String = null
+    var typePars: Node.TypeParameterList = null
     var key: Node.PropertyKey = null
     var value: Node.PropertyValue = null
     var `type`: TypeAnnotation = null
+    var optional: Boolean = false
     var computed = false
     var method = false
     var isStatic = false
@@ -3199,14 +3201,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       } else {
         // normal member may be generic
         if (options.typescript && this.`match`("<")) {
-          val typePars = this.parseTypeParameterList()
-          // TODO: store typePars
+          typePars = this.parseTypeParameterList()
         }
 
         // normal member may be optional
         if (options.typescript && this.`match`("?")) {
-          // TODO: store optionality
-          this.nextToken()
+          optional = this.nextToken()
         }
       }
 
@@ -3255,7 +3255,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         kind = "constructor"
       }
     }
-    this.finalize(node, new Node.MethodDefinition(key, `type`, computed, value, kind, isStatic))
+    this.finalize(node, new Node.MethodDefinition(key, typePars, `type`, computed, value, kind, isStatic, optional))
   }
   
   def parseClassElementList(): Array[Node.MethodDefinition] = {
@@ -3299,11 +3299,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val previousStrict = this.context.strict
     this.context.strict = true
     this.expectKeyword(keyword)
+    var typePars: Node.TypeParameterList = null
     val id = if (identifierIsOptional && this.lookahead.`type` != Identifier)  /*Identifier */null else {
       val name = this.parseVariableIdentifier()
       if (options.typescript && this.`match`("<")) {
-        // TODO: store parameter list
-        parseTypeParameterList()
+        typePars = parseTypeParameterList()
       }
       name
     }
@@ -3334,7 +3334,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     val classBody = this.parseClassBody()
     this.context.strict = previousStrict
-    this.finalize(node, new Node.ClassDeclaration(id, superClass, implementsClass, classBody, keyword))
+    this.finalize(node, new Node.ClassDeclaration(id, typePars, superClass, implementsClass, classBody, keyword))
   }
 
   def parseTypeAliasDeclaration(): Node.TypeAliasDeclaration = {
@@ -3379,19 +3379,29 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, new Node.EnumDeclaration(name, body))
   }
 
-  def parseTypeParameterList(): Node.Identifier = {
+  def parseTypeParameterListItem(): Node.TypeParameterListItem = {
+    val node = this.createNode()
+    val name = this.parseIdentifierName()
+    var constraint: Node.TypeAnnotation = null
+    if (this.matchContextualKeyword("extends")) {
+      this.nextToken()
+      constraint = parseTypeAnnotation()
+    }
+    this.finalize(node, new Node.TypeParameterListItem(name, constraint))
+  }
+  def parseTypeParameterList(): Node.TypeParameterList = {
     val node = this.createNode()
     this.expect("<")
-    // TODO: proper parsing with extends constraints
-    val name = parseIdentifierName()
-    var level = 1
-    do {
-      if (this.`match`("<")) level += 1
-      else if (this.`match`(">")) level -= 1
-      this.nextToken()
-    } while (level > 0 && this.lookahead.`type` != EOF)
-    //this.expect(">")
-    this.finalize(node, name)
+    // note: we allow empty parameter list
+    val types = mutable.ArrayBuffer.empty[Node.TypeParameterListItem]
+    while (this.lookahead.`type` != EOF && !this.`match`(">")) {
+      types += parseTypeParameterListItem()
+      if (!this.`match`(">")) {
+        this.expect(",")
+      }
+    }
+    this.expect(">")
+    this.finalize(node, new Node.TypeParameterList(types))
   }
 
   def parseClassExpression(): Node.ClassExpression = {

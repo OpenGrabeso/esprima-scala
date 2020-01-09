@@ -247,12 +247,31 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
+  case class TypeParameterListItem(var name: Node.Identifier, var constraint: Node.TypeAnnotation) extends Node {
+    override def clone = copy().copyNode(this)
+  }
+
+  // each pair specifies T extends X, X may be null
+  case class TypeParameterList(var types: collection.Seq[TypeParameterListItem]) extends Node {
+    override def clone = copy().copyNode(this)
+  }
 
   // ported: added Statement because of parseLabelledStatement
-  case class ClassDeclaration(var id: Identifier, var superClass: Identifier, var implements: Seq[Identifier], var body: ClassBody, kind: String) extends Node
+  case class ClassDeclarationEx(var id: Identifier, var typeParameters: TypeParameterList, var superClass: Identifier, var implements: Seq[Identifier], var body: ClassBody, kind: String) extends Node
     with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration with Statement {
 
     override def clone = copy().copyNode(this)
+  }
+  type ClassDeclaration = ClassDeclarationEx
+  object ClassDeclaration {
+    def apply(id: Identifier, superClass: Identifier, implements: Seq[Identifier], body: ClassBody, kind: String): ClassDeclarationEx = {
+      new ClassDeclarationEx(id, null, superClass, implements, body, kind)
+    }
+    def unapply(arg: ClassDeclarationEx) = {
+      ClassDeclarationEx.unapply(arg).map { r =>
+        (r._1, r._3, r._4, r._5, r._6)
+      }
+    }
   }
 
   case class NamespaceBody(var body: collection.Seq[Declaration]) extends Node
@@ -456,9 +475,21 @@ object Node {
 
   trait AFunctionExpression extends Node // AsyncFunctionExpression | FunctionExpression
 
-  case class MethodDefinition(var key: PropertyKey, var `type`: TypeAnnotation, var computed: Boolean, var value: PropertyValue, var kind: String, var static: Boolean) extends Node with ClassBodyElement {
-
+  case class MethodDefinitionEx(
+    var key: PropertyKey, var typePars: TypeParameterList, var `type`: TypeAnnotation, var computed: Boolean, var value: PropertyValue,
+    var kind: String, var static: Boolean, var optional: Boolean
+  ) extends Node with ClassBodyElement {
     override def clone = copy().copyNode(this)
+  }
+
+  type MethodDefinition = MethodDefinitionEx
+  object MethodDefinition {
+    def apply(key: PropertyKey, `type`: TypeAnnotation, computed: Boolean, value: PropertyValue, kind: String, static: Boolean): MethodDefinitionEx = {
+      new MethodDefinitionEx(key, null, `type`, computed, value, kind, static, false)
+    }
+    def unapply(arg: MethodDefinitionEx) = {
+      MethodDefinitionEx.unapply(arg).map(r => (r._1, r._3, r._4, r._5, r._6, r._7))
+    }
   }
 
   abstract class Program(var body: collection.Seq[StatementListItem]) extends Node {

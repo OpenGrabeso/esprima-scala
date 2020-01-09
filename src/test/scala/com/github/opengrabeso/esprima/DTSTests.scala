@@ -295,6 +295,9 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
       class C<T> extends B<T> {
         fun(data: T): T;
       }
+      class D<T extends I, X, Y extends I> extends B<T> {
+        fun(data: T): X;
+      }
       """
 
     val tree = parse(input, DTSOptions)
