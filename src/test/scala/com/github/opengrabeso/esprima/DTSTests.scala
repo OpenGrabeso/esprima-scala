@@ -249,6 +249,20 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
 
   }
 
+  it should "Parse a class with generic parameters" in {
+    val input ="""
+        export class C<T> {
+          member: T;
+        }
+        var cs = new C<string>();
+        var cn = new C<number>();
+        """
+
+    val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
+    assert(tree.body.nonEmpty)
+  }
+
   it should "Parse a class member with generic parameters" in {
     val input ="""
         export class C {
