@@ -519,11 +519,15 @@ object Node {
     override def clone = new Module(body).copyNode(this)
   }
 
-  case class NewExpression(var callee: Expression, var arguments: collection.Seq[ArgumentListElement]) extends Node with Expression {
-
+  case class NewExpressionEx(var callee: Expression, var typeArgs: Seq[Node.TypeAnnotation], var arguments: collection.Seq[ArgumentListElement]) extends Node with Expression {
     override def clone = copy().copyNode(this)
   }
 
+  type NewExpression = NewExpressionEx
+  object NewExpression {
+    def apply(callee: Expression, arguments: collection.Seq[ArgumentListElement]) = new NewExpressionEx(callee, null, arguments)
+    def unapply(arg: NewExpressionEx) = NewExpressionEx.unapply(arg).map(x => (x._1, x._3))
+  }
 
   case class ObjectExpression(var properties: collection.Seq[ObjectExpressionProperty]) extends Node with Expression {
 
