@@ -477,7 +477,7 @@ object Node {
 
   case class MethodDefinitionEx(
     var key: PropertyKey, var typePars: TypeParameterList, var `type`: TypeAnnotation, var computed: Boolean, var value: PropertyValue,
-    var kind: String, var static: Boolean, var optional: Boolean
+    var kind: String, var static: Boolean, var optional: Boolean, var readOnly: Boolean
   ) extends Node with ClassBodyElement {
     override def clone = copy().copyNode(this)
   }
@@ -485,7 +485,7 @@ object Node {
   type MethodDefinition = MethodDefinitionEx
   object MethodDefinition {
     def apply(key: PropertyKey, `type`: TypeAnnotation, computed: Boolean, value: PropertyValue, kind: String, static: Boolean): MethodDefinitionEx = {
-      new MethodDefinitionEx(key, null, `type`, computed, value, kind, static, false)
+      new MethodDefinitionEx(key, null, `type`, computed, value, kind, static, false, false)
     }
     def unapply(arg: MethodDefinitionEx) = {
       MethodDefinitionEx.unapply(arg).map(r => (r._1, r._3, r._4, r._5, r._6, r._7))

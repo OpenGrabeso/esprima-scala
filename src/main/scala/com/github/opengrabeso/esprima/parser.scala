@@ -3139,13 +3139,15 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var method = false
     var isStatic = false
     var isAsync = false
+    var readOnly = false
     if (options.typescript) {
       val modifiers = Seq("public", "protected", "private")
       if ((this.lookahead.`type` == Keyword || this.lookahead.`type` == Identifier) && modifiers.exists(this.lookahead.value === _)) {
         this.nextToken() // TODO: store in AST
       }
       if (this.matchContextualKeyword("readonly")) {
-        this.nextToken() // TODO: store in AST
+        readOnly = true
+        this.nextToken()
       }
     }
 
@@ -3263,7 +3265,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         kind = "constructor"
       }
     }
-    this.finalize(node, new Node.MethodDefinition(key, typePars, `type`, computed, value, kind, isStatic, optional))
+    this.finalize(node, new Node.MethodDefinitionEx(key, typePars, `type`, computed, value, kind, isStatic, optional, readOnly))
   }
   
   def parseClassElementList(): Array[Node.MethodDefinition] = {
