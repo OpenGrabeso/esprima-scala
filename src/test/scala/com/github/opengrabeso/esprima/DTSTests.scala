@@ -40,7 +40,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
   }
   object NamedType {
     def unapply(arg: TypeName): Option[String] = arg match {
-      case TypeName(Identifier(name)) =>
+      case TypeName(Seq(Identifier(name))) =>
         Some(name)
       case _ =>
         None
@@ -57,7 +57,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     assert(tree.body.nonEmpty)
     assert(tree.errors.isEmpty)
     tree.body.head should matchPattern {
-      case VariableDeclaration(Seq(VariableDeclarator(Identifier("answer"), _, TypeName(Identifier("number")))), _) =>
+      case VariableDeclaration(Seq(VariableDeclarator(Identifier("answer"), _, TypeName(Seq(Identifier("number"))))), _) =>
     }
   }
 

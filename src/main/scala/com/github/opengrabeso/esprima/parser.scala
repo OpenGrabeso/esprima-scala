@@ -2930,13 +2930,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       Node.LiteralType(new Node.Literal(token.value, raw)) // TODO: proper literal value parsing (number, boolean)
     } else if (token.`type` == Identifier || token.`type` == Keyword) {
       val typeString = token.value.get[String]
-      val typename = if (token.`type` == Identifier && this.`match`(".")) {
-        // TODO: store package name properly
+      val identifiers = mutable.ArrayBuffer.empty[Node.Identifier]
+      identifiers += this.finalize(node, Node.Identifier(typeString))
+      while (this.`match`(".")) {
         this.nextToken()
-        Node.TypeName(parseIdentifierName())
-      } else {
-        Node.TypeName(this.finalize(node, Node.Identifier(typeString)))
+        identifiers += parseIdentifierName()
       }
+
+      val typename = Node.TypeName(identifiers)
       if (options.typescript && this.`match`("<")) {
         this.nextToken()
         // TODO: multiple type arguments
@@ -3311,9 +3312,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       case id: Node.Identifier =>
         id
       case Node.TypeName(id) =>
-        id
-      case Node.TypeReference(id, arg) =>
-        id.t
+        id.last // TODO: handle qualified parent reference
+      case Node.TypeReference(Node.TypeName(id), arg) =>
+        id.last // TODO: handle qualified parent reference, handle type argument
       case _ =>
         throwError("Class expected as a parent")
     }

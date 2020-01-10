@@ -100,7 +100,7 @@ object Node {
   }
 
   // TypeScript grammar: https://github.com/rbuckton/grammarkdown/blob/master/spec/typescript.grammar
-  case class TypeName(t: Identifier) extends TypeAnnotation {
+  case class TypeName(parent: collection.Seq[Identifier]) extends TypeAnnotation {
     override def clone = copy().copyNode(this)
   }
 
