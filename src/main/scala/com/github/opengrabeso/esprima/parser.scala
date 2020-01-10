@@ -759,6 +759,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var method = false
     var shorthand = false
     var isAsync = false
+    var readOnly = false
+    if (options.typescript && this.matchContextualKeyword("readonly")) {
+      this.nextToken()
+      readOnly = true
+    }
     if (token.`type` == Identifier)  /*Identifier */{
       val id: String = token.value
       this.nextToken()
@@ -822,7 +827,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         this.throwUnexpectedToken(this.nextToken())
       }
     }
-    this.finalize(node, new Node.Property(kind, key, computed, value, method, shorthand))
+    this.finalize(node, new Node.PropertyEx(kind, key, computed, value, method, shorthand, readOnly))
   }
   
   def parseObjectInitializer() = {
@@ -1811,8 +1816,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var computed = false
     var shorthand = false
     val method = false
+    var readOnly = false
     var key: Node.PropertyKey = null
     var value: Node.PropertyValue = null
+    if (options.typescript && this.matchContextualKeyword("readonly")) {
+      this.nextToken()
+      readOnly = true
+    }
     if (this.lookahead.`type` == Identifier)  /*Identifier */{
       val keyToken = this.lookahead
       key = this.parseVariableIdentifier()
@@ -1837,7 +1847,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.expect(":")
       value = this.parsePatternWithDefault(params, kind)
     }
-    this.finalize(node, new Node.Property("init", key, computed, value, method, shorthand))
+    this.finalize(node, new Node.PropertyEx("init", key, computed, value, method, shorthand, readOnly))
   }
   
   def parseRestProperty(params: ArrayBuffer[RawToken], kind: String): Node.RestElement = {
@@ -2943,6 +2953,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
 
   def parseTypeMember(): Node.TypeMember = {
     val node = this.createNode()
+    var readOnly = false
+    if (options.typescript && this.matchContextualKeyword("readonly")) {
+      this.nextToken()
+      readOnly = true
+    }
     if (this.`match`("[")) { // IndexSignature, like { [key: string]: any }
       this.nextToken()
       val ident = parseIdentifierName()
@@ -2952,7 +2967,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.expect(":")
       // TODO: store ident and t property
       val itemType = parseTypeAnnotation()
-      this.finalize(node, Node.TypeMember(null, false, itemType))
+      this.finalize(node, Node.TypeMember(null, false, readOnly, itemType))
     } else {
       val ident = parseIdentifierName()
       val optional = this.`match`("?")
@@ -2961,7 +2976,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       }
       this.expect(":")
       val t = parseTypeAnnotation()
-      this.finalize(node, Node.TypeMember(ident, optional, t))
+      this.finalize(node, Node.TypeMember(ident, optional, readOnly, t))
     }
   }
 

@@ -482,6 +482,33 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
+  it should "Parse class readonly properties" in {
+    val input = """
+      interface C {
+        readonly x: number;
+      };
+      """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
+  it should "Parse object readonly properties" in {
+    val input = """
+      var x = {
+        readonly x: number,
+        readonly s: string
+      };
+      type T = {
+        readonly t: number,
+        readonly b: boolean
+      };
+      """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
   behavior of "Parsing Three.js d.ts"
 
   it should "process Box2" in {

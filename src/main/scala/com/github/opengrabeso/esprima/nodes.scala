@@ -116,7 +116,7 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
-  case class TypeMember(name: Identifier, optional: Boolean, `type`: TypeAnnotation) extends TypeAnnotation {
+  case class TypeMember(name: Identifier, optional: Boolean, readOnly: Boolean, `type`: TypeAnnotation) extends TypeAnnotation {
     override def clone = copy().copyNode(this)
   }
 
@@ -547,12 +547,22 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
-  case class Property(var kind: String, var key: PropertyKey, var computed: Boolean, var value: PropertyValue, var method: Boolean, var shorthand: Boolean) extends Node
+  case class PropertyEx(
+    var kind: String, var key: PropertyKey, var computed: Boolean, var value: PropertyValue, var method: Boolean,
+    var shorthand: Boolean, var readonly: Boolean
+  ) extends Node
     with ObjectExpressionProperty with ObjectPatternProperty {
 
     override def clone = copy().copyNode(this)
   }
 
+  type Property = PropertyEx
+  object Property {
+    def apply(kind: String, key: PropertyKey, computed: Boolean, value: PropertyValue, method: Boolean, shorthand: Boolean) = {
+      new PropertyEx(kind, key, computed, value, method, shorthand, false)
+    }
+    def unapply(arg: PropertyEx) = PropertyEx.unapply(arg).map(x => (x._1, x._2, x._3, x._4, x._5, x._6))
+  }
 
   case class RegexLiteral(var value: RegExp, var raw: String, pattern: String, flags: String) extends Node with Expression {
 
