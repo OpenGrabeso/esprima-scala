@@ -89,4 +89,24 @@ class BasicTests extends FlatSpec with TestInputs {
     """)
   }
 
+  object ModOptions extends Parser.Options {
+    range = true
+    attachComment = true
+    tolerant = true
+    typescript = true
+    sourceType = "module" // allow exports
+  }
+
+
+  it should "parse exports" in {
+    val ast = parse("""
+     export * from './c';
+     export { _M as M } from './m/M';
+     export as namespace T;
+    """, ModOptions)
+    assert(ast.body.nonEmpty)
+    assert(ast.errors.isEmpty)
+
+  }
+
 }

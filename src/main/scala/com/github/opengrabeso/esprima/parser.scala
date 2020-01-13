@@ -3675,6 +3675,15 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           declaration = this.parseStatementListItem()
         case "namespace" if options.typescript =>
           declaration = this.parseNamespace()
+        case "as" => // export as namespace XXXX
+          this.nextToken()
+          if (!this.matchContextualKeyword("namespace")) {
+            this.throwUnexpectedToken(this.lookahead)
+          }
+          this.nextToken()
+          val name = this.parseIdentifierName()
+          // TODO: proper support
+          declaration = this.finalize(node, new Node.EmptyStatement)
         case _ =>
           this.throwUnexpectedToken(this.lookahead)
       }
