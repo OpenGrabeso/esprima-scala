@@ -3090,6 +3090,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       parseTypeStartingWithParen(token)
     } else if (token.`match`("[")) {
       parseTupleType(token)
+    } else if (token.`match`("<")) {
+      // starting with generic - a function type?
+      val pars = parseTypeParameterList(token) // TODO: store pars in AST
+      parseTypeStartingWithParen(this.nextToken())
     } else {
       parseTypeReference(token)
     }
@@ -3415,9 +3419,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
     this.finalize(node, new Node.TypeParameterListItem(name, constraint))
   }
-  def parseTypeParameterList(): Node.TypeParameterList = {
-    val node = this.createNode()
-    this.expect("<")
+  def parseTypeParameterList(token: RawToken = this.nextToken()): Node.TypeParameterList = {
+    val node = this.startNode(token)
+    if (!token.`match`("<")) {
+      throwUnexpectedToken(token)
+    }
     // note: we allow empty parameter list
     val types = mutable.ArrayBuffer.empty[Node.TypeParameterListItem]
     while (this.lookahead.`type` != EOF && !this.`match`(">")) {

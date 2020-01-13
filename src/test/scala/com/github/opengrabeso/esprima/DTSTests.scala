@@ -509,6 +509,25 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
+  it should "Parse generic function types" in {
+    val input = """
+    export class O {
+      onA?: <T>( object: T ) => void;
+      onB?: <T extends O3D>( object: T ) => void;
+      onC?: ( event: ProgressEvent ) => void;
+
+      l(
+        url: string,
+        onL?: <OT extends O3D>( object: OT ) => void,
+        onP?: ( event: ProgressEvent ) => void,
+      ): void;
+    }
+    """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
   behavior of "Parsing Three.js d.ts"
 
   it should "process Box2" in {
