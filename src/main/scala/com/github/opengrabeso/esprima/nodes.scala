@@ -128,7 +128,7 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
-  case class TypeReference(t: TypeName, arg: TypeAnnotation) extends TypeAnnotation {
+  case class TypeReference(t: TypeName, arg: collection.Seq[TypeAnnotation]) extends TypeAnnotation {
     override def clone = copy().copyNode(this)
   }
 

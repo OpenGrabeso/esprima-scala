@@ -274,7 +274,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("C"), null, Nil, ClassBody(Seq(
-      Method("set", Seq(("a", TypeReference(NamedType("ArrayLike"), NamedType("number")), null, false)), NamedType("void"), _),
+      Method("set", Seq(("a", TypeReference(NamedType("ArrayLike"), Seq(NamedType("number"))), null, false)), NamedType("void"), _),
       )), _), _, _) =>
     }
   }

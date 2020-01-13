@@ -2940,10 +2940,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       val typename = Node.TypeName(identifiers)
       if (options.typescript && this.`match`("<")) {
         this.nextToken()
-        // TODO: multiple type arguments
-        val typeArg = parseTypeAnnotation()
+        val typeArgs = mutable.ArrayBuffer.empty[TypeAnnotation]
+        while (!this.`match`(">")) {
+          typeArgs += parseTypeAnnotation()
+          if (!this.`match`(">")) this.expect(",")
+        }
         this.expect(">")
-        Node.TypeReference(this.finalize(node, typename), typeArg)
+        Node.TypeReference(this.finalize(node, typename), typeArgs)
       } else typename
     } else {
       tolerateUnexpectedToken(token, "Type annotation expected")
