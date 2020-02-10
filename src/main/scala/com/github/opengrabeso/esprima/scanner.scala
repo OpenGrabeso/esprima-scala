@@ -56,6 +56,8 @@ object Scanner {
   type Token = Token.Token
 
   trait RawToken {
+    def `match`(str: String) = `type` == Punctuator && value === str
+
     override def toString = `type`.toString + "'" + value.toString
 
     var `type`: Token = _
@@ -578,7 +580,11 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         }
       case "}" =>
         this.index += 1
-        this.curlyStack.pop()
+        if (this.curlyStack.nonEmpty) {
+          this.curlyStack.pop()
+        } else {
+          this.throwUnexpectedToken()
+        }
       case ")" | ";" | "," | "[" | "]" | ":" | "?" | "~" =>
         this.index += 1
       case _ =>

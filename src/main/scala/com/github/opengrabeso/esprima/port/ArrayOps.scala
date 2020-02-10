@@ -30,8 +30,6 @@ trait ArrayOps {
     }
 
     def splice(start: Int, toDelete: Int, toInsert: T*): ArrayBuffer[T] = {
-      val (take, drop) = a.splitAt(start)
-      val dropped = drop.take(toDelete)
       a.remove(start, toDelete)
       a.insertAll(start, toInsert)
       a
