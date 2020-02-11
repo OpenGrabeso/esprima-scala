@@ -13,7 +13,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     sourceType = "module" // allow exports
   }
 
-  def extractPars(pars: Seq[FunctionParameter]) = {
+  def extractPars(pars: collection.Seq[FunctionParameter]) = {
     pars.map {
       case FunctionParameterWithType(Identifier(name), t, defValue, optional) =>
         (name, t, defValue, optional)
@@ -25,7 +25,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
   object Method {
     def unapply(arg: MethodDefinition) = arg match {
       case MethodDefinition(Identifier(name), _, _, FunctionExpression(_, pars, _, _, ret), kind, false) =>
-        Some(name, extractPars(pars), ret, kind)
+        Some((name, extractPars(pars), ret, kind))
       case _ =>
         None
     }
@@ -33,7 +33,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
   object FunctionDecl {
     def unapply(arg: FunctionDeclaration) = arg match {
       case FunctionDeclaration(Identifier(name), pars, _, _, ret) =>
-        Some(name, extractPars(pars), ret)
+        Some((name, extractPars(pars), ret))
       case _ =>
         None
     }

@@ -257,7 +257,7 @@ object Node {
   }
 
   // ported: added Statement because of parseLabelledStatement
-  case class ClassDeclarationEx(var id: Identifier, var typeParameters: TypeParameterList, var superClass: Identifier, var implements: Seq[Identifier], var body: ClassBody, kind: String) extends Node
+  case class ClassDeclarationEx(var id: Identifier, var typeParameters: TypeParameterList, var superClass: Identifier, var implements: collection.Seq[Identifier], var body: ClassBody, kind: String) extends Node
     with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration with Statement {
 
     override def clone = copy().copyNode(this)
@@ -519,7 +519,7 @@ object Node {
     override def clone = new Module(body).copyNode(this)
   }
 
-  case class NewExpressionEx(var callee: Expression, var typeArgs: Seq[Node.TypeAnnotation], var arguments: collection.Seq[ArgumentListElement]) extends Node with Expression {
+  case class NewExpressionEx(var callee: Expression, var typeArgs: collection.Seq[Node.TypeAnnotation], var arguments: collection.Seq[ArgumentListElement]) extends Node with Expression {
     override def clone = copy().copyNode(this)
   }
 
