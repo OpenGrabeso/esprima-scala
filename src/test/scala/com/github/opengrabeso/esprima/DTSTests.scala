@@ -154,7 +154,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("Range"), null, Nil, ClassBody(Seq(
-        Method("constructor", Seq(("min", NamedType("number"), null, false), ("max", NamedType("number"), null, false)), null, "constructor"),
+        Method("constructor", Seq(("min", NamedType("number"), null, false), ("max", NamedType("number"), null, false)), null, "constructor")
       )), _), _, _) =>
     }
   }
@@ -178,7 +178,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
         Method("isEmpty", Seq(), NamedType("boolean"), _),
         Method("clone", Seq(), NamedType("Range"), _),
         Method("copy", Seq(("box", NamedType("Range"), null, false)), NamedType("Range"), _),
-        Method("equals", Seq(("box", NamedType("Range"), null, false)), NamedType("boolean"), _),
+        Method("equals", Seq(("box", NamedType("Range"), null, false)), NamedType("boolean"), _)
       )), _), _, _) =>
     }
 
@@ -194,7 +194,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     val tree = parse(input, DTSOptions)
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("Range"), null, Nil, ClassBody(Seq(
-        Method("set", Seq(("min", NamedType("number"), null, true), ("max", NamedType("number"), null, true)), NamedType("boolean"), _),
+        Method("set", Seq(("min", NamedType("number"), null, true), ("max", NamedType("number"), null, true)), NamedType("boolean"), _)
       )), _), _, _) =>
     }
     assert(tree.errors.isEmpty)
@@ -243,7 +243,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("A"), null, Nil, ClassBody(Seq(
         MethodDefinition(Identifier("a"), ArrayType(NamedType("number")), _, _, _, false),
-        Method("set", Seq(("v", ArrayType(NamedType("number")), null, false)), NamedType("void"), _),
+        Method("set", Seq(("v", ArrayType(NamedType("number")), null, false)), NamedType("void"), _)
       )), _), _, _) =>
     }
 
@@ -274,7 +274,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("C"), null, Nil, ClassBody(Seq(
-      Method("set", Seq(("a", TypeReference(NamedType("ArrayLike"), Seq(NamedType("number"))), null, false)), NamedType("void"), _),
+      Method("set", Seq(("a", TypeReference(NamedType("ArrayLike"), Seq(NamedType("number"))), null, false)), NamedType("void"), _)
       )), _), _, _) =>
     }
   }
@@ -331,7 +331,7 @@ class DTSTests extends FlatSpec with TestInputs with Matchers {
     tree.body.head should matchPattern {
       case ExportNamedDeclaration(ClassDeclaration(Identifier("A"), null, Nil, ClassBody(Seq(
       MethodDefinition(Identifier("a"), UnionType(NamedType("number"), LiteralType(Literal(_, "null"))), _, _, _, false),
-      MethodDefinition(Identifier("b"), UnionType(UnionType(NamedType("number"), NamedType("string")), NamedType("A")), _, _, _, false),
+      MethodDefinition(Identifier("b"), UnionType(UnionType(NamedType("number"), NamedType("string")), NamedType("A")), _, _, _, false)
       )), _), _, _) =>
     }
 
