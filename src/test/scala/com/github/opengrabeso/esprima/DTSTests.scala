@@ -3,6 +3,7 @@ package com.github.opengrabeso.esprima
 import Esprima._
 import Node._
 import org.scalatest.{FlatSpec, Matchers}
+import collection.Seq
 
 class DTSTests extends FlatSpec with TestInputs with Matchers {
   object DTSOptions extends Parser.Options {
