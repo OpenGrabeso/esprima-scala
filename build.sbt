@@ -1,6 +1,6 @@
 name := "esprimascala"
 
-version := "0.1.3-SNAPSHOT"
+version := "0.1.4"
 
 organization := "com.github.opengrabeso"
 
@@ -20,18 +20,8 @@ publishArtifact in (Compile, packageDoc) := false
 
 publish := (publish dependsOn (test in Test)).value
 
-publishTo := {
-  if (isSnapshot.value) {
-    val sonatype = "https://oss.sonatype.org/"
-    Some("Sonatues Snapshots" at sonatype + "content/repositories/snapshots")
-  } else {
-    // TODO: provide all which is necessary for Sonatype releases
-    // see https://central.sonatype.org/pages/requirements.html
-    val gamatron = "https://www.gamatron.net/nexus/"
-    Some("Gamatron Releases Nexus" at gamatron + "service/local/staging/deploy/maven2")
-  }
-}
+githubOwner := "OpenGrabeso"
 
-credentials += Credentials(Path.userHome / ".ivy2" / "oss.credentials")
+githubRepository := "esprima-scala"
 
-// use %userprofile%/.ivy2 to access the folder in Windows run command
+githubTokenSource := TokenSource.Environment("GITHUB_TOKEN") || TokenSource.GitConfig("github.token")
