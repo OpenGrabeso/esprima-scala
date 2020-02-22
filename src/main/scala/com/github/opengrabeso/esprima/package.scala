@@ -7,5 +7,4 @@ package object esprima extends port.ArrayOps
   with port.ByRefPassing
   with port.OrTypes
 {
-
 }

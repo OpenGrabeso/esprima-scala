@@ -1,6 +1,8 @@
 package com.github.opengrabeso.esprima
 
 trait TestInputs {
+  import Resources._
+
   val answer42 ="answer = 42"
 
   //language=JavaScript
@@ -54,11 +56,6 @@ trait TestInputs {
         ]
       }
       """
-
-  def fromResource(str: String): String = {
-    val absPath = if (str.startsWith("/")) str else "/" + str
-    scala.io.Source.fromInputStream(getClass.getResourceAsStream(absPath)).mkString
-  }
 
   lazy val threeSource = fromResource("three.js")
 

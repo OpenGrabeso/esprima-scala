@@ -98,35 +98,34 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   var scanner: Scanner = new Scanner(code, errorHandler)
   scanner.trackComment = config.comment
   object operatorPrecedence {
-    object list {
-      var `)` = 0
-      var `;` = 0
-      var `,` = 0
-      var `=` = 0
-      var `]` = 0
-      var || = 1
-      var && = 2
-      var | = 3
-      var ^ = 4
-      var & = 5
-      var == = 6
-      var != = 6
-      var === = 6
-      var !== = 6
-      var < = 7
-      var > = 7
-      var <= = 7
-      var >= = 7
-      var << = 8
-      var >> = 8
-      var >>> = 8
-      var + = 9
-      var - = 9
-      var * = 11
-      var / = 11
-      var % = 11
-    }
-    val map = port.MapFromObject.mapFromObject[Int](list)
+    val map = Map(
+      ")" -> 0,
+      ";" -> 0,
+      "," -> 0,
+      "=" -> 0,
+      "]" -> 0,
+      "||" -> 1,
+      "&&" -> 2,
+      "|" -> 3,
+      "^" -> 4,
+      "&" -> 5,
+      "==" -> 6,
+      "!=" -> 6,
+      "===" -> 6,
+      "!==" -> 6,
+      "<" -> 7,
+      ">" -> 7,
+      "<=" -> 7,
+      ">=" -> 7,
+      "<<" -> 8,
+      ">>" -> 8,
+      ">>>" -> 8,
+      "+" -> 9,
+      "-" -> 9,
+      "*" -> 11,
+      "/" -> 11,
+      "%" -> 11
+    )
     def apply(op: String): Int = map.getOrElse(op, 0)
   }
   var lookahead: RawToken = new RawToken {
