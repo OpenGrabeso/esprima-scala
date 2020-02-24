@@ -5,7 +5,7 @@ githubOwner in ThisBuild := "OpenGrabeso"
 
 githubRepository in ThisBuild := "esprima-scala"
 
-githubActor in ThisBuild := "OpenGrabeso"
+githubActor in ThisBuild := "OndrejSpanel"
 
 githubTokenSource in ThisBuild := TokenSource.Environment("GITHUB_TOKEN") || TokenSource.GitConfig("github.token")
 
