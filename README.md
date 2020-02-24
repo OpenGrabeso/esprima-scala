@@ -1,6 +1,10 @@
 # esprima-scala
 Port of Esprima JS parser to Scala
 
+![Build and Test (SBT)](https://github.com/OpenGrabeso/esprima-scala/workflows/Build%20and%20Test%20(SBT)/badge.svg)
+![Deploy](https://github.com/OpenGrabeso/esprima-scala/workflows/Deploy/badge.svg)
+
+
 TypeScript is also partially supported, to the extent complete Esprima sources and most d.ts files can be parsed.
 
 Converted from https://github.com/jquery/esprima with help of https://github.com/OndrejSpanel/ScalaFromJS
