@@ -5,9 +5,9 @@ githubOwner in ThisBuild := "OpenGrabeso"
 
 githubRepository in ThisBuild := "esprima-scala"
 
-githubActor in ThisBuild := "OndrejSpanel"
+githubActor in ThisBuild := sys.env.getOrElse("GITHUB_USERNAME", "OpenGrabeso")
 
-githubTokenSource in ThisBuild := TokenSource.Environment("GITHUB_TOKEN") || TokenSource.GitConfig("github.token")
+githubTokenSource in ThisBuild := TokenSource.Environment("GITHUB_USERTOKEN") || TokenSource.Environment("GITHUB_TOKEN") || TokenSource.GitConfig("github.token")
 
 lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(new CrossType{
   override def projectDir(crossBase: File, platform: Platform) = CrossType.Full.projectDir(crossBase, platform)

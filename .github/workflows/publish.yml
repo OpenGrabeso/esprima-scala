@@ -18,4 +18,6 @@ jobs:
     - name: Publish
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_USERTOKEN: ${{ secrets.GITHUB_USERTOKEN }}
+        GITHUB_USERNAME: ${{ secrets.GITHUB_USERNAME }}
       run: sbt +projsJVM/publish +projsJS/publish
