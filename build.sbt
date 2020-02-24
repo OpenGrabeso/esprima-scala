@@ -16,7 +16,7 @@ lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(new CrossType{
 }).in(file("."))
   .settings(
     name := "esprimascala",
-    version := "0.1.6",
+    version := "0.1.6-SNAPSHOT",
     organization := "com.github.opengrabeso",
 
     scalaVersion := "2.12.10",

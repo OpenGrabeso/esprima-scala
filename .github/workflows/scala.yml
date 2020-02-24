@@ -16,4 +16,4 @@ jobs:
     - name: Run tests
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: sbt +projsJVM/test
+      run: sbt +projsJVM/test +projsJS/test
