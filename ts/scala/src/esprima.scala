@@ -1,9 +1,9 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-esprima.js
+ScalaFromJS: Dev 2020-02-24 19:42:52
+esprima.ts
 */
 
-package com.github.opengrabeso.esprima
+package esprima
 /*
 Copyright JS Foundation and other contributors, https://js.foundation/
 
@@ -31,10 +31,10 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* import { JSXParser } from './jsx-parser' */
 /* import { Parser } from './parser' */
 /* import { Tokenizer } from './tokenizer' */
-def parse(code: Double, options: Any, delegate: (Unit, Unit) => Any) = {
-  var commentHandler = null
+def parse(code: String, options: Any, delegate: (Unit, Unit) => Any) = {
+  var commentHandler: CommentHandler | Null = null
 
-  def proxyDelegate(node: Node, metadata: SourceLocation) = {
+  def proxyDelegate(node: Any, metadata: Any) = {
     if (delegate) {
       delegate(node, metadata)
     }
@@ -65,7 +65,7 @@ def parse(code: Double, options: Any, delegate: (Unit, Unit) => Any) = {
     parser = new Parser(code, options, parserDelegate)
   }
   val program = if (isModule) parser.parseModule() else parser.parseScript()
-  val ast = program
+  val ast = program.asInstanceOf[Identifier(any)]
   if (collectComment && commentHandler) {
     ast.comments = commentHandler.comments
   }
@@ -78,19 +78,19 @@ def parse(code: Double, options: Any, delegate: (Unit, Unit) => Any) = {
   ast
 }
 
-def parseModule(code: Double, options: Any, delegate: (Unit, Unit) => Any) = {
+def parseModule(code: String, options: Any, delegate: (Unit, Unit) => Any): Node.Module = {
   val parsingOptions = options || new {}
   parsingOptions.sourceType = "module"
   parse(code, parsingOptions, delegate)
 }
 
-def parseScript(code: Double, options: Any, delegate: (Unit, Unit) => Any) = {
+def parseScript(code: String, options: Any, delegate: (Unit, Unit) => Any): Node.Script = {
   val parsingOptions = options || new {}
   parsingOptions.sourceType = "script"
   parse(code, parsingOptions, delegate)
 }
 
-def tokenize(code: Double, options: Any, delegate: (Unit) => Any) = {
+def tokenize(code: String, options: Config, delegate: (Unit) => Any) = {
   val tokenizer = new Tokenizer(code, options)
   val tokens = Array.empty[Unit]
   try {

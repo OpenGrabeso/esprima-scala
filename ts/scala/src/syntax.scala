@@ -1,9 +1,10 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-syntax.js
+ScalaFromJS: Dev 2020-02-24 19:42:52
+syntax.ts
 */
 
 package esprima
+
 object Syntax {
   var AssignmentExpression = "AssignmentExpression"
   var AssignmentPattern = "AssignmentPattern"

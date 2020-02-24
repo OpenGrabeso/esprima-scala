@@ -1,17 +1,31 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-error-handler.js
+ScalaFromJS: Dev 2020-02-24 19:42:52
+error-handler.ts
 */
 
-package com.github.opengrabeso.esprima
+package esprima
+/*tslint:disable:max-classes-per-file */
+
+class Error() {
+  var name: String = _
+  var message: String = _
+  var index: Double = _
+  var lineNumber: Double = _
+  var column: Double = _
+  var description: String = _
+
+  def constructor(message: String)
+  
+}
+
 class ErrorHandler() {
-  var errors = Array.empty[Unit]
+  var errors = Array.empty[Error]
   var tolerant: Boolean = false
-  def recordError(error: Any) = {
+  def recordError(error: Error): Unit = {
     this.errors.push(error)
   }
   
-  def tolerate(error: Any) = {
+  def tolerate(error: Error): Unit = {
     if (this.tolerant) {
       this.recordError(error)
     } else {
@@ -19,7 +33,7 @@ class ErrorHandler() {
     }
   }
   
-  def constructError(msg: String, column: Double) = {
+  def constructError(msg: String, column: Double): Error = {
     var error = new Error(msg)
     try {
       throw error
@@ -37,7 +51,7 @@ class ErrorHandler() {
     error
   }
   
-  def createError(index: Double, line: Double, col: Double, description: Any) = {
+  def createError(index: Double, line: Double, col: Double, description: String): Error = {
     val msg = "Line " + line + ": " + description
     val error = this.constructError(msg, col)
     error.index = index
@@ -46,11 +60,11 @@ class ErrorHandler() {
     error
   }
   
-  def throwError(index: Double, line: Double, col: Double, description: Any) = {
+  def throwError(index: Double, line: Double, col: Double, description: String): never = {
     throw this.createError(index, line, col, description)
   }
   
-  def tolerateError(index: Double, line: Double, col: Double, description: Any) = {
+  def tolerateError(index: Double, line: Double, col: Double, description: String) = {
     val error = this.createError(index, line, col, description)
     if (this.tolerant) {
       this.recordError(error)

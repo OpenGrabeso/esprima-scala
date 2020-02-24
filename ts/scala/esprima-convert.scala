@@ -1,9 +1,9 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-esprima-convert.js
+ScalaFromJS: Dev 2019-12-19 17:19:14
+esprima-convert.ts
 */
 
-package com.github.opengrabeso.esprima-convert.js
+package esprima-convert.ts
 /* export * from "src/assert" */
 /* export * from "src/character" */
 /* export * from "src/comment-handler" */
@@ -20,4 +20,3 @@ package com.github.opengrabeso.esprima-convert.js
 /* export * from "src/token" */
 /* export * from "src/tokenizer" */
 /* export * from "src/xhtml-entities" */
-/* import "types" */

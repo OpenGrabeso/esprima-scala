@@ -1,22 +1,64 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-scanner.js
+ScalaFromJS: Dev 2020-02-24 19:42:52
+scanner.ts
 */
 
 package esprima
 /* import { assert } from './assert' */
 /* import { Character } from './character' */
+/* import { ErrorHandler } from './error-handler' */
 /* import { Messages } from './messages' */
-def hexValue(ch: String) = {
+/* import { Token } from './token' */
+def hexValue(ch: String): Double = {
   "0123456789abcdef".indexOf(ch.toLowerCase())
 }
 
-def octalValue(ch: String) = {
+def octalValue(ch: String): Double = {
   "01234567".indexOf(ch)
 }
 
-class Scanner(code: Double, var errorHandler: ErrorHandler) {
-  var source: Any = code
+trait Position() {
+  var line: Double = _
+  var column: Double = _
+}
+
+trait SourceLocation() {
+  var start: Position = _
+  var end: Position = _
+  var source: String = _
+}
+
+trait Comment() {
+  var multiLine: Boolean = _
+  var slice = Array.empty[Double]
+  var range = _
+  var loc: SourceLocation = _
+}
+
+trait RawToken() {
+  var `type`: Token = _
+  var value: String | Double = _
+  var pattern: String = _
+  var flags: String = _
+  var regex: RegExp | Null = _
+  var octal: Boolean = _
+  var cooked: String = _
+  var head: Boolean = _
+  var tail: Boolean = _
+  var lineNumber: Double = _
+  var lineStart: Double = _
+  var start: Double = _
+  var end: Double = _
+}
+
+trait ScannerState() {
+  var index: Double = _
+  var lineNumber: Double = _
+  var lineStart: Double = _
+}
+
+class Scanner(code: String, var errorHandler: ErrorHandler) {
+  var source: String = code
   var trackComment: Boolean = false
   var isModule: Boolean = false
   var length: Double = code.length
@@ -24,7 +66,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
   var lineNumber: Double = if (code.length > 0) 1 else 0
   var lineStart: Double = 0
   var curlyStack = Array.empty[String]
-  def saveState() = {
+  def saveState(): ScannerState = {
     new {
       var index = this.index
       var lineNumber = this.lineNumber
@@ -32,27 +74,27 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     }
   }
   
-  def restoreState(state: Any) = {
+  def restoreState(state: ScannerState): Unit = {
     this.index = state.index
     this.lineNumber = state.lineNumber
     this.lineStart = state.lineStart
   }
   
-  def eof() = {
+  def eof(): Boolean = {
     this.index >= this.length
   }
   
-  def throwUnexpectedToken(message: Any = Messages.UnexpectedTokenIllegal) = {
+  def throwUnexpectedToken(message: String = Messages.UnexpectedTokenIllegal): never = {
     this.errorHandler.throwError(this.index, this.lineNumber, this.index - this.lineStart + 1, message)
   }
   
-  def tolerateUnexpectedToken(message: Any = Messages.UnexpectedTokenIllegal) = {
+  def tolerateUnexpectedToken(message: String = Messages.UnexpectedTokenIllegal) = {
     this.errorHandler.tolerateError(this.index, this.lineNumber, this.index - this.lineStart + 1, message)
   }
   
   // https://tc39.github.io/ecma262/#sec-comments
-  def skipSingleLineComment(offset: Double) = {
-    var comments = Array.empty[Any]
+  def skipSingleLineComment(offset: Double): Array[Comment] = {
+    var comments = Array.empty[Comment]
     var start: Double = _
     var loc = new {}
     if (this.trackComment) {
@@ -75,7 +117,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
             var line = this.lineNumber
             var column = this.index - this.lineStart - 1
           }
-          object entry {
+          object entry extends Comment {
             var multiLine = false
             var slice = Array(start + offset, this.index - 1)
             var range = Array(start, this.index - 1)
@@ -96,7 +138,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
         var line = this.lineNumber
         var column = this.index - this.lineStart
       }
-      object entry {
+      object entry extends Comment {
         var multiLine = false
         var slice = Array(start + offset, this.index)
         var range = Array(start, this.index)
@@ -107,8 +149,8 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     comments
   }
   
-  def skipMultiLineComment() = {
-    var comments = Array.empty[Any]
+  def skipMultiLineComment(): Array[Comment] = {
+    var comments = Array.empty[Comment]
     var start: Double = _
     var loc = new {}
     if (this.trackComment) {
@@ -140,7 +182,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
               var line = this.lineNumber
               var column = this.index - this.lineStart
             }
-            object entry {
+            object entry extends Comment {
               var multiLine = true
               var slice = Array(start + 2, this.index - 2)
               var range = Array(start, this.index)
@@ -161,7 +203,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
         var line = this.lineNumber
         var column = this.index - this.lineStart
       }
-      object entry {
+      object entry extends Comment {
         var multiLine = true
         var slice = Array(start + 2, this.index)
         var range = Array(start, this.index)
@@ -191,7 +233,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
         this.lineNumber += 1
         this.lineStart = this.index
         start = true
-      } else if (ch == 0x2F) {
+      } else if (ch == 0x2F) { // U+002F is '/'
         ch = this.source.charCodeAt(this.index + 1)
         if (ch == 0x2F) {
           this.index += 2
@@ -200,7 +242,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
             comments = comments.concat(comment)
           }
           start = true
-        } else if (ch == 0x2A) {
+        } else if (ch == 0x2A) { // U+002A is '*'
           this.index += 2
           val comment = this.skipMultiLineComment()
           if (this.trackComment) {
@@ -209,7 +251,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
         } else {
           /* Unsupported: Break */ break;
         }
-      } else if (start && ch == 0x2D) {
+      } else if (start && ch == 0x2D) { // U+002D is '-'
         // U+003E is '>'
         if (this.source.charCodeAt(this.index + 1) == 0x2D && this.source.charCodeAt(this.index + 2) == 0x3E) {
           // '-->' is a single-line comment
@@ -221,7 +263,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
         } else {
           /* Unsupported: Break */ break;
         }
-      } else if (ch == 0x3C && !this.isModule) {
+      } else if (ch == 0x3C && !this.isModule) { // U+003C is '<'
         if (this.source.slice(this.index + 1, this.index + 4) == "!--") {
           this.index += 4 // `<!--`
           val comment = this.skipSingleLineComment(4)
@@ -239,7 +281,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
   }
   
   // https://tc39.github.io/ecma262/#sec-future-reserved-words
-  def isFutureReservedWord(id: String) = {
+  def isFutureReservedWord(id: String): Boolean = {
     id match {
       case "enum" | "export" | "import" | "super" =>
         return true
@@ -248,7 +290,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     }
   }
   
-  def isStrictModeReservedWord(id: String) = {
+  def isStrictModeReservedWord(id: String): Boolean = {
     id match {
       case "implements" | "interface" | "package" | "private" | "protected" | "public" | "static" | "yield" | "let" =>
         return true
@@ -257,12 +299,12 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     }
   }
   
-  def isRestrictedWord(id: String) = {
+  def isRestrictedWord(id: String): Boolean = {
     id == "eval" || id == "arguments"
   }
   
   // https://tc39.github.io/ecma262/#sec-keywords
-  def isKeyword(id: String) = {
+  def isKeyword(id: String): Boolean = {
     id.length match {
       case 2 =>
         return id == "if" || id == "in" || id == "do"
@@ -285,7 +327,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     }
   }
   
-  def codePointAt(i: Double) = {
+  def codePointAt(i: Double): Double = {
     var cp = this.source.charCodeAt(i)
     if (cp >= 0xD800 && cp <= 0xDBFF) {
       val second = this.source.charCodeAt(i + 1)
@@ -297,7 +339,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     cp
   }
   
-  def scanHexEscape(prefix: String) = {
+  def scanHexEscape(prefix: String): String | Null = {
     val len = if (prefix == "u") 4 else 2
     var code = 0
     for (i <- 0 until len) {
@@ -314,7 +356,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     String.fromCharCode(code)
   }
   
-  def scanUnicodeCodePointEscape() = {
+  def scanUnicodeCodePointEscape(): String = {
     var ch = this.source(this.index)
     var code = 0
     // At least, one hex digit is required.
@@ -338,7 +380,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     Character.fromCodePoint(code)
   }
   
-  def getIdentifier() = {
+  def getIdentifier(): String = {
     val start = {
       val temp = this.index
       this.index += 1
@@ -364,7 +406,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     this.source.slice(start, this.index)
   }
   
-  def getComplexIdentifier() = {
+  def getComplexIdentifier(): String = {
     var cp = this.codePointAt(this.index)
     var id = Character.fromCodePoint(cp)
     this.index += id.length
@@ -444,25 +486,25 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
   }
   
   // https://tc39.github.io/ecma262/#sec-names-and-keywords
-  def scanIdentifier() = {
-    var `type`: Double = _
+  def scanIdentifier(): RawToken = {
+    var `type`: Token = _
     val start = this.index
     // Backslash (U+005C) starts an escaped character.
     val id = if (this.source.charCodeAt(start) == 0x5C) this.getComplexIdentifier() else this.getIdentifier()
     // There is no keyword or literal with only one character.
     // Thus, it must be an identifier.
     if (id.length == 1) {
-      `type` = 3
-    } else  /*Identifier */if (this.isKeyword(id)) {
-      `type` = 4
-    } else  /*Keyword */if (id == "null") {
-      `type` = 5
-    } else  /*NullLiteral */if (id == "true" || id == "false") {
-      `type` = 1
-    } else  /*BooleanLiteral */{
-      `type` = 3
+      `type` = Token.Identifier
+    } else if (this.isKeyword(id)) {
+      `type` = Token.Keyword
+    } else if (id == "null") {
+      `type` = Token.NullLiteral
+    } else if (id == "true" || id == "false") {
+      `type` = Token.BooleanLiteral
+    } else {
+      `type` = Token.Identifier
     }
-     /*Identifier */if (`type` != 3 &&  /*Identifier */start + id.length != this.index) {
+    if (`type` != Token.Identifier && start + id.length != this.index) {
       val restore = this.index
       this.index = start
       this.tolerateUnexpectedToken(Messages.InvalidEscapedReservedWord)
@@ -479,7 +521,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
   }
   
   // https://tc39.github.io/ecma262/#sec-punctuators
-  def scanPunctuator() = {
+  def scanPunctuator(): RawToken = {
     val start = this.index
     // Check for most common single-character punctuators.
     var str = this.source(this.index)
@@ -530,8 +572,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
       this.throwUnexpectedToken()
     }
     new {
-      var `type` = 7
-       /*Punctuator */
+      var `type` = Token.Punctuator
       var value = str
       var lineNumber = this.lineNumber
       var lineStart = this.lineStart
@@ -541,7 +582,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
   }
   
   // https://tc39.github.io/ecma262/#sec-literals-numeric-literals
-  def scanHexLiteral(start: Double) = {
+  def scanHexLiteral(start: Double): RawToken = {
     var num = ""
     while (!this.eof()) {
       if (!Character.isHexDigit(this.source.charCodeAt(this.index))) {
@@ -560,8 +601,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
       this.throwUnexpectedToken()
     }
     new {
-      var `type` = 6
-       /*NumericLiteral */
+      var `type` = Token.NumericLiteral
       var value = parseInt("0x" + num, 16)
       var lineNumber = this.lineNumber
       var lineStart = this.lineStart
@@ -570,7 +610,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     }
   }
   
-  def scanBinaryLiteral(start: Double) = {
+  def scanBinaryLiteral(start: Double): RawToken = {
     var num = ""
     var ch: String = _
     while (!this.eof()) {
@@ -596,8 +636,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
       }
     }
     new {
-      var `type` = 6
-       /*NumericLiteral */
+      var `type` = Token.NumericLiteral
       var value = parseInt(num, 2)
       var lineNumber = this.lineNumber
       var lineStart = this.lineStart
@@ -606,7 +645,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     }
   }
   
-  def scanOctalLiteral(prefix: String, start: Double) = {
+  def scanOctalLiteral(prefix: String, start: Double): RawToken = {
     var num = ""
     var octal = false
     if (Character.isOctalDigit(prefix.charCodeAt(0))) {
@@ -637,8 +676,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
       this.throwUnexpectedToken()
     }
     new {
-      var `type` = 6
-       /*NumericLiteral */
+      var `type` = Token.NumericLiteral
       var value = parseInt(num, 8)
       var octal = octal
       var lineNumber = this.lineNumber
@@ -648,7 +686,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     }
   }
   
-  def isImplicitOctalLiteral() = {
+  def isImplicitOctalLiteral(): Boolean = {
     // Implicit octal, unless there is a non-octal digit.
     // (Annex B.1.1 on Numeric Literals)
     for (i <- this.index + 1 until this.length) {
@@ -663,7 +701,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     true
   }
   
-  def scanNumericLiteral() = {
+  def scanNumericLiteral(): RawToken = {
     val start = this.index
     var ch = this.source(start)
     assert(Character.isDecimalDigit(ch.charCodeAt(0)) || ch == ".", "Numeric literal must start with a decimal digit or a decimal point")
@@ -751,8 +789,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
       this.throwUnexpectedToken()
     }
     new {
-      var `type` = 6
-       /*NumericLiteral */
+      var `type` = Token.NumericLiteral
       var value = parseFloat(num)
       var lineNumber = this.lineNumber
       var lineStart = this.lineStart
@@ -762,7 +799,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
   }
   
   // https://tc39.github.io/ecma262/#sec-literals-string-literals
-  def scanStringLiteral() = {
+  def scanStringLiteral(): RawToken = {
     val start = this.index
     var quote = this.source(start)
     assert(quote == "'" || quote == "\"", "String literal must starts with a quote")
@@ -814,7 +851,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
             case "f" =>
               str += "\f"
             case "v" =>
-              str += "\uFFFF"
+              str += "￿"
             case "8" | "9" =>
               str += ch
               this.tolerateUnexpectedToken()
@@ -845,8 +882,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
       this.throwUnexpectedToken()
     }
     new {
-      var `type` = 8
-       /*StringLiteral */
+      var `type` = Token.StringLiteral
       var value = str
       var octal = octal
       var lineNumber = this.lineNumber
@@ -857,7 +893,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
   }
   
   // https://tc39.github.io/ecma262/#sec-template-literal-lexical-components
-  def scanTemplate() = {
+  def scanTemplate(): RawToken = {
     var cooked = ""
     var terminated = false
     val start = this.index
@@ -963,8 +999,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
       this.curlyStack.pop()
     }
     new {
-      var `type` = 10
-       /*Template */
+      var `type` = Token.Template
       var value = this.source.slice(start + 1, this.index - rawOffset)
       var cooked = cooked
       var head = head
@@ -977,14 +1012,14 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
   }
   
   // https://tc39.github.io/ecma262/#sec-literals-regular-expression-literals
-  def testRegExp(pattern: Any, flags: Any) = {
+  def testRegExp(pattern: String, flags: String): RegExp | Null = {
     // The BMP character to use as a replacement for astral symbols when
     // translating an ES6 "u"-flagged pattern to an ES5-compatible
     // approximation.
     // Note: replacing with '\uFFFF' enables false positives in unlikely
     // scenarios. For example, `[\u{1044f}-\u{10440}]` is an invalid
     // pattern that would not be detected by this substitution.
-    val astralSubstitute = "\uEEEF"
+    val astralSubstitute = ""
     var tmp = pattern
     val self = this
     if (flags.indexOf("u") >= 0) {
@@ -1019,7 +1054,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     }
   }
   
-  def scanRegExpBody() = {
+  def scanRegExpBody(): String = {
     var ch = this.source(this.index)
     assert(ch == "/", "Regular expression literal must start with a slash")
     var str = this.source({
@@ -1069,7 +1104,7 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     str.substr(1, str.length - 2)
   }
   
-  def scanRegExpFlags() = {
+  def scanRegExpFlags(): String = {
     var str = ""
     var flags = ""
     while (!this.eof()) {
@@ -1111,14 +1146,13 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     flags
   }
   
-  def scanRegExp() = {
+  def scanRegExp(): RawToken = {
     val start = this.index
     val pattern = this.scanRegExpBody()
     val flags = this.scanRegExpFlags()
     val value = this.testRegExp(pattern, flags)
     new {
-      var `type` = 9
-       /*RegularExpression */
+      var `type` = Token.RegularExpression
       var value = ""
       var pattern = pattern
       var flags = flags
@@ -1130,11 +1164,10 @@ class Scanner(code: Double, var errorHandler: ErrorHandler) {
     }
   }
   
-  def lex() = {
+  def lex(): RawToken = {
     if (this.eof()) {
       return new {
-        var `type` = 2
-         /*EOF */
+        var `type` = Token.EOF
         var value = ""
         var lineNumber = this.lineNumber
         var lineStart = this.lineStart
