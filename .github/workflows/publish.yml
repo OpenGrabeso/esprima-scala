@@ -17,5 +17,5 @@ jobs:
         java-version: 1.8
     - name: Publish
       run: |
-        printf "[github]\n  actor=OpenGrabeso\n  token=${{ secrets.GITHUB_USERTOKEN }}" > ~/.gitconfig
+        printf "[github]\n  actor=OpenGrabeso\n  token=${{ secrets.GITHUB_TOKEN }}" > ~/.gitconfig
         sbt +projsJVM/publish +projsJS/publish
