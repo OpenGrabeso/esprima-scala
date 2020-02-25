@@ -1,9 +1,9 @@
 name: Deploy
 
 on:
-  release:
-    types:
-      - created
+  push:
+    tags:
+      - v*
 jobs:
   build:
 
@@ -17,5 +17,5 @@ jobs:
         java-version: 1.8
     - name: Publish
       run: |
-        printf "[github]\n  actor=OpenGrabeso\n  token=${{ secrets.GITHUB_TOKEN }}" > ~/.gitconfig
+        printf "[github]\n  actor=${{ secrets.GITHUB_USERNAME }}\n  token=${{ secrets.GITHUB_USERTOKEN }}" > ~/.gitconfig
         sbt +projsJVM/publish +projsJS/publish

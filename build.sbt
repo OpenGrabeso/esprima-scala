@@ -3,11 +3,11 @@ import sbtcrossproject.Platform
 
 githubOwner in ThisBuild := "OpenGrabeso"
 
-githubRepository in ThisBuild := "esprima-scala"
+githubRepository in ThisBuild := "packages"
 
 githubActor in ThisBuild := sys.env.getOrElse("GITHUB_USERNAME", "OpenGrabeso")
 
-githubTokenSource in ThisBuild := TokenSource.Environment("GITHUB_USERTOKEN") || TokenSource.Environment("GITHUB_TOKEN") || TokenSource.GitConfig("github.token")
+githubTokenSource in ThisBuild := TokenSource.GitConfig("github.token") || TokenSource.Environment("GITHUB_USERTOKEN") || TokenSource.Environment("GITHUB_TOKEN")
 
 lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(new CrossType{
   override def projectDir(crossBase: File, platform: Platform) = CrossType.Full.projectDir(crossBase, platform)
@@ -16,7 +16,7 @@ lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(new CrossType{
 }).in(file("."))
   .settings(
     name := "esprimascala",
-    version := "0.1.9",
+    version := "0.1.10",
     organization := "com.github.opengrabeso",
 
     scalaVersion := "2.12.10",
