@@ -144,7 +144,7 @@ object Node {
   case class ArrowFunctionExpression(var params: collection.Seq[FunctionParameter], var body: BlockStatementOrExpression, var expression: Boolean) extends Node with HasGenerator with Expression {
     override def clone = copy().copyNode(this)
 
-    var id = null
+    var id: Identifier = null
     var generator: Boolean = false
     var async: Boolean = false
   }
@@ -166,7 +166,7 @@ object Node {
   case class AsyncArrowFunctionExpression(var params: collection.Seq[FunctionParameter], var body: BlockStatementOrExpression, var expression: Boolean) extends Node
     with HasGenerator with Expression {
 
-    var id = null
+    var id: Identifier = null
     var generator: Boolean = false
     var async: Boolean = true
   }
