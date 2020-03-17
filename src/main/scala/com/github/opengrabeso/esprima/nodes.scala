@@ -247,7 +247,7 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
-  case class TypeParameterListItem(var name: Node.Identifier, var constraint: Node.TypeAnnotation) extends Node {
+  case class TypeParameterListItem(var name: Node.Identifier, var constraint: Node.TypeAnnotation, var defaultValue: Node.TypeAnnotation) extends Node {
     override def clone = copy().copyNode(this)
   }
 

@@ -3415,11 +3415,16 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val node = this.createNode()
     val name = this.parseIdentifierName()
     var constraint: Node.TypeAnnotation = null
+    var defaultValue: Node.TypeAnnotation = null
     if (this.matchContextualKeyword("extends")) {
       this.nextToken()
       constraint = parseTypeAnnotation()
     }
-    this.finalize(node, new Node.TypeParameterListItem(name, constraint))
+    if (this.`match`("=")) {
+      this.nextToken()
+      defaultValue = parseTypeAnnotation()
+    }
+    this.finalize(node, new Node.TypeParameterListItem(name, constraint, defaultValue))
   }
   def parseTypeParameterList(token: RawToken = this.nextToken()): Node.TypeParameterList = {
     val node = this.startNode(token)
