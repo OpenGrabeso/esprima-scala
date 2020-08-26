@@ -1,8 +1,8 @@
 package com.github.opengrabeso.esprima
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class NodeTest extends FunSuite {
+class NodeTest extends AnyFunSuite {
   test("Nodes can clone themselves") {
     val a = Node.AssignmentExpression("=", Node.Identifier("answer"), Node.Literal(42, "42"))
     val cloned = a.clone()

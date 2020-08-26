@@ -2,11 +2,12 @@ package com.github.opengrabeso.esprima
 
 import Esprima._
 import Node._
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import collection.Seq
 import Resources._
 
-class DTSTests extends FlatSpec with TestInputs with Matchers {
+class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
   object DTSOptions extends Parser.Options {
     range = true
     attachComment = true

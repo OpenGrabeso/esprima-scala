@@ -1,9 +1,9 @@
 package com.github.opengrabeso.esprima
 
 import com.github.opengrabeso.esprima.Esprima.{parse, tokenize}
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
-class BasicTests extends FlatSpec with TestInputs {
+class BasicTests extends AnyFlatSpec with TestInputs {
   "Tokenizer" should "process simple input" in {
     val tokens = tokenize(answer42)
     assert(tokens._1.nonEmpty)

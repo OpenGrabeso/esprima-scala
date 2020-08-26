@@ -2,9 +2,10 @@ package com.github.opengrabeso.esprima
 
 import Esprima._
 import com.github.opengrabeso.esprima.Parser.TokenEntry
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class RegExTests extends FlatSpec with Matchers {
+class RegExTests extends AnyFlatSpec with Matchers {
   // examples from https://github.com/sweet-js/sweet-core/wiki/design
   object IsToken {
     def unapply(tokenEntry: TokenEntry): Option[(String, String)] = Some(tokenEntry.`type`, tokenEntry.value)

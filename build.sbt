@@ -23,7 +23,7 @@ lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(new CrossType{
     scalacOptions := Seq("-unchecked", "-deprecation", "-feature"),
     crossScalaVersions := Seq("2.12.10", "2.11.12", "2.13.1"),
 
-    libraryDependencies += "org.scalatest" %%% "scalatest" % "3.0.8" % "test",
+    libraryDependencies += "org.scalatest" %%% "scalatest" % "3.2.2" % "test",
 
     publishMavenStyle := true,
     publishArtifact in (Compile, packageDoc) := false,

@@ -2,10 +2,11 @@ package com.github.opengrabeso.esprima
 
 import Esprima._
 import Node._
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 // check if we can parse our own source code
-class SelfParseTest extends FlatSpec with TestInputs with Matchers {
+class SelfParseTest extends AnyFlatSpec with TestInputs with Matchers {
   import java.io.File
   def processSubdirs(f: File, extension: String)(action: File => Unit): Unit = {
     Option(f.listFiles).foreach { list =>
