@@ -12,7 +12,7 @@ githubTokenSource in ThisBuild := TokenSource.GitConfig("github.token") || Token
 lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Full).in(file("."))
   .settings(
     name := "esprimascala",
-    version := "0.2.3-SNAPSHOT",
+    version := "0.2.3",
     organization := "com.github.opengrabeso",
 
     scalaVersion := "2.12.12",
