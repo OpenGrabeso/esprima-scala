@@ -1639,7 +1639,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var statement: Node.StatementListItem = null
     this.context.isAssignmentTarget = true
     this.context.isBindingElement = true
-    if (this.lookahead.`type` == Keyword || this.lookahead.`type` == Identifier)  /*Keyword */{
+    if (this.lookahead.`type` == Keyword || this.lookahead.`type` == Identifier) {
       this.lookahead.value.get[String] match {
         case "export" =>
           if (!this.context.isModule) {
@@ -1675,10 +1675,18 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           }
         case "declare" if options.typescript =>
           this.nextToken()
-          if (this.matchKeyword("class")) {
-            statement = this.parseClassDeclaration()
-          } else {
-            throwUnexpectedToken(lookahead)
+          // TODO: DRY - eat declare somehow and continue
+          if (this.lookahead.`type` == Keyword || this.lookahead.`type` == Identifier)  {
+            this.lookahead.value.get[String] match {
+              case "class" =>
+                statement = this.parseClassDeclaration()
+              case "interface" if options.typescript && this.isLexicalDeclaration() =>
+                statement = this.parseClassDeclaration(keyword = "interface")
+              case "type" if options.typescript && this.isLexicalDeclaration() => // may be normal identifier when not in ts
+                statement = this.parseTypeAliasDeclaration()
+              case _ =>
+                throwUnexpectedToken(lookahead)
+            }
           }
         case "class" =>
           statement = this.parseClassDeclaration()
