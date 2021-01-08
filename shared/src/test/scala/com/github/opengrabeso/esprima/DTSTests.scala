@@ -533,6 +533,29 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
+  it should "Parse declare class (including export)" in {
+    val input = """
+    export declare class A {
+    }
+
+    declare class B {
+    }
+    """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+
+  }
+
+  it should "Parse declare type (including export)" in {
+    val input = """
+         export declare type Side = 'none' | 'left' | 'right';
+    """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
   behavior of "Parsing Three.js d.ts"
 
   it should "process Box2" in {
