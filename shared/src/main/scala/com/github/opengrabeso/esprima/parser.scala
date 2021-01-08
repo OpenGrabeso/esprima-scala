@@ -1639,7 +1639,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var statement: Node.StatementListItem = null
     this.context.isAssignmentTarget = true
     this.context.isBindingElement = true
-    if (this.lookahead.`type` == Keyword || this.lookahead.`type` == Identifier)  /*Keyword */{
+    if (this.lookahead.`type` == Keyword || this.lookahead.`type` == Identifier) {
       this.lookahead.value.get[String] match {
         case "export" =>
           if (!this.context.isModule) {
@@ -1674,11 +1674,20 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
             throwUnexpectedToken(lookahead)
           }
         case "declare" if options.typescript =>
+          // accept silently, no AST representation
           this.nextToken()
-          if (this.matchKeyword("class")) {
-            statement = this.parseClassDeclaration()
-          } else {
-            throwUnexpectedToken(lookahead)
+          // TODO: DRY - eat declare somehow and continue
+          if (this.lookahead.`type` == Keyword || this.lookahead.`type` == Identifier)  {
+            this.lookahead.value.get[String] match {
+              case "class" =>
+                statement = this.parseClassDeclaration()
+              case "interface" if options.typescript && this.isLexicalDeclaration() =>
+                statement = this.parseClassDeclaration(keyword = "interface")
+              case "type" if options.typescript && this.isLexicalDeclaration() => // may be normal identifier when not in ts
+                statement = this.parseTypeAliasDeclaration()
+              case _ =>
+                throwUnexpectedToken(lookahead)
+            }
           }
         case "class" =>
           statement = this.parseClassDeclaration()
@@ -2977,6 +2986,18 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       if (optional) {
         this.nextToken()
       }
+      if (ident.name == "new") {
+        // a construct signature
+        this.nextToken()
+        // skip a section enclosed in (), handle nesting
+        var level = 0
+        while (!this.`match`(")") || level > 0) {
+          if (this.`match`("(")) level += 1
+          else if (this.`match`(")")) level -= 1
+          this.nextToken()
+        }
+        this.expect(")")
+      }
       this.expect(":")
       val t = parseTypeAnnotation()
       this.finalize(node, Node.TypeMember(ident, optional, readOnly, t))
@@ -3034,6 +3055,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       while (this.`match`(",")) {
         this.nextToken()
         val name = this.parseIdentifierName()
+        if (options.typescript && this.`match`("?")) {
+          // accept optional paramters like in ( x: number, s?: string ) => void
+          this.nextToken()
+        }
         val tpe = if (options.typescript && this.`match`(":")) {
           this.nextToken()
           this.parseTypeAnnotation()
@@ -3192,6 +3217,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
 
       val id = key.asInstanceOf[Node.Identifier]
       if (id != null && id.name == "static" && (this.qualifiedPropertyName(this.lookahead) || this.`match`("*"))) {
+        if (options.typescript && this.matchContextualKeyword("readonly")) {
+          readOnly = true
+          this.nextToken()
+        }
         token = this.lookahead
         isStatic = true
         computed = this.`match`("[")
@@ -3256,11 +3285,18 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       // function return type is part of the FunctionExpression, do not parse or store it here
       method = true
     } else {
-      if (options.typescript && this.`match`(":")) {
-        this.nextToken()
-        `type` = parseTypeAnnotation()
-        if (kind == null) { // may already be get or set
+      if (options.typescript) {
+        if(this.`match`(":")) {
+          this.nextToken()
+          `type` = parseTypeAnnotation()
+          if (kind == null) { // may already be get or set
+            kind = "value"
+          }
+        } else if (this.`match`("=") && kind == null) {
+          this.nextToken()
           kind = "value"
+          // parse the initialization expression
+          this.parseExpression()
         }
       }
     }
@@ -3373,6 +3409,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val node = this.createNode()
     this.expectKeyword("type")
     val name = this.parseIdentifierName()
+    if (this.`match`("<")) {
+      this.parseTypeParameterList()
+    }
     this.expect("=")
     val tpe = this.parseTypeAnnotation()
     this.finalize(node, new Node.TypeAliasDeclaration(name, tpe))
@@ -3380,7 +3419,18 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
 
   def parseEnumBodyElement(): Node.EnumBodyElement = {
     val node = this.createNode()
-    val name = this.parseIdentifierName()
+
+    val name = if (this.lookahead.`type` == Identifier) {
+      this.parseIdentifierName()
+    } else if (this.lookahead.`type` == StringLiteral) {
+      val token = this.nextToken()
+      val node = this.startNode(token)
+      import OrType._
+      this.finalize(node, new Node.Identifier(token.value))
+    } else {
+      throwUnexpectedToken(this.lookahead)
+    }
+
     var value: Node.Expression = null
     if (this.`match`("=")) {
       this.nextToken()
@@ -3663,6 +3713,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.consumeSemicolon()
       exportDeclaration = this.finalize(node, new Node.ExportAllDeclaration(src))
     } else if (this.lookahead.`type` == Keyword || this.lookahead.`type` == Identifier)  /*Keyword */{
+
+      if (options.typescript && this.lookahead.value.get[String] == "declare") {
+        // accept silently, no AST representation
+        this.nextToken()
+      }
       // export var f = 1;
       var declaration: Node.ExportableNamedDeclaration = null
       this.lookahead.value.get[String] match {

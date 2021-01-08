@@ -533,6 +533,54 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
+  it should "Parse declare class (including export)" in {
+    val input = """
+    export declare class A {
+    }
+
+    declare class B {
+    }
+    """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+
+  }
+
+  it should "Parse declare type (including export)" in {
+    val input = """
+         export declare type Side = 'none' | 'left' | 'right';
+    """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
+  it should "Parse readonly class value members" in {
+    val input = """
+      export declare class XRHand {
+      	static readonly WRIST = 0;
+      }
+    """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
+
+  it should "Parse a generic type" in {
+    val input =
+      """
+      declare type Constructor<T = object> = {
+        new ( ...args: any[] ): T,
+        prototype: T
+      };
+    """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
   behavior of "Parsing Three.js d.ts"
 
   it should "process Box2" in {
@@ -551,6 +599,13 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
 
   it should "process Object3D" in {
     val input = fromResource("/threejs/d.ts/Object3D.d.ts")
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
+  it should "process WebXR" in {
+    val input = fromResource("/threejs/d.ts/WebXR.d.ts")
     val tree = parse(input, DTSOptions)
     assert(tree.body.nonEmpty)
     assert(tree.errors.isEmpty)
