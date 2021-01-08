@@ -556,6 +556,31 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
+  it should "Parse readonly class value members" in {
+    val input = """
+      export declare class XRHand {
+      	static readonly WRIST = 0;
+      }
+    """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
+
+  it should "Parse a generic type" in {
+    val input =
+      """
+      declare type Constructor<T = object> = {
+        new ( ...args: any[] ): T,
+        prototype: T
+      };
+    """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
   behavior of "Parsing Three.js d.ts"
 
   it should "process Box2" in {
