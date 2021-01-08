@@ -1674,6 +1674,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
             throwUnexpectedToken(lookahead)
           }
         case "declare" if options.typescript =>
+          // accept silently, no AST representation
           this.nextToken()
           // TODO: DRY - eat declare somehow and continue
           if (this.lookahead.`type` == Keyword || this.lookahead.`type` == Identifier)  {
@@ -3671,6 +3672,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       this.consumeSemicolon()
       exportDeclaration = this.finalize(node, new Node.ExportAllDeclaration(src))
     } else if (this.lookahead.`type` == Keyword || this.lookahead.`type` == Identifier)  /*Keyword */{
+
+      if (options.typescript && this.lookahead.value.get[String] == "declare") {
+        // accept silently, no AST representation
+        this.nextToken()
+      }
       // export var f = 1;
       var declaration: Node.ExportableNamedDeclaration = null
       this.lookahead.value.get[String] match {
