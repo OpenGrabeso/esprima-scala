@@ -9,14 +9,10 @@ githubActor in ThisBuild := sys.env.getOrElse("GITHUB_USERNAME", "OpenGrabeso")
 
 githubTokenSource in ThisBuild := TokenSource.GitConfig("github.token") || TokenSource.Environment("GITHUB_USERTOKEN") || TokenSource.Environment("GITHUB_TOKEN")
 
-lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(new CrossType{
-  override def projectDir(crossBase: File, platform: Platform) = CrossType.Full.projectDir(crossBase, platform)
-  override def projectDir(crossBase: File, projectType: String) = crossBase / projectType // copied from deprecated CrossType.Full.projectDir
-  override def sharedSrcDir(projectBase: File, conf: String) = CrossType.Pure.sharedSrcDir(projectBase, conf)
-}).in(file("."))
+lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Full).in(file("."))
   .settings(
     name := "esprimascala",
-    version := "0.2.2",
+    version := "0.2.3-SNAPSHOT",
     organization := "com.github.opengrabeso",
 
     scalaVersion := "2.12.12",
