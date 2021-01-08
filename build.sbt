@@ -30,3 +30,11 @@ lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(new CrossType{
     publish := (publish dependsOn (test in Test)).value,
 
 )
+
+lazy val root = project.in(file(".")).
+  aggregate(projs.js, projs.jvm).
+  settings(
+    name := "esprima-scala",
+    publish := {},
+    publishLocal := {},
+  )
