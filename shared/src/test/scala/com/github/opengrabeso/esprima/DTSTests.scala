@@ -600,6 +600,26 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
 
   }
 
+  it should "Parse class and function in export namespace" in {
+    val input =
+      """
+      export namespace N {
+          class C {
+              constructor();
+
+              getValue(): any;
+              setValue(v: any): void;
+          }
+          function f(a: any): any;
+      }
+    """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+
+  }
+
+
   behavior of "Parsing Three.js d.ts"
 
   it should "process Box2" in {

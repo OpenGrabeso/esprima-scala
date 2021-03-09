@@ -3110,9 +3110,20 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     val bodyNode = this.createNode()
     this.expect("{")
 
-    var exports = mutable.ArrayBuffer.empty[Node.ExportDeclaration]
+    var exports = mutable.ArrayBuffer.empty[Node.Declaration]
     while (this.lookahead.`type` != EOF && !this.`match`("}")) {
-      exports += parseExportDeclaration()
+      if (matchContextualKeyword("export")) {
+        exports += parseExportDeclaration()
+      } else {
+        // or parseStatementListItem?
+        val item = parseStatementListItem()
+        item match {
+          case decl: Node.Declaration =>
+            exports += decl
+          case _ =>
+            throwError("Declaration expected in namespace")
+        }
+      }
       this.consumeSemicolon()
     }
     this.expect("}")
