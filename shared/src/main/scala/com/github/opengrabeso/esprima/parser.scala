@@ -411,9 +411,21 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   // Expect the next token to match the specified punctuator.
   // If not, an exception will be thrown.
   def expect(value: String) = {
-    val token = this.nextToken()
-    if (token.`type` != Punctuator || (token.value !== value)) {
-      this.throwUnexpectedToken(token)
+    // a special case Array<X<T>> hack: process half of >> as >
+    if (this.lookahead.`type` == Punctuator &&  value == ">" && this.lookahead.value === ">>") {
+      this.lookahead = new RawToken {
+        `type` = Punctuator
+        override val value = OrType(">")
+        override val lineNumber = lookahead.lineNumber
+        override val lineStart = lookahead.lineStart
+        override val start = lookahead.start
+        override val end = lookahead.end
+      }
+    } else {
+      val token = this.nextToken()
+      if (token.`type` != Punctuator || (token.value !== value)) {
+        this.throwUnexpectedToken(token)
+      }
     }
   }
   
@@ -445,7 +457,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   
   // Return true if the next token matches the specified punctuator.
   def `match`(value: String) = {
-    this.lookahead.`type` == Punctuator &&  /*Punctuator */this.lookahead.value === value
+    this.lookahead.`match`(value)
   }
   
   // Return true if the next token matches the specified keyword

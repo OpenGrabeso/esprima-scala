@@ -56,7 +56,10 @@ object Scanner {
   type Token = Token.Token
 
   trait RawToken {
-    def `match`(str: String) = `type` == Punctuator && value === str
+    def `match`(str: String) = {
+      // a special case hack: match >> as >
+      `type` == Punctuator && (value === str || value === ">>" && str == ">")
+    }
 
     override def toString = `type`.toString + "'" + value.toString
 

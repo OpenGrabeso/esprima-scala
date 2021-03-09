@@ -581,6 +581,25 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
+  it should "Parse Array<X<T>>" in {
+    val input =
+      """
+      export class AX<T> extends X<T> {
+          constructor();
+
+          type: string;
+
+          xs: Array<X<T>>;
+
+          flag: boolean;
+      }
+    """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+
+  }
+
   behavior of "Parsing Three.js d.ts"
 
   it should "process Box2" in {
