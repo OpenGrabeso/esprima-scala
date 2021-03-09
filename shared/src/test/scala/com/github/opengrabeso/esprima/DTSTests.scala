@@ -620,6 +620,23 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
   }
 
 
+
+  it should "Parse arrow function members of class with a trailing space" in {
+    val input =
+      """
+      export class C {
+          callback: (a: string, b: number, ) => void;
+      }
+    """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+
+  }
+
+
+
+
   behavior of "Parsing Three.js d.ts"
 
   it should "process Box2" in {

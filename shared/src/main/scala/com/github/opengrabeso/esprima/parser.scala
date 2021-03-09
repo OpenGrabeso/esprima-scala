@@ -3066,16 +3066,18 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       pars += name -> tpe
       while (this.`match`(",")) {
         this.nextToken()
-        val name = this.parseIdentifierName()
-        if (options.typescript && this.`match`("?")) {
-          // accept optional paramters like in ( x: number, s?: string ) => void
-          this.nextToken()
+        if (!this.`match`(")")) {
+          val name = this.parseIdentifierName()
+          if (options.typescript && this.`match`("?")) {
+            // accept optional paramters like in ( x: number, s?: string ) => void
+            this.nextToken()
+          }
+          val tpe = if (options.typescript && this.`match`(":")) {
+            this.nextToken()
+            this.parseTypeAnnotation()
+          } else null
+          pars += name -> tpe
         }
-        val tpe = if (options.typescript && this.`match`(":")) {
-          this.nextToken()
-          this.parseTypeAnnotation()
-        } else null
-        pars += name -> tpe
       }
       this.expect(")")
     }
