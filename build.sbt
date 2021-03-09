@@ -9,10 +9,14 @@ githubActor in ThisBuild := sys.env.getOrElse("GITHUB_USERNAME", "OpenGrabeso")
 
 githubTokenSource in ThisBuild := TokenSource.GitConfig("github.token") || TokenSource.Environment("GITHUB_USERTOKEN") || TokenSource.Environment("GITHUB_TOKEN")
 
+publish / skip := true
+
+publishLocal / skip := true
+
 lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Full).in(file("."))
   .settings(
     name := "esprimascala",
-    version := "0.2.3",
+    version := "0.2.4",
     organization := "com.github.opengrabeso",
 
     scalaVersion := "2.12.12",
@@ -31,6 +35,6 @@ lazy val root = project.in(file("root")).
   aggregate(projs.js, projs.jvm).
   settings(
     name := "esprima-scala",
-    publish := {},
-    publishLocal := {},
+    publish / skip := true,
+    publishLocal / skip := true
   )
