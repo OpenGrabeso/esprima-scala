@@ -96,7 +96,7 @@ def tokenize(code: String, options: Parser.Options = Parser.DefaultOptions, dele
       while (true) {
         var token = tokenizer.getNextToken()
         if (!token) {
-          break
+          break()
         }
         if (delegate) {
           token = delegate(token)

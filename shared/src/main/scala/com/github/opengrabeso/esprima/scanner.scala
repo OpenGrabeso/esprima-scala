@@ -289,7 +289,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
               comments = comments.concat(comment)
             }
           } else {
-            break
+            break()
           }
         } else if (start && ch == 0x2D) {
           // U+003E is '>'
@@ -301,7 +301,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
               comments = comments.concat(comment)
             }
           } else {
-            break
+            break()
           }
         } else if (ch == 0x3C && !this.isModule) {
           if (this.source.slice(this.index + 1, this.index + 4) == "!--") {
@@ -312,10 +312,10 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
               comments = comments.concat(comment)
             }
           } else {
-            break
+            break()
           }
         } else {
-          break
+          break()
         }
       }
     }
@@ -411,7 +411,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
           temp
         })
         if (!Character.isHexDigit(ch)) {
-          break
+          break()
         }
         code = code * 16 + hexValue(ch)
       }
@@ -443,7 +443,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         if (Character.isIdentifierPart(ch)) {
           this.index += 1
         } else {
-          break
+          break()
         }
       }
     }
@@ -476,7 +476,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       while (!this.eof()) {
         cp = this.codePointAt(this.index)
         if (!Character.isIdentifierPart(cp)) {
-          break
+          break()
         }
         ch = Character.fromCodePoint(cp)
         id += ch
@@ -634,7 +634,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     breakable {
       while (!this.eof()) {
         if (!Character.isHexDigit(this.source.charCodeAt(this.index))) {
-          break
+          break()
         }
         num += this.source({
           val temp = this.index
@@ -667,7 +667,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       while (!this.eof()) {
         ch = this.source(this.index)
         if (ch != "0" && ch != "1") {
-          break
+          break()
         }
         num += this.source({
           val temp = this.index
@@ -714,7 +714,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     breakable {
       while (!this.eof()) {
         if (!Character.isOctalDigit(this.source.charCodeAt(this.index))) {
-          break
+          break()
         }
         num += this.source({
           val temp = this.index
@@ -873,7 +873,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         })
         if (ch == quote) {
           quote = ""
-          break
+          break()
         } else if (ch == "\\") {
           ch = this.source({
             val temp = this.index
@@ -931,7 +931,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
             this.lineStart = this.index
           }
         } else if (Character.isLineTerminator(ch.charCodeAt(0))) {
-          break
+          break()
         } else {
           str += ch
         }
@@ -973,13 +973,13 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
           rawOffset = 1
           tail = true
           terminated = true
-          break
+          break()
         } else if (ch == "$") {
           if (this.source(this.index).toString == "{") {
             this.curlyStack.push("${")
             this.index += 1
             terminated = true
-            break
+            break()
           }
           cooked += ch
         } else if (ch == "\\") {
@@ -1160,7 +1160,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         } else {
           if (ch == "/") {
             terminated = true
-            break
+            break()
           } else if (ch == "[") {
             classMarker = true
           }
@@ -1181,7 +1181,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       while (!this.eof()) {
         var ch: String = this.source(this.index)
         if (!Character.isIdentifierPart(ch.charCodeAt(0))) {
-          break
+          break()
         }
         this.index += 1
         if (ch == "\\" && !this.eof()) {

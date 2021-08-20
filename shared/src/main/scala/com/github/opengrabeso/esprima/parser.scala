@@ -977,7 +977,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           breakable {
             while (this.lookahead.`type` != EOF)  /*EOF */{
               if (!this.`match`(",")) {
-                break
+                break()
               }
               this.nextToken()
               if (this.`match`(")")) {
@@ -1012,7 +1012,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
                 expressions.push(this.inheritCoverGrammar(this.parseAssignmentExpression))
               }
               if (arrow) {
-                break
+                break()
               }
             }
           }
@@ -1066,11 +1066,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           val expr = if (this.`match`("...")) this.parseSpreadElement() else this.isolateCoverGrammar(this.parseAssignmentExpression)
           args.push(expr)
           if (this.`match`(")")) {
-            break
+            break()
           }
           this.expectCommaSeparator()
           if (this.`match`(")")) {
-            break
+            break()
           }
         }
       }
@@ -1141,11 +1141,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           val expr = if (this.`match`("...")) this.parseSpreadElement() else this.isolateCoverGrammar(this.parseAsyncArgument)
           args.push(expr)
           if (this.`match`(")")) {
-            break
+            break()
           }
           this.expectCommaSeparator()
           if (this.`match`(")")) {
-            break
+            break()
           }
         }
       }
@@ -1226,7 +1226,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           val quasi = this.parseTemplateLiteral()
           exprNode = this.finalize(this.startNode(startToken), new Node.TaggedTemplateExpression(exprNode, quasi))
         } else {
-          break
+          break()
         }
       }
     }
@@ -1266,7 +1266,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           val quasi = this.parseTemplateLiteral()
           expr = this.finalize(node, new Node.TaggedTemplateExpression(expr, quasi))
         } else {
-          break
+          break()
         }
       }
     }
@@ -1396,7 +1396,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         while (true) {
           prec = this.binaryPrecedence(this.lookahead)
           if (prec <= 0) {
-            break
+            break()
           }
           // Reduce: make a binary expression from the three topmost entries.
           while (stack.length > 2 && prec <= precedences(precedences.length - 1)) {
@@ -1635,7 +1635,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       breakable {
         while (this.lookahead.`type` != EOF)  /*EOF */{
           if (!this.`match`(",")) {
-            break
+            break()
           }
           this.nextToken()
           expressions.push(this.isolateCoverGrammar(this.parseAssignmentExpression))
@@ -1729,7 +1729,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     breakable {
       while (true) {
         if (this.`match`("}")) {
-          break
+          break()
         }
         block.push(this.parseStatementListItem())
       }
@@ -1817,7 +1817,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         } else {
           if (this.`match`("...")) {
             elements.push(this.parseBindingRestElement(params, kind))
-            break
+            break()
           } else {
             elements.push(this.parsePatternWithDefault(params, kind))
           }
@@ -2348,7 +2348,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     breakable {
       while (true) {
         if (this.`match`("}") || this.matchKeyword("default") || this.matchKeyword("case")) {
-          break
+          break()
         }
         consequent.push(this.parseStatementListItem().asInstanceOf[Node.Statement])
       }
@@ -2370,7 +2370,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     breakable {
       while (true) {
         if (this.`match`("}")) {
-          break
+          break()
         }
         val clause = this.parseSwitchCase()
         if (clause.test == null) {
@@ -2569,7 +2569,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       breakable {
         while (this.lookahead.`type` != EOF) /*EOF */ {
           if (this.`match`("}")) {
-            break
+            break()
           }
           body.push(this.parseStatementListItem())
         }
@@ -2653,11 +2653,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         while (this.lookahead.`type` != EOF)  /*EOF */{
           this.parseFormalParameter(options)
           if (this.`match`(")")) {
-            break
+            break()
           }
           this.expect(",")
           if (this.`match`(")")) {
-            break
+            break()
           }
         }
       }
@@ -2824,7 +2824,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       while (true) {
         val token = this.lookahead
         if (token.`type` != StringLiteral)  /*StringLiteral */{
-          break
+          break()
         }
         val statement = this.parseDirective()
         body.push(statement)
@@ -2832,7 +2832,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           case d: Node.Directive =>
             d.directive
           case _ =>
-            break
+            break()
         }
         if (directive == "use strict") {
           this.context.strict = true

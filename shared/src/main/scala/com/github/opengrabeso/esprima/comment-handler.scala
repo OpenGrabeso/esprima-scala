@@ -94,7 +94,7 @@ class CommentHandler() {
           target = entry.node
           this.stack.pop()
         } else {
-          break
+          break()
         }
       }
     }
