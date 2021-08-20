@@ -3,7 +3,7 @@ package com.github.opengrabeso.esprima
 import com.github.opengrabeso.esprima.Esprima.{parse, tokenize}
 import org.scalatest.flatspec.AnyFlatSpec
 
-class BasicTests extends AnyFlatSpec with TestInputs {
+class BasicTests extends AnyFlatSpec with TestInputs with TestOptions {
   "Tokenizer" should "process simple input" in {
     val tokens = tokenize(answer42)
     assert(tokens._1.nonEmpty)
@@ -89,24 +89,5 @@ class BasicTests extends AnyFlatSpec with TestInputs {
     """)
   }
 
-  object ModOptions extends Parser.Options {
-    range = true
-    attachComment = true
-    tolerant = true
-    typescript = true
-    sourceType = "module" // allow exports
-  }
-
-
-  it should "parse exports" in {
-    val ast = parse("""
-     export * from './c';
-     export { _M as M } from './m/M';
-     export as namespace T;
-    """, ModOptions)
-    assert(ast.body.nonEmpty)
-    assert(ast.errors.isEmpty)
-
-  }
 
 }

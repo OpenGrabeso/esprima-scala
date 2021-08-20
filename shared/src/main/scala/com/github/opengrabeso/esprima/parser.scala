@@ -3729,7 +3729,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     } else if (this.`match`("*")) {
       // export * from 'foo';
       this.nextToken()
-      if (!this.matchContextualKeyword("from")) {
+      if (this.matchContextualKeyword("as")) {
+        this.nextToken()
+        this.parseVariableIdentifier()
+      } else if (!this.matchContextualKeyword("from")) {
         val message = if (this.lookahead.value) Messages.UnexpectedToken else Messages.MissingFromClause
         this.throwError(message, this.lookahead.value)
       }
