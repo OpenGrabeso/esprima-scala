@@ -13,7 +13,6 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.Breaks._
 import Token._
-import Node.{ArrayPattern, AssignmentPattern, RestElement, TypeAnnotation}
 
 import scala.util.Try
 
@@ -913,9 +912,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
             this.reinterpretExpressionAsArrayPattern(i)
           }
         }
-        new ArrayPattern(elementsResult)
+        new Node.ArrayPattern(elementsResult)
       case expr: Node.AssignmentExpression =>
-        new AssignmentPattern (this.reinterpretExpressionAsArrayPattern(expr.left).asInstanceOf[Node.BindingIdentifierOrPattern], expr.right)
+        new Node.AssignmentPattern (this.reinterpretExpressionAsArrayPattern(expr.left).asInstanceOf[Node.BindingIdentifierOrPattern], expr.right)
       case expr: Node.ArrayPatternElement =>
         expr
     }
@@ -927,7 +926,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     (expr: @unchecked) match {
       case expr: Node.SpreadElement =>
 
-        new RestElement(this.reinterpretExpressionAsObjectPattern(expr.argument), null)
+        new Node.RestElement(this.reinterpretExpressionAsObjectPattern(expr.argument), null)
 
       case expr: Node.ObjectExpression =>
         val elementsResult = for (property <- expr.properties) yield {
@@ -2960,7 +2959,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       val typename = Node.TypeName(identifiers)
       if (options.typescript && this.`match`("<")) {
         this.nextToken()
-        val typeArgs = mutable.ArrayBuffer.empty[TypeAnnotation]
+        val typeArgs = mutable.ArrayBuffer.empty[Node.TypeAnnotation]
         while (!this.`match`(">")) {
           typeArgs += parseTypeAnnotation()
           if (!this.`match`(">")) this.expect(",")
@@ -3092,7 +3091,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
   // may be a function type or a parenthesised type
   def parseTypeStartingWithParen(parenToken: RawToken): Node.TypeAnnotation = {
     val node = this.startNode(parenToken)
-    val types = ArrayBuffer.empty[TypeAnnotation]
+    val types = ArrayBuffer.empty[Node.TypeAnnotation]
     val token = this.nextToken()
     val tpe = if (token.`type` == Identifier && this.`match`(":") || token.`match`(")")) {
       parseFunctionType(token)
@@ -3151,7 +3150,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     }
 
     @scala.annotation.tailrec
-    def parseArray(tpe: TypeAnnotation): TypeAnnotation = { // recursive, so that we handle multi-dimensional arrays
+    def parseArray(tpe: Node.TypeAnnotation): Node.TypeAnnotation = { // recursive, so that we handle multi-dimensional arrays
       val node = this.createNode()
       if (this.`match`("[")) {
         this.nextToken()
@@ -3161,7 +3160,22 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         tpe
       }
     }
-    this.finalize(node, parseArray(tpe))
+    val parsed = parseArray(tpe)
+
+    val mayBeConditional = if (this.matchContextualKeyword("extends")) {
+      // conditional type?
+      this.nextToken()
+      val tpeExtends = parseTypeReference(this.nextToken())
+      this.expect("?")
+      val condL = parsePrimaryType(this.nextToken())
+      this.expect(":")
+      val condR = parsePrimaryType(this.nextToken())
+      Node.ConditionalType(parsed, tpeExtends, condL, condR) // TODO: proper conditional type
+    } else {
+      parsed
+    }
+
+    this.finalize(node, mayBeConditional)
   }
 
 
@@ -3170,7 +3184,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
 
     // see parseUnion for marker rationale
     @scala.annotation.tailrec
-    def parseIntersection(marker: RawToken, tpe: TypeAnnotation): Node.TypeAnnotation = {
+    def parseIntersection(marker: RawToken, tpe: Node.TypeAnnotation): Node.TypeAnnotation = {
       val node = this.startNode(marker)
       if (this.`match`("&")) {
         this.nextToken()
@@ -3195,7 +3209,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
 
     // recursive (repeating) syntax - the same opening marker is used for all expressions, because of associativity (A|B)|C
     @scala.annotation.tailrec
-    def parseUnion(marker: RawToken, tpe: TypeAnnotation): TypeAnnotation = {
+    def parseUnion(marker: RawToken, tpe: Node.TypeAnnotation): Node.TypeAnnotation = {
       val node = this.startNode(marker)
       if (this.`match`("|")) {
         this.nextToken()
@@ -3224,7 +3238,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     var typePars: Node.TypeParameterList = null
     var key: Node.PropertyKey = null
     var value: Node.PropertyValue = null
-    var `type`: TypeAnnotation = null
+    var `type`: Node.TypeAnnotation = null
     var optional: Boolean = false
     var computed = false
     var method = false

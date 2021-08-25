@@ -116,6 +116,10 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
+  case class ConditionalType(tpe: TypeAnnotation, ext: TypeAnnotation, left: TypeAnnotation, right: TypeAnnotation) extends TypeAnnotation {
+    override def clone = copy().copyNode(this)
+  }
+
   case class IntersectionType(left: TypeAnnotation, right: TypeAnnotation) extends TypeAnnotation {
     override def clone = copy().copyNode(this)
   }

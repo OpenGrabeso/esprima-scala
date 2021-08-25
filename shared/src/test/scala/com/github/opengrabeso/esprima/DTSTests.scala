@@ -655,6 +655,17 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
 
   }
 
+  it should "Parse conditional types" in {
+    val input =
+      """
+      class X {
+          get<T>(t: T): T extends Text ? Text : T;
+      }
+      """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
 
 
 
@@ -688,4 +699,6 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
+
+  it should "process"
 }
