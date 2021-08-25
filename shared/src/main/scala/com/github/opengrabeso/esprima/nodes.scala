@@ -116,6 +116,10 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
+  case class IntersectionType(left: TypeAnnotation, right: TypeAnnotation) extends TypeAnnotation {
+    override def clone = copy().copyNode(this)
+  }
+
   case class TypeMember(name: Identifier, optional: Boolean, readOnly: Boolean, `type`: TypeAnnotation) extends TypeAnnotation {
     override def clone = copy().copyNode(this)
   }

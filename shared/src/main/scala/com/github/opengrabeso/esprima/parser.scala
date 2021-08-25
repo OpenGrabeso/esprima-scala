@@ -3164,29 +3164,48 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
     this.finalize(node, parseArray(tpe))
   }
 
+
   def parseTypeAnnotation(token: RawToken = this.nextToken()): Node.TypeAnnotation = {
     val node = this.startNode(token)
 
-    // silently skip leading | - this seems invalid, but some d.ts files contain it
-    val tpe = if (token.`match`("|")) {
-      parsePrimaryType(this.nextToken())
-    } else {
-      parsePrimaryType(token)
-
-    }
-
+    // see parseUnion for marker rationale
     @scala.annotation.tailrec
-    def parseUnion(tpe: TypeAnnotation): TypeAnnotation = {
-      val node = this.createNode()
-      if (this.`match`("|")) {
+    def parseIntersection(marker: RawToken, tpe: TypeAnnotation): Node.TypeAnnotation = {
+      val node = this.startNode(marker)
+      if (this.`match`("&")) {
         this.nextToken()
         val right = parsePrimaryType(this.nextToken())
-        parseUnion(this.finalize(node, Node.UnionType(tpe, right)))
+        parseIntersection(marker, this.finalize(node, Node.IntersectionType(tpe, right)))
       } else {
         tpe
       }
     }
-    this.finalize(node, parseUnion(tpe))
+
+    def parseIntersectionType(token: RawToken = this.nextToken()): Node.TypeAnnotation = {
+      val tpe = parsePrimaryType(token)
+      parseIntersection(token, tpe)
+    }
+
+    // silently skip leading | - this seems invalid, but some d.ts files contain it
+    val tpe = if (token.`match`("|")) {
+      parseIntersectionType(this.nextToken())
+    } else {
+      parseIntersectionType(token)
+    }
+
+    // recursive (repeating) syntax - the same opening marker is used for all expressions, because of associativity (A|B)|C
+    @scala.annotation.tailrec
+    def parseUnion(marker: RawToken, tpe: TypeAnnotation): TypeAnnotation = {
+      val node = this.startNode(marker)
+      if (this.`match`("|")) {
+        this.nextToken()
+        val right = parseIntersectionType(this.nextToken())
+        parseUnion(marker, this.finalize(node, Node.UnionType(tpe, right)))
+      } else {
+        tpe
+      }
+    }
+    this.finalize(node, parseUnion(token, tpe))
   }
 
   def previewToken(): RawToken = {

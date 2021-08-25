@@ -342,6 +342,27 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
 
   }
 
+  it should "Parse a class with intersection type members" in {
+    val input ="""
+        export class A {
+          a: string & {};
+          b: X | (string & {});
+          c: X | (B & C);
+        }
+        """
+
+    val tree = parse(input, DTSOptions)
+    assert(tree.errors.isEmpty)
+    tree.body.head should matchPattern {
+      case ExportNamedDeclaration(ClassDeclaration(Identifier("A"), null, Nil, ClassBody(Seq(
+      MethodDefinition(Identifier("a"), IntersectionType(NamedType("string"), ObjectType(Nil)), _, _, _, false),
+      MethodDefinition(Identifier("b"), UnionType(NamedType("X"), IntersectionType(NamedType("string"), ObjectType(Nil))), _, _, _, false),
+      MethodDefinition(Identifier("c"), UnionType(NamedType("X"), IntersectionType(NamedType("B"), NamedType("C"))), _, _, _, false)
+      )), _), _, _) =>
+    }
+
+  }
+
   it should "Parse a class with function members" in {
     val input ="""
         export class A {
