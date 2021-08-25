@@ -1211,7 +1211,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
               this.reinterpretExpressionAsArrayPattern(i).asInstanceOf[Node.ArgumentListElement]
             }
             exprNode = new Node.ArrowParameterPlaceHolder {
-              params = ArrayBuffer(argsReinterpreted: _*)
+              params = ArrayBuffer(argsReinterpreted.toSeq: _*)
               async = true
             }
           }
