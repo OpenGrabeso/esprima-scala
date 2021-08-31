@@ -6,7 +6,6 @@ comment-handler.js
 package com.github.opengrabeso.esprima
 
 import Scanner.SourceLocation
-import Scanner.Metadata
 
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.Breaks._
@@ -39,7 +38,7 @@ class CommentHandler() {
   var stack = ArrayBuffer.empty[NodeInfo]
   var leading = ArrayBuffer.empty[Entry]
   var trailing = ArrayBuffer.empty[Entry]
-  def insertInnerComments(node: Node.Node, metadata: Metadata) = {
+  def insertInnerComments(node: Node.Node, metadata: SourceLocation) = {
     //  innnerComments for properties empty block
     //  `function a() {/** comments **\/}`
     if (node.isInstanceOf[Node.BlockStatement] && node.asInstanceOf[Node.BlockStatement].body.length == 0) {
@@ -59,7 +58,7 @@ class CommentHandler() {
     }
   }
   
-  def findTrailingComments(metadata: Metadata): ArrayBuffer[Comment] = {
+  def findTrailingComments(metadata: SourceLocation): ArrayBuffer[Comment] = {
     var trailingComments = ArrayBuffer.empty[Comment]
     if (this.trailing.length > 0) {
       for (i <- this.trailing.length - 1 to 0 by -1) {
@@ -84,7 +83,7 @@ class CommentHandler() {
     trailingComments
   }
   
-  def findLeadingComments(metadata: Metadata): ArrayBuffer[Comment] = {
+  def findLeadingComments(metadata: SourceLocation): ArrayBuffer[Comment] = {
     val leadingComments = ArrayBuffer.empty[Comment]
     var target: Node.Node = null
     breakable {
@@ -122,7 +121,7 @@ class CommentHandler() {
     leadingComments
   }
   
-  def visitNode(node: Node.Node, metadata: Metadata): Unit = {
+  def visitNode(node: Node.Node, metadata: SourceLocation): Unit = {
     if (node.isInstanceOf[Node.Program] && node.asInstanceOf[Node.Program].body.length > 0) {
       return
     }
@@ -142,7 +141,7 @@ class CommentHandler() {
     })
   }
   
-  def visitComment(node: Node.CommentNode, metadata: Metadata) = {
+  def visitComment(node: Node.CommentNode, metadata: SourceLocation) = {
     val `type_` = if (!node.multiline) "Line" else "Block"
     object comment extends Comment {
       val `type` = `type_`
@@ -173,7 +172,7 @@ class CommentHandler() {
     }
   }
   
-  def visit(node: Node.Node, metadata: Metadata) = {
+  def visit(node: Node.Node, metadata: SourceLocation) = {
     node match {
       case node: Node.CommentNode  =>
         this.visitComment(node, metadata)

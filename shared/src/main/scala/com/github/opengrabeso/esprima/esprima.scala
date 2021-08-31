@@ -6,7 +6,7 @@ esprima.js
 package com.github.opengrabeso.esprima
 
 import Parser.TokenEntry
-import Scanner.Metadata
+import Scanner.SourceLocation
 
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.Breaks._
@@ -36,9 +36,9 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-def parse(code: String, options: Parser.Options = Parser.DefaultOptions, delegate: (Node.Node, Metadata) => Unit = null) = {
+def parse(code: String, options: Parser.Options = Parser.DefaultOptions, delegate: (Node.Node, SourceLocation) => Unit = null) = {
   var commentHandler: CommentHandler = null
-  def proxyDelegate(node: Node.Node, metadata: Metadata): Unit = {
+  def proxyDelegate(node: Node.Node, metadata: SourceLocation): Unit = {
     if (delegate) {
       delegate(node, metadata)
     }
@@ -75,13 +75,13 @@ def parse(code: String, options: Parser.Options = Parser.DefaultOptions, delegat
   ast
 }
 
-def parseModule(code: String, options: Parser.Options, delegate: (Node.Node, Metadata) => Unit) = {
+def parseModule(code: String, options: Parser.Options, delegate: (Node.Node, SourceLocation) => Unit) = {
   val parsingOptions = options
   parsingOptions.sourceType = "module"
   parse(code, parsingOptions, delegate)
 }
 
-def parseScript(code: String, options: Parser.Options, delegate: (Node.Node, Metadata) => Unit) = {
+def parseScript(code: String, options: Parser.Options, delegate: (Node.Node, SourceLocation) => Unit) = {
   val parsingOptions = options
   parsingOptions.sourceType = "script"
   parse(code, parsingOptions, delegate)

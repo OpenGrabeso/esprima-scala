@@ -79,7 +79,7 @@ object Parser {
 
 }
 
-class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.Metadata) => Unit) {
+class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.SourceLocation) => Unit) {
   self =>
   var config = new Config {
     range = options.range
@@ -254,7 +254,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
           if (this.config.loc) {
             node.loc = e.loc
           }
-          object metadata extends Scanner.Metadata {
+          object metadata extends Scanner.SourceLocation {
             var start: Position = new Position {
               override val line = e.loc.start.line
               override val column = e.loc.start.column
@@ -390,7 +390,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
       }
     }
     if (this.delegate) {
-      object metadata extends Scanner.Metadata {
+      object metadata extends Scanner.SourceLocation {
         var start: Position = new Position {
           override val line = marker.line
           override val column = marker.column

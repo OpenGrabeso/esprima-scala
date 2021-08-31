@@ -35,15 +35,10 @@ object Scanner {
     val offset: Int = -1
   }
 
-  trait Metadata {
-    var start: Position
-    var end: Position
-  }
-
   trait SourceLocation {
     var start: Position
     var end: Position
-    var source: String = _
+    var source: String = null
   }
 
   trait Comment {
