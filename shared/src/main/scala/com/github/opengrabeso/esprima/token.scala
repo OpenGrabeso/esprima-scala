@@ -1,17 +1,30 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-token.js
+ScalaFromJS: Dev
+token.ts
 */
 
-package esprima
-var TokenName: Any = _
-TokenName(1) =  /*BooleanLiteral */"Boolean"
-TokenName(2) =  /*EOF */"<end>"
-TokenName(3) =  /*Identifier */"Identifier"
-TokenName(4) =  /*Keyword */"Keyword"
-TokenName(5) =  /*NullLiteral */"Null"
-TokenName(6) =  /*NumericLiteral */"Numeric"
-TokenName(7) =  /*Punctuator */"Punctuator"
-TokenName(8) =  /*StringLiteral */"String"
-TokenName(9) =  /*RegularExpression */"RegularExpression"
-TokenName(10) =  /*Template */"Template"
+package com.github.opengrabeso.esprima
+object Token extends Enumeration {
+  val BooleanLiteral = Value(1)
+  val EOF = Value()
+  val Identifier = Value()
+  val Keyword = Value()
+  val NullLiteral = Value()
+  val NumericLiteral = Value()
+  val Punctuator = Value()
+  val StringLiteral = Value()
+  val RegularExpression = Value()
+  val Template = Value()
+}
+
+val TokenName = Map.empty[String, Unit]
+TokenName(Token.BooleanLiteral) = "Boolean"
+TokenName(Token.EOF) = "<end>"
+TokenName(Token.Identifier) = "Identifier"
+TokenName(Token.Keyword) = "Keyword"
+TokenName(Token.NullLiteral) = "Null"
+TokenName(Token.NumericLiteral) = "Numeric"
+TokenName(Token.Punctuator) = "Punctuator"
+TokenName(Token.StringLiteral) = "String"
+TokenName(Token.RegularExpression) = "RegularExpression"
+TokenName(Token.Template) = "Template"

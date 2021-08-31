@@ -1,9 +1,10 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-syntax.js
+ScalaFromJS: Dev
+syntax.ts
 */
 
-package esprima
+package com.github.opengrabeso.esprima
+
 object Syntax {
   var AssignmentExpression = "AssignmentExpression"
   var AssignmentPattern = "AssignmentPattern"

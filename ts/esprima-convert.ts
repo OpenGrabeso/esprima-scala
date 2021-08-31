@@ -14,6 +14,8 @@ export * from "src/syntax"
 export * from "src/token"
 export * from "src/tokenizer"
 export * from "src/xhtml-entities"
+export * from "types"
+
 var ScalaFromJS_settings = {
     members: [
         {
@@ -26,7 +28,7 @@ var ScalaFromJS_settings = {
         {
             folder: "test",
             operation: "name",
-            name: "esprima",
+            name: "com.github.opengrabeso.esprima",
             template: [
                 "class ${class}Tests extends Tests {",
                 "import org.scalatest.Assertions.{assert => ok}",
@@ -38,7 +40,7 @@ var ScalaFromJS_settings = {
         {
             folder: "src",
             operation: "name",
-            name: "esprima"
+            name: "com.github.opengrabeso.esprima"
         },
 
     ],

@@ -1,9 +1,9 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-messages.js
+ScalaFromJS: Dev
+messages.ts
 */
 
-package esprima
+package com.github.opengrabeso.esprima
 object Messages {
   var BadImportCallArity = "Unexpected token"
   var BadGetterArity = "Getter must not have any formal parameters"

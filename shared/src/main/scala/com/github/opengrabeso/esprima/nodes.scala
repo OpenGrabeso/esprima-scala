@@ -1,66 +1,84 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-nodes.js
+ScalaFromJS: Dev
+nodes.ts
 */
 
-package esprima
+package com.github.opengrabeso.esprima
 /* import { Syntax } from './syntax' */
-class ArrayExpression(var elements: Any) {
-  var `type` = Syntax.ArrayExpression
+type ArgumentListElement = Expression | SpreadElement
+type ArrayExpressionElement = Expression | SpreadElement
+type ArrayPatternElement = AssignmentPattern | Identifier | ArrayPattern | ObjectPattern | RestElement
+type BindingPattern = ArrayPattern | ObjectPattern
+type BindingIdentifier = Identifier
+type Declaration = Any
+type ExportableDefaultDeclaration = Any
+type ExportableNamedDeclaration = AsyncFunctionDeclaration | ClassDeclaration | FunctionDeclaration | VariableDeclaration
+type ExportDeclaration = ExportAllDeclaration | ExportDefaultDeclaration | ExportNamedDeclaration
+type Expression = Any
+type FunctionParameter = AssignmentPattern | Identifier | ArrayPattern | ObjectPattern
+type ImportDeclarationSpecifier = ImportDefaultSpecifier | ImportNamespaceSpecifier | ImportSpecifier
+type ObjectExpressionProperty = Property | SpreadElement
+type ObjectPatternProperty = Property | RestElement
+type Statement = Any
+type PropertyKey = Identifier | Literal
+type PropertyValue = Any
+type StatementListItem = Declaration | Statement
+class ArrayExpression(var elements: Array[Expression | SpreadElement]) {
+  var `type`: String = Syntax.ArrayExpression
 }
 
-class ArrayPattern(var elements: Any) {
-  var `type` = Syntax.ArrayPattern
+class ArrayPattern(var elements: Array[AssignmentPattern | BindingIdentifier | BindingPattern | RestElement]) {
+  var `type`: String = Syntax.ArrayPattern
 }
 
-class ArrowFunctionExpression(var params: Any, var body: Any, var expression: Any) {
-  var `type` = Syntax.ArrowFunctionExpression
-  var id = null
+class ArrowFunctionExpression(var params: Array[AssignmentPattern | Identifier | ArrayPattern | ObjectPattern], var body: BlockStatement | Expression, var expression: Boolean) {
+  var `type`: String = Syntax.ArrowFunctionExpression
+  var id: Identifier = null
   var generator: Boolean = false
   var async: Boolean = false
 }
 
-class AssignmentExpression(var operator: Any, var left: Any, var right: Any) {
-  var `type` = Syntax.AssignmentExpression
+class AssignmentExpression(var operator: String, var left: Expression, var right: Expression) {
+  var `type`: String = Syntax.AssignmentExpression
 }
 
-class AssignmentPattern(var left: Any, var right: Any) {
-  var `type` = Syntax.AssignmentPattern
+class AssignmentPattern(var left: Identifier | ArrayPattern | ObjectPattern, var right: Expression) {
+  var `type`: String = Syntax.AssignmentPattern
 }
 
-class AsyncArrowFunctionExpression(var params: Any, var body: Any, var expression: Any) {
-  var `type` = Syntax.ArrowFunctionExpression
-  var id = null
+class AsyncArrowFunctionExpression(var params: Array[AssignmentPattern | Identifier | ArrayPattern | ObjectPattern], var body: BlockStatement | Expression, var expression: Boolean) {
+  var `type`: String = Syntax.ArrowFunctionExpression
+  var id: Identifier = null
   var generator: Boolean = false
   var async: Boolean = true
 }
 
-class AsyncFunctionDeclaration(var id: Any, var params: Any, var body: Any) {
-  var `type` = Syntax.FunctionDeclaration
-  var generator: Boolean = false
-  var expression: Boolean = false
-  var async: Boolean = true
-}
-
-class AsyncFunctionExpression(var id: Any, var params: Any, var body: Any) {
-  var `type` = Syntax.FunctionExpression
+class AsyncFunctionDeclaration(var id: Identifier, var params: Array[AssignmentPattern | Identifier | ArrayPattern | ObjectPattern], var body: BlockStatement) {
+  var `type`: String = Syntax.FunctionDeclaration
   var generator: Boolean = false
   var expression: Boolean = false
   var async: Boolean = true
 }
 
-class AwaitExpression(var argument: Any) {
-  var `type` = Syntax.AwaitExpression
+class AsyncFunctionExpression(var id: Identifier, var params: Array[AssignmentPattern | Identifier | ArrayPattern | ObjectPattern], var body: BlockStatement) {
+  var `type`: String = Syntax.FunctionExpression
+  var generator: Boolean = false
+  var expression: Boolean = false
+  var async: Boolean = true
 }
 
-class BinaryExpression(operator_par: String, left_par: Any, right_par: Any) {
-  var `type` = _
+class AwaitExpression(var argument: Expression) {
+  var `type`: String = Syntax.AwaitExpression
+}
+
+class BinaryExpression(operator_par: String, left_par: Expression, right_par: Expression) {
+  var `type`: String = _
   var operator: String = _
-  var left = _
-  var right = _
+  var left: Expression = _
+  var right: Expression = _
   this.constructor(operator_par, left_par, right_par)
 
-  def constructor(operator: String, left: Any, right: Any) = {
+  def constructor(operator: String, left: Expression, right: Expression) = {
     val logical = operator == "||" || operator == "&&"
     this.`type` = if (logical) Syntax.LogicalExpression else Syntax.BinaryExpression
     this.operator = operator
@@ -70,269 +88,274 @@ class BinaryExpression(operator_par: String, left_par: Any, right_par: Any) {
   
 }
 
-class BlockStatement(var body: Any) {
-  var `type` = Syntax.BlockStatement
+class BlockStatement(var body: Array[Statement]) {
+  var `type`: String = Syntax.BlockStatement
 }
 
-class BreakStatement(var label: Any) {
-  var `type` = Syntax.BreakStatement
+class BreakStatement(var label: Identifier) {
+  var `type`: String = Syntax.BreakStatement
 }
 
-class CallExpression(var callee: Any, var arguments: Any) {
-  var `type` = Syntax.CallExpression
+class CallExpression(var callee: Expression | Import, var arguments: Array[Expression | SpreadElement]) {
+  var `type`: String = Syntax.CallExpression
 }
 
-class CatchClause(var param: Any, var body: Any) {
-  var `type` = Syntax.CatchClause
+class CatchClause(var param: Identifier | ArrayPattern | ObjectPattern, var body: BlockStatement) {
+  var `type`: String = Syntax.CatchClause
 }
 
-class ClassBody(var body: Any) {
-  var `type` = Syntax.ClassBody
+class ClassBody(var body: Array[Property]) {
+  var `type`: String = Syntax.ClassBody
 }
 
-class ClassDeclaration(var id: Any, var superClass: Any, var body: Any) {
-  var `type` = Syntax.ClassDeclaration
+class ClassDeclaration(var id: Identifier, var superClass: Identifier, var body: ClassBody) {
+  var `type`: String = Syntax.ClassDeclaration
 }
 
-class ClassExpression(var id: Any, var superClass: Any, var body: Any) {
-  var `type` = Syntax.ClassExpression
+class ClassExpression(var id: Identifier, var superClass: Identifier, var body: ClassBody) {
+  var `type`: String = Syntax.ClassExpression
 }
 
-class ComputedMemberExpression(var `object`: Any, var property: Any) {
-  var `type` = Syntax.MemberExpression
+class ComputedMemberExpression(var `object`: Expression, var property: Expression) {
+  var `type`: String = Syntax.MemberExpression
   var computed: Boolean = true
 }
 
-class ConditionalExpression(var test: Any, var consequent: Any, var alternate: Any) {
-  var `type` = Syntax.ConditionalExpression
+class ConditionalExpression(var test: Expression, var consequent: Expression, var alternate: Expression) {
+  var `type`: String = Syntax.ConditionalExpression
 }
 
-class ContinueStatement(var label: Any) {
-  var `type` = Syntax.ContinueStatement
+class ContinueStatement(var label: Identifier) {
+  var `type`: String = Syntax.ContinueStatement
 }
 
-class DebuggerStatement() {
-  var `type` = Syntax.DebuggerStatement
+class DebuggerStatement {
+  var `type`: String = Syntax.DebuggerStatement
 }
 
-class Directive(var expression: Any, var directive: String) {
-  var `type` = Syntax.ExpressionStatement
+class Directive(var expression: Expression, var directive: String) {
+  var `type`: String = Syntax.ExpressionStatement
 }
 
-class DoWhileStatement(var body: Any, var test: Any) {
-  var `type` = Syntax.DoWhileStatement
+class DoWhileStatement(var body: Statement, var test: Expression) {
+  var `type`: String = Syntax.DoWhileStatement
 }
 
-class EmptyStatement() {
-  var `type` = Syntax.EmptyStatement
+class EmptyStatement {
+  var `type`: String = Syntax.EmptyStatement
 }
 
-class ExportAllDeclaration(var source: Any) {
-  var `type` = Syntax.ExportAllDeclaration
+class ExportAllDeclaration(var source: Literal) {
+  var `type`: String = Syntax.ExportAllDeclaration
 }
 
-class ExportDefaultDeclaration(var declaration: Any) {
-  var `type` = Syntax.ExportDefaultDeclaration
+class ExportDefaultDeclaration(var declaration: ExportableDefaultDeclaration) {
+  var `type`: String = Syntax.ExportDefaultDeclaration
 }
 
-class ExportNamedDeclaration(var declaration: Any, var specifiers: Any, var source: Any) {
-  var `type` = Syntax.ExportNamedDeclaration
+class ExportNamedDeclaration(var declaration: AsyncFunctionDeclaration | ClassDeclaration | FunctionDeclaration | VariableDeclaration, var specifiers: Array[ExportSpecifier], var source: Literal) {
+  var `type`: String = Syntax.ExportNamedDeclaration
 }
 
-class ExportSpecifier(var local: Any, var exported: Any) {
-  var `type` = Syntax.ExportSpecifier
+class ExportSpecifier(var local: Identifier, var exported: Identifier) {
+  var `type`: String = Syntax.ExportSpecifier
 }
 
-class ExpressionStatement(var expression: Any) {
-  var `type` = Syntax.ExpressionStatement
+class ExpressionStatement(var expression: Expression) {
+  var `type`: String = Syntax.ExpressionStatement
 }
 
-class ForInStatement(var left: Any, var right: Any, var body: Any) {
-  var `type` = Syntax.ForInStatement
+class ForInStatement(var left: Expression, var right: Expression, var body: Statement) {
+  var `type`: String = Syntax.ForInStatement
   var each: Boolean = false
 }
 
-class ForOfStatement(var left: Any, var right: Any, var body: Any) {
-  var `type` = Syntax.ForOfStatement
+class ForOfStatement(var left: Expression, var right: Expression, var body: Statement) {
+  var `type`: String = Syntax.ForOfStatement
 }
 
-class ForStatement(var init: Any, var test: Any, var update: Any, var body: Any) {
-  var `type` = Syntax.ForStatement
+class ForStatement(var init: Expression, var test: Expression, var update: Expression, var body: Statement) {
+  var `type`: String = Syntax.ForStatement
 }
 
-class FunctionDeclaration(var id: Any, var params: Any, var body: Any, var generator: Any) {
-  var `type` = Syntax.FunctionDeclaration
+class FunctionDeclaration(var id: Identifier, var params: Array[AssignmentPattern | Identifier | ArrayPattern | ObjectPattern], var body: BlockStatement, var generator: Boolean) {
+  var `type`: String = Syntax.FunctionDeclaration
   var expression: Boolean = false
   var async: Boolean = false
 }
 
-class FunctionExpression(var id: Any, var params: Any, var body: Any, var generator: Any) {
-  var `type` = Syntax.FunctionExpression
+class FunctionExpression(var id: Identifier, var params: Array[AssignmentPattern | Identifier | ArrayPattern | ObjectPattern], var body: BlockStatement, var generator: Boolean) {
+  var `type`: String = Syntax.FunctionExpression
   var expression: Boolean = false
   var async: Boolean = false
 }
 
 class Identifier(var name: String) {
-  var `type` = Syntax.Identifier
+  var `type`: String = Syntax.Identifier
 }
 
-class IfStatement(var test: Any, var consequent: Any, var alternate: Any) {
-  var `type` = Syntax.IfStatement
+class IfStatement(var test: Expression, var consequent: Statement, var alternate: Statement) {
+  var `type`: String = Syntax.IfStatement
 }
 
-class Import() {
-  var `type` = Syntax.Import
+class Import {
+  var `type`: String = Syntax.Import
 }
 
-class ImportDeclaration(var specifiers: Any, var source: Any) {
-  var `type` = Syntax.ImportDeclaration
+class ImportDeclaration(var specifiers: Array[ImportDefaultSpecifier | ImportNamespaceSpecifier | ImportSpecifier], var source: Literal) {
+  var `type`: String = Syntax.ImportDeclaration
 }
 
-class ImportDefaultSpecifier(var local: Any) {
-  var `type` = Syntax.ImportDefaultSpecifier
+class ImportDefaultSpecifier(var local: Identifier) {
+  var `type`: String = Syntax.ImportDefaultSpecifier
 }
 
-class ImportNamespaceSpecifier(var local: Any) {
-  var `type` = Syntax.ImportNamespaceSpecifier
+class ImportNamespaceSpecifier(var local: Identifier) {
+  var `type`: String = Syntax.ImportNamespaceSpecifier
 }
 
-class ImportSpecifier(var local: Any, var imported: Any) {
-  var `type` = Syntax.ImportSpecifier
+class ImportSpecifier(var local: Identifier, var imported: Identifier) {
+  var `type`: String = Syntax.ImportSpecifier
 }
 
-class LabeledStatement(var label: Any, var body: Any) {
-  var `type` = Syntax.LabeledStatement
+class LabeledStatement(var label: Identifier, var body: Statement) {
+  var `type`: String = Syntax.LabeledStatement
 }
 
-class Literal(var value: String, var raw: Any) {
-  var `type` = Syntax.Literal
+class Literal(var value: Boolean | Double | String, var raw: String) {
+  var `type`: String = Syntax.Literal
 }
 
-class MetaProperty(var meta: Any, var property: Any) {
-  var `type` = Syntax.MetaProperty
+class MetaProperty(var meta: Identifier, var property: Identifier) {
+  var `type`: String = Syntax.MetaProperty
 }
 
-class MethodDefinition(var key: Any, var computed: Any, var value: Any, var kind: Any, var static: Any) {
-  var `type` = Syntax.MethodDefinition
+class MethodDefinition(var key: Expression, var computed: Boolean, var value: AsyncFunctionExpression | FunctionExpression, var kind: String, var static: Boolean) {
+  var `type`: String = Syntax.MethodDefinition
 }
 
-class Module(var body: Any) {
-  var `type` = Syntax.Program
+class Module(var body: Array[Declaration | Statement]) {
+  var `type`: String = Syntax.Program
   var sourceType: String = "module"
 }
 
-class NewExpression(var callee: Any, var arguments: Any) {
-  var `type` = Syntax.NewExpression
+class NewExpression(var callee: Expression, var arguments: Array[Expression | SpreadElement]) {
+  var `type`: String = Syntax.NewExpression
 }
 
-class ObjectExpression(var properties: Any) {
-  var `type` = Syntax.ObjectExpression
+class ObjectExpression(var properties: Array[Property | SpreadElement]) {
+  var `type`: String = Syntax.ObjectExpression
 }
 
-class ObjectPattern(var properties: Any) {
-  var `type` = Syntax.ObjectPattern
+class ObjectPattern(var properties: Array[Property | RestElement]) {
+  var `type`: String = Syntax.ObjectPattern
 }
 
-class Property(var kind: Any, var key: Any, var computed: Any, var value: Any, var method: Any, var shorthand: Any) {
-  var `type` = Syntax.Property
+class Property(var kind: String, var key: Identifier | Literal, var computed: Boolean, var value: PropertyValue, var method: Boolean, var shorthand: Boolean) {
+  var `type`: String = Syntax.Property
 }
 
-class RegexLiteral(var value: Any, var raw: Any, pattern: Any, flags: Any) {
-  var `type` = Syntax.Literal
+class RegexLiteral(var value: (String) => Any, var raw: String, pattern: String, flags: String) {
+  var `type`: String = Syntax.Literal
   var regex = new {
     var pattern = pattern
     var flags = flags
   }
 }
 
-class RestElement(var argument: Any) {
-  var `type` = Syntax.RestElement
+class RestElement(var argument: Identifier | ArrayPattern | ObjectPattern) {
+  var `type`: String = Syntax.RestElement
 }
 
-class ReturnStatement(var argument: Any) {
-  var `type` = Syntax.ReturnStatement
+class ReturnStatement(var argument: Expression) {
+  var `type`: String = Syntax.ReturnStatement
 }
 
-class Script(var body: Any) {
-  var `type` = Syntax.Program
+class Script(var body: Array[Declaration | Statement]) {
+  var `type`: String = Syntax.Program
   var sourceType: String = "script"
 }
 
-class SequenceExpression(var expressions: Array[Unit]) {
-  var `type` = Syntax.SequenceExpression
+class SequenceExpression(var expressions: Array[Expression]) {
+  var `type`: String = Syntax.SequenceExpression
 }
 
-class SpreadElement(var argument: Any) {
-  var `type` = Syntax.SpreadElement
+class SpreadElement(var argument: Expression) {
+  var `type`: String = Syntax.SpreadElement
 }
 
-class StaticMemberExpression(var `object`: Any, var property: Any) {
-  var `type` = Syntax.MemberExpression
+class StaticMemberExpression(var `object`: Expression, var property: Expression) {
+  var `type`: String = Syntax.MemberExpression
   var computed: Boolean = false
 }
 
-class Super() {
-  var `type` = Syntax.Super
+class Super {
+  var `type`: String = Syntax.Super
 }
 
-class SwitchCase(var test: Any, var consequent: Any) {
-  var `type` = Syntax.SwitchCase
+class SwitchCase(var test: Expression, var consequent: Array[Statement]) {
+  var `type`: String = Syntax.SwitchCase
 }
 
-class SwitchStatement(var discriminant: Any, var cases: Any) {
-  var `type` = Syntax.SwitchStatement
+class SwitchStatement(var discriminant: Expression, var cases: Array[SwitchCase]) {
+  var `type`: String = Syntax.SwitchStatement
 }
 
-class TaggedTemplateExpression(var tag: Any, var quasi: Any) {
-  var `type` = Syntax.TaggedTemplateExpression
+class TaggedTemplateExpression(var tag: Expression, var quasi: TemplateLiteral) {
+  var `type`: String = Syntax.TaggedTemplateExpression
 }
 
-class TemplateElement(var value: Any, var tail: Any) {
-  var `type` = Syntax.TemplateElement
+trait TemplateElementValue {
+  var cooked: String = _
+  var raw: String = _
 }
 
-class TemplateLiteral(var quasis: Any, var expressions: Any) {
-  var `type` = Syntax.TemplateLiteral
+class TemplateElement(var value: TemplateElementValue, var tail: Boolean) {
+  var `type`: String = Syntax.TemplateElement
 }
 
-class ThisExpression() {
-  var `type` = Syntax.ThisExpression
+class TemplateLiteral(var quasis: Array[TemplateElement], var expressions: Array[Expression]) {
+  var `type`: String = Syntax.TemplateLiteral
 }
 
-class ThrowStatement(var argument: Any) {
-  var `type` = Syntax.ThrowStatement
+class ThisExpression {
+  var `type`: String = Syntax.ThisExpression
 }
 
-class TryStatement(var block: Any, var handler: Any, var finalizer: Any) {
-  var `type` = Syntax.TryStatement
+class ThrowStatement(var argument: Expression) {
+  var `type`: String = Syntax.ThrowStatement
 }
 
-class UnaryExpression(var operator: Any, var argument: Any) {
-  var `type` = Syntax.UnaryExpression
+class TryStatement(var block: BlockStatement, var handler: CatchClause, var finalizer: BlockStatement) {
+  var `type`: String = Syntax.TryStatement
+}
+
+class UnaryExpression(var operator: String, var argument: Expression) {
+  var `type`: String = Syntax.UnaryExpression
   var prefix: Boolean = true
 }
 
-class UpdateExpression(var operator: String, var argument: Any, var prefix: Any) {
-  var `type` = Syntax.UpdateExpression
+class UpdateExpression(var operator: String, var argument: Expression, var prefix: Boolean) {
+  var `type`: String = Syntax.UpdateExpression
 }
 
-class VariableDeclaration(var declarations: Any, var kind: Any) {
-  var `type` = Syntax.VariableDeclaration
+class VariableDeclaration(var declarations: Array[VariableDeclarator], var kind: String) {
+  var `type`: String = Syntax.VariableDeclaration
 }
 
-class VariableDeclarator(var id: Any, var init: Any) {
-  var `type` = Syntax.VariableDeclarator
+class VariableDeclarator(var id: Identifier | ArrayPattern | ObjectPattern, var init: Expression) {
+  var `type`: String = Syntax.VariableDeclarator
 }
 
-class WhileStatement(var test: Any, var body: Any) {
-  var `type` = Syntax.WhileStatement
+class WhileStatement(var test: Expression, var body: Statement) {
+  var `type`: String = Syntax.WhileStatement
 }
 
-class WithStatement(var `object`: Any, var body: Any) {
-  var `type` = Syntax.WithStatement
+class WithStatement(var `object`: Expression, var body: Statement) {
+  var `type`: String = Syntax.WithStatement
 }
 
-class YieldExpression(var argument: Any, var delegate: Any) {
-  var `type` = Syntax.YieldExpression
+class YieldExpression(var argument: Expression, var delegate: Boolean) {
+  var `type`: String = Syntax.YieldExpression
 }
 

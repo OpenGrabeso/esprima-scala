@@ -1,9 +1,9 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-character.js
+ScalaFromJS: Dev
+character.ts
 */
 
-package esprima
+package com.github.opengrabeso.esprima
 // See also tools/generate-unicode-regex.js.
 object Regex {
   // Unicode v8.0.0 NonAsciiIdentifierStart:
