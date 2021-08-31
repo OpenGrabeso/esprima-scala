@@ -9,7 +9,6 @@ import Scanner._
 import port.RegExp
 
 import scala.collection.mutable.ArrayBuffer
-import Token._
 
 class Reader() {
   var paren: Int = -1
@@ -54,7 +53,7 @@ class Reader() {
   }
 
   def push(token: RawToken) = {
-    if (token.`type` == Punctuator || token.`type` == Keyword) {
+    if (token.`type` == Token.Punctuator || token.`type` == Token.Keyword) {
       if (token.value === "{") {
         this.curly = this.values.length
       } else if (token.value === "(") {
@@ -141,7 +140,7 @@ class Tokenizer(code: String, config: Parser.Options) {
           }
           entry.loc = loc
         }
-        if (token.`type` == RegularExpression)  /*RegularExpression */{
+        if (token.`type` == Token.RegularExpression) {
           val pattern = token.pattern
           val flags = token.flags
           entry.regex = new RegExp (
