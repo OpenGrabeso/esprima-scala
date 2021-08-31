@@ -3523,7 +3523,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       }
       name
     }
-    var superClass: Node.Identifier = null
+    var superClass: Node.Expression = null
     val implementsClass = ArrayBuffer.empty[Node.Identifier]
     if (this.matchKeyword("extends")) {
       this.nextToken()
@@ -3541,7 +3541,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
           implementsClass.push(this.parseClassParent())
         }
       } else {
-        superClass = this.isolateCoverGrammar(this.parseLeftHandSideExpressionAllowCall).asInstanceOf[Node.Identifier]
+        superClass = this.isolateCoverGrammar(this.parseLeftHandSideExpressionAllowCall)
       }
     }
     if (options.typescript) while (this.matchKeyword(keyword = "implements")) {

@@ -266,14 +266,14 @@ object Node {
   }
 
   // ported: added Statement because of parseLabelledStatement
-  case class ClassDeclarationEx(var id: Identifier, var typeParameters: TypeParameterList, var superClass: Identifier, var implements: collection.Seq[Identifier], var body: ClassBody, kind: String) extends Node
+  case class ClassDeclarationEx(var id: Identifier, var typeParameters: TypeParameterList, var superClass: Expression, var implements: collection.Seq[Identifier], var body: ClassBody, kind: String) extends Node
     with Declaration with ExportableDefaultDeclaration with ExportableNamedDeclaration with Statement {
 
     override def clone = copy().copyNode(this)
   }
   type ClassDeclaration = ClassDeclarationEx
   object ClassDeclaration {
-    def apply(id: Identifier, superClass: Identifier, implements: Seq[Identifier], body: ClassBody, kind: String): ClassDeclarationEx = {
+    def apply(id: Identifier, superClass: Expression, implements: Seq[Identifier], body: ClassBody, kind: String): ClassDeclarationEx = {
       new ClassDeclarationEx(id, null, superClass, implements, body, kind)
     }
     def unapply(arg: ClassDeclarationEx) = {
