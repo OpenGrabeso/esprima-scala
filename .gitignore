@@ -10,3 +10,4 @@ project/plugins/project/
 .lib/
 .idea/
 /ScalaFromJS.jar
+/.bsp/
