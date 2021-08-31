@@ -1548,12 +1548,17 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.M
         }
       }
       if (exprTemp.isInstanceOf[Node.ArrowParameterPlaceHolder] || this.`match`("=>")) {
-        val expr_cast = exprTemp.asInstanceOf[Node.ArrowParameterPlaceHolder]
+        val expr_cast = exprTemp match {
+          case e: Node.ArrowParameterPlaceHolder =>
+            Some(e)
+          case _ =>
+            None
+        }
         // https://tc39.github.io/ecma262/#sec-arrow-function-definitions
         this.context.isAssignmentTarget = false
         this.context.isBindingElement = false
-        val isAsync = expr_cast.async
-        val list = this.reinterpretAsCoverFormalsList(expr_cast)
+        val isAsync = expr_cast.exists(_.async)
+        val list = expr_cast.map(this.reinterpretAsCoverFormalsList).orNull
         if (list) {
           if (this.hasLineTerminator) {
             this.tolerateUnexpectedToken(this.lookahead)
