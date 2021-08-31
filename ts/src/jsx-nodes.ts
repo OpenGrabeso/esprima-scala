@@ -7,8 +7,6 @@ export type JSXChild = JSXElement | JSXExpressionContainer | JSXText;
 export type JSXElementAttribute = JSXAttribute | JSXSpreadAttribute;
 export type JSXElementName = JSXIdentifier | JSXNamespacedName | JSXMemberExpression;
 
-/* tslint:disable:max-classes-per-file */
-
 export class JSXClosingElement {
     readonly type: string;
     readonly name: JSXElementName;
@@ -18,12 +16,23 @@ export class JSXClosingElement {
     }
 }
 
+export class JSXClosingFragment {
+    readonly type: string;
+    constructor() {
+        this.type = JSXSyntax.JSXClosingFragment;
+    }
+}
+
 export class JSXElement {
     readonly type: string;
-    readonly openingElement: JSXOpeningElement;
+    readonly openingElement: JSXOpeningElement | JSXOpeningFragment;
     readonly children: JSXChild[];
-    readonly closingElement: JSXClosingElement | null;
-    constructor(openingElement: JSXOpeningElement, children: JSXChild[], closingElement: JSXClosingElement | null) {
+    readonly closingElement: JSXClosingElement | JSXClosingFragment | null;
+    constructor(
+        openingElement: JSXOpeningElement | JSXOpeningFragment,
+        children: JSXChild[],
+        closingElement: JSXClosingElement | JSXClosingFragment | null
+    ) {
         this.type = JSXSyntax.JSXElement;
         this.openingElement = openingElement;
         this.children = children;
@@ -99,6 +108,15 @@ export class JSXOpeningElement {
         this.name = name;
         this.selfClosing = selfClosing;
         this.attributes = attributes;
+    }
+}
+
+export class JSXOpeningFragment {
+    readonly type: string;
+    readonly selfClosing: boolean;
+    constructor(selfClosing: boolean) {
+        this.type = JSXSyntax.JSXOpeningFragment;
+        this.selfClosing = selfClosing;
     }
 }
 
