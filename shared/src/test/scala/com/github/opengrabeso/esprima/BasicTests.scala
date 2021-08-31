@@ -40,7 +40,7 @@ class BasicTests extends AnyFlatSpec with TestInputs with TestOptions {
     parse("a++") // was throwing index out of range
   }
 
-  it should "parse inputs with single line comments" in {
+  it should "parse single line comments" in {
     object EnableComments extends Parser.Options {
       range = true
       attachComment = true
@@ -51,7 +51,7 @@ class BasicTests extends AnyFlatSpec with TestInputs with TestOptions {
     """, EnableComments)
   }
 
-  it should "parse inputs with multiple single line comments correctly" in {
+  it should "parse multiple single line comments correctly" in {
     object EnableComments extends Parser.Options {
       range = true
       attachComment = true
@@ -70,8 +70,25 @@ class BasicTests extends AnyFlatSpec with TestInputs with TestOptions {
     assert(!firstStatement.leadingComments(1).value.contains("Comment 1"))
   }
 
+  it should "parse arrow function" in {
+    parse("""
+    var f = (s) =>{};
+    """)
+  }
 
-  it should "parse input with arrow function passed as an argument" in {
+  it should "parse arrow function without parens" in {
+    parse("""
+    var f = s =>{};
+    """)
+  }
+
+  it should "parse arrow function without braces" in {
+    parse("""
+    var f = (s) => s;
+    """)
+  }
+
+  it should "parse arrow function passed as an argument" in {
     parse("""
     f( 'G', () => {
 	    g( 'P', ( arg ) => {} );
@@ -79,7 +96,19 @@ class BasicTests extends AnyFlatSpec with TestInputs with TestOptions {
     """)
   }
 
-  it should "parse input with rest arguments" in {
+  it should "parse arrow function with parens passed as an argument (a different example)" in {
+    parse("""
+    function f() {
+      ss.forEach( s =>{
+        s.call();
+      } );
+    }
+    """)
+  }
+
+
+
+  it should "parse rest arguments" in {
     parse("""
     function sum(...theArgs) {
       return theArgs.reduce((previous, current) => {
