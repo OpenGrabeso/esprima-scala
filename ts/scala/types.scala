@@ -1,62 +1,18 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-types.js
+ScalaFromJS: Dev
+types.ts
 */
 
-package types.js
+package types.ts
+/* import {SourceLocation, Comment} from "./src/scanner" */
+import esprima.{SourceLocation,Comment}
 
-// Introduce types which can serve as interfaces
-/* import {SourceLocation} from "./src/scanner" */
-import esprima.SourceLocation
-/* import {Token} from "./src/token" */
-import esprima.Token
-
-class Node() {
-  var `type`: Any = ""
-  var range = Array(0, 0)
-  var loc: SourceLocation = new SourceLocation()
-  var leadingComments = Array.empty[Unit]
-  var innerComments = Array.empty[Unit]
-  var trailingComments = Array.empty[Unit]
-}
-
-class Position() {
-  var line: Double = 0
-  var column: Double = 0
-}
-
-class SourceLocation() {
-  var start: Position = new Position()
-  var end: Position = new Position()
-  var source: String = ""
-}
-
-class Comment() {
-  var multiLine: Boolean = false
-  var slice = Array(0, 0)
-  var range = Array(0, 0)
-  var loc: SourceLocation = new SourceLocation()
-}
-
-class RawToken() {
-  var `type`: Double = 0
-  var value = undefined
-  var pattern: String = ""
-  var flags: String = ""
-  var regex = "/.*/g".r
-  var octal: Boolean = false
-  var cooked: String = ""
-  var head: Boolean = false
-  var tail: Boolean = false
-  var lineNumber: Double = 0
-  var lineStart: Double = 0
-  var start: Double = 0
-  var end: Double = 0
-}
-
-class ScannerState() {
-  var index: Double = 0
-  var lineNumber: Double = 0
-  var lineStart: Double = 0
+trait Node {
+  var `type`: (Unit) => Any = _
+  var range = Array.empty[Double]
+  var loc: SourceLocation = _
+  var leadingComments = Array.empty[Comment]
+  var innerComments = Array.empty[Comment]
+  var trailingComments = Array.empty[Comment]
 }
 

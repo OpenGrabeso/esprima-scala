@@ -1,42 +1,41 @@
 /*
-ScalaFromJS: 2017-12-05 14:38:17.341
-token.js
+ScalaFromJS: Dev
+token.ts
 */
 
 package com.github.opengrabeso.esprima
 
-object TokenName {
-  val a = Array(
-    "Undefined",
-    "Boolean",
-    "<end>",
-    "Identifier",
-    "Keyword",
-    "Null",
-    "Numeric",
-    "Punctuator",
-    "String",
-    "RegularExpression",
-    "Template"
-  )
-
-  def apply(i: Token.Token) = a.apply(i.id)
-}
+import scala.collection.mutable
 
 object Token extends Enumeration {
   type Token = Value
 
-  val Undefined, // 0
+  val Undefined = Value
+  val BooleanLiteral = Value(1)
+  val EOF = Value
+  val Identifier = Value
+  val Keyword = Value
+  val NullLiteral = Value
+  val NumericLiteral = Value
+  val Punctuator = Value
+  val StringLiteral = Value
+  val RegularExpression = Value
+  val Template = Value
+}
 
-  BooleanLiteral, // 1
-  EOF, // 2
-  Identifier, // 3
-  Keyword, // 4
-  NullLiteral, // 5
-  NumericLiteral, // 6
-  Punctuator, // 7
-  StringLiteral, // 8
-  RegularExpression, // 9
-  Template // 10
-  = Value
+object TokenName {
+  val TokenName = mutable.Map.empty[Token.Value, String]
+  TokenName(Token.Undefined) = "Undefined"
+  TokenName(Token.BooleanLiteral) = "Boolean"
+  TokenName(Token.EOF) = "<end>"
+  TokenName(Token.Identifier) = "Identifier"
+  TokenName(Token.Keyword) = "Keyword"
+  TokenName(Token.NullLiteral) = "Null"
+  TokenName(Token.NumericLiteral) = "Numeric"
+  TokenName(Token.Punctuator) = "Punctuator"
+  TokenName(Token.StringLiteral) = "String"
+  TokenName(Token.RegularExpression) = "RegularExpression"
+  TokenName(Token.Template) = "Template"
+
+  def apply(i: Token.Token) = TokenName(i)
 }

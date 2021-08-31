@@ -1,6 +1,6 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-tokenizer.js
+ScalaFromJS: Dev
+tokenizer.ts
 */
 
 package com.github.opengrabeso.esprima
@@ -10,17 +10,32 @@ import port.RegExp
 
 import scala.collection.mutable.ArrayBuffer
 
+/* import { ErrorHandler } from './error-handler' */
+/* import { Comment, RawToken, Scanner, SourceLocation } from './scanner' */
+/* import { Token, TokenName } from './token' */
+trait BufferEntry {
+  var `type`: String = _
+  var value: String = _
+  var regex = new {}
+  var range: (Int, Int) = _
+  var loc: SourceLocation = _
+}
+
 class Reader() {
   var paren: Int = -1
   var values = ArrayBuffer.empty[OrType]
   var curly: Int = paren
   // A function following one of those tokens is an expression.
-  def beforeFunctionExpression(t: String) = {
-    Array("(", "{", "[", "in", "typeof", "instanceof", "new", "return", "case", "delete", "throw", "void",
-    // assignment operators
-    "=", "+=", "-=", "*=", "**=", "/=", "%=", "<<=", ">>=", ">>>=", "&=", "|=", "^=", ",",
-    // binary/unary operators
-    "+", "-", "*", "**", "/", "%", "++", "--", "<<", ">>", ">>>", "&", "|", "^", "!", "~", "&&", "||", "?", ":", "===", "==", ">=", "<=", "<", ">", "!=", "!==").indexOf(t) >= 0
+  def beforeFunctionExpression(t: String): Boolean = {
+    Array("(", "{", "[", "in", "typeof", "instanceof", "new",
+      "return", "case", "delete", "throw", "void",
+      // assignment operators
+      "=", "+=", "-=", "*=", "**=", "/=", "%=", "<<=", ">>=", ">>>=",
+      "&=", "|=", "^=", ",",
+      // binary/unary operators
+      "+", "-", "*", "**", "/", "%", "++", "--", "<<", ">>", ">>>", "&",
+      "|", "^", "!", "~", "&&", "||", "?", ":", "===", "==", ">=",
+      "<=", "<", ">", "!=", "!==").indexOf(t) >= 0
   }
   
   // Determine if forward slash (/) is an operator or part of a regular expression
@@ -52,7 +67,7 @@ class Reader() {
     regex
   }
 
-  def push(token: RawToken) = {
+  def push(token: RawToken): Unit = {
     if (token.`type` == Token.Punctuator || token.`type` == Token.Keyword) {
       if (token.value === "{") {
         this.curly = this.values.length
@@ -65,6 +80,13 @@ class Reader() {
     }
   }
   
+}
+
+trait Config {
+  var tolerant: Boolean = _
+  var comment: Boolean = _
+  var range: Boolean = _
+  var loc: Boolean = _
 }
 
 class Tokenizer(code: String, config: Parser.Options) {
@@ -141,8 +163,8 @@ class Tokenizer(code: String, config: Parser.Options) {
           entry.loc = loc
         }
         if (token.`type` == Token.RegularExpression) {
-          val pattern = token.pattern
-          val flags = token.flags
+          val pattern = token.pattern.asInstanceOf[String]
+          val flags = token.flags.asInstanceOf[String]
           entry.regex = new RegExp (
             pattern = pattern,
             flags = flags

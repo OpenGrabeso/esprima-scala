@@ -1,9 +1,11 @@
 /*
-ScalaFromJS: 2017-12-06 21:28:23.723
-comment-handler.js
+ScalaFromJS: Dev
+comment-handler.ts
 */
 
 package com.github.opengrabeso.esprima
+/* import { SourceLocation } from './scanner' */
+/* import { Syntax } from './syntax' */
 
 import Scanner.SourceLocation
 
@@ -53,7 +55,7 @@ class CommentHandler() {
         }
       }
       if (innerComments.length) {
-        node_cast.innerComments = innerComments
+        node.innerComments = innerComments
       }
     }
   }

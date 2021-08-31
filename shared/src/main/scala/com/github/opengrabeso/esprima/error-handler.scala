@@ -1,6 +1,6 @@
 /*
-ScalaFromJS: 2017-12-05 14:33:13.940
-error-handler.js
+ScalaFromJS: Dev
+error-handler.ts
 */
 
 package com.github.opengrabeso.esprima
@@ -8,7 +8,8 @@ package com.github.opengrabeso.esprima
 import scala.collection.mutable.ArrayBuffer
 
 object ErrorHandler {
-  class Error(msg: String) extends Exception(msg) {
+  class Error(message: String) extends Exception(message) {
+    var name: String = _
     var index: Int = _
     var lineNumber: Int = _
     var column: Int = _
@@ -18,14 +19,16 @@ object ErrorHandler {
 
 import ErrorHandler._
 
-class ErrorHandler() {
+/*tslint:disable:max-classes-per-file */
+
+class ErrorHandler {
   var errors = ArrayBuffer.empty[Error]
   var tolerant: Boolean = false
-  def recordError(error: Error) = {
+  def recordError(error: Error): Unit = {
     this.errors.push(error)
   }
   
-  def tolerate(error: Error) = {
+  def tolerate(error: Error): Unit = {
     if (this.tolerant) {
       this.recordError(error)
     } else {
@@ -39,7 +42,7 @@ class ErrorHandler() {
     error
   }
   
-  def createError(index: Int, line: Int, col: Int, description: String) = {
+  def createError(index: Int, line: Int, col: Int, description: String): Error = {
     val msg = "Line " + line + ": " + description
     val error = this.constructError(msg, col)
     error.index = index
@@ -48,7 +51,7 @@ class ErrorHandler() {
     error
   }
   
-  def throwError(index: Int, line: Int, col: Int, description: String) = {
+  def throwError(index: Int, line: Int, col: Int, description: String): Nothing = {
     throw this.createError(index, line, col, description)
   }
   

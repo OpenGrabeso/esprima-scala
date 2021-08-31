@@ -1,5 +1,5 @@
 /*
-ScalaFromJS: Dev 2020-02-24 19:42:52
+ScalaFromJS: Dev
 assert.ts
 */
 

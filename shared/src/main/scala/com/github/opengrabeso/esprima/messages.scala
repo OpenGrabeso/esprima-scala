@@ -1,6 +1,6 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-messages.js
+ScalaFromJS: Dev
+messages.ts
 */
 
 package com.github.opengrabeso.esprima

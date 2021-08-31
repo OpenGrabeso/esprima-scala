@@ -1,6 +1,6 @@
 /*
-ScalaFromJS: 2017-12-06 21:28:23.723
-scanner.js
+ScalaFromJS: Dev
+scanner.ts
 */
 
 package com.github.opengrabeso.esprima
@@ -99,17 +99,17 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
   }
   
-  def restoreState(state: ScannerState) = {
+  def restoreState(state: ScannerState): Unit = {
     this.index = state.index
     this.lineNumber = state.lineNumber
     this.lineStart = state.lineStart
   }
   
-  def eof() = {
+  def eof(): Boolean = {
     this.index >= this.length
   }
   
-  def throwUnexpectedToken(message: String = Messages.UnexpectedTokenIllegal) = {
+  def throwUnexpectedToken(message: String = Messages.UnexpectedTokenIllegal): Nothing = {
     this.errorHandler.throwError(this.index, this.lineNumber, this.index - this.lineStart + 1, message)
   }
   
@@ -267,7 +267,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
           this.lineNumber += 1
           this.lineStart = this.index
           start = true
-        } else if (ch == 0x2F) {
+        } else if (ch == 0x2F) { // U+002F is '/'
           ch = this.source.charCodeAt(this.index + 1)
           if (ch == 0x2F) {
             this.index += 2
@@ -276,7 +276,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
               comments = comments.concat(comment)
             }
             start = true
-          } else if (ch == 0x2A) {
+          } else if (ch == 0x2A) { // U+002A is '*'
             this.index += 2
             val comment = this.skipMultiLineComment()
             if (this.trackComment) {
@@ -285,7 +285,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
           } else {
             break()
           }
-        } else if (start && ch == 0x2D) {
+        } else if (start && ch == 0x2D) { // U+002D is '-'
           // U+003E is '>'
           if (this.source.charCodeAt(this.index + 1) == 0x2D && this.source.charCodeAt(this.index + 2) == 0x3E) {
             // '-->' is a single-line comment
@@ -297,7 +297,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
           } else {
             break()
           }
-        } else if (ch == 0x3C && !this.isModule) {
+        } else if (ch == 0x3C && !this.isModule) { // U+003C is '<'
           if (this.source.slice(this.index + 1, this.index + 4) == "!--") {
             this.index += 4
             // `<!--`
@@ -334,7 +334,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
   }
   
-  def isRestrictedWord(id: String) = {
+  def isRestrictedWord(id: String): Boolean = {
     id == "eval" || id == "arguments"
   }
   
@@ -361,7 +361,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
   }
   
-  def codePointAt(i: Int) = {
+  def codePointAt(i: Int): Int = {
     var cp: Int = this.source.charCodeAt(i)
     if (cp >= 0xD800 && cp <= 0xDBFF) {
       val second: Int = this.source.charCodeAt(i + 1)
@@ -521,8 +521,9 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
     code -> octal
   }
-  
-  def scanIdentifier() = {
+
+  // https://tc39.github.io/ecma262/#sec-names-and-keywords
+  def scanIdentifier(): RawToken = {
     var `type`: Token = Token.Undefined
     val start = this.index
     // Backslash (U+005C) starts an escaped character.
@@ -540,7 +541,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     } else {
       `type` = Token.Identifier
     }
-    if (`type` != 3 && start + id.length != this.index) {
+    if (`type` != Token.Identifier && start + id.length != this.index) {
       val restore = this.index
       this.index = start
       this.tolerateUnexpectedToken(Messages.InvalidEscapedReservedWord)
@@ -558,7 +559,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
   }
   
-  def scanPunctuator() = {
+  def scanPunctuator(): RawToken = {
     val start = this.index
     // Check for most common single-character punctuators.
     var str = this.source(this.index).toString
@@ -623,7 +624,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
   }
   
-  def scanHexLiteral(start: Int) = {
+  def scanHexLiteral(start: Int): RawToken = {
     var num = ""
     breakable {
       while (!this.eof()) {
@@ -654,7 +655,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
   }
   
-  def scanBinaryLiteral(start: Int) = {
+  def scanBinaryLiteral(start: Int): RawToken = {
     var num = ""
     var ch: CharValue = null
     breakable {
@@ -692,7 +693,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
   }
   
-  def scanOctalLiteral(prefix: String, start: Int) = {
+  def scanOctalLiteral(prefix: String, start: Int): RawToken = {
     var num = ""
     var octal = false
     if (Character.isOctalDigit(prefix.charCodeAt(0))) {
@@ -1071,7 +1072,8 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       override val end = self.index
     }
   }
-  
+
+  // https://tc39.github.io/ecma262/#sec-literals-regular-expression-literals  def testRegExp(pattern: String, flags: String): RegExp = {
   def testRegExp(pattern: String, flags: String): RegExp = {
     // The BMP character to use as a replacement for astral symbols when
     // translating an ES6 "u"-flagged pattern to an ES5-compatible
@@ -1116,7 +1118,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
   }
   
-  def scanRegExpBody() = {
+  def scanRegExpBody(): String = {
     var ch: String = this.source(this.index)
     assert(ch == "/", "Regular expression literal must start with a slash")
     var str: String = this.source({
@@ -1168,7 +1170,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     str.substr(1, str.length - 2)
   }
   
-  def scanRegExpFlags() = {
+  def scanRegExpFlags(): String = {
     var str = ""
     var flags = ""
     breakable {
@@ -1212,7 +1214,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     flags
   }
   
-  def scanRegExp() = {
+  def scanRegExp(): RawToken = {
     val start_ = this.index
     val pattern_ = this.scanRegExpBody()
     val flags_ = this.scanRegExpFlags()

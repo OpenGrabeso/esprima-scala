@@ -1,6 +1,6 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-parser.js
+ScalaFromJS: Dev
+parser.ts
 */
 
 package com.github.opengrabeso.esprima
@@ -13,6 +13,8 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.Breaks._
 
+import ErrorHandler.Error
+
 import scala.util.Try
 
 object Parser {
@@ -24,11 +26,12 @@ object Parser {
     var source: String = null
     var tokens: Boolean = false
     var comment: Boolean = false
-    var tolerant : Boolean = false
-    var typescript : Boolean = false // sometimes it is neccessary to know it we are parsing TypeScript or JavaScript
+    var tolerant: Boolean = false
+    var typescript: Boolean = false // sometimes it is neccessary to know it we are parsing TypeScript or JavaScript
     var attachComment: Boolean = false
     var sourceType: String = _
   }
+
   object DefaultOptions extends Options
 
   class Config extends Options
@@ -55,14 +58,6 @@ object Parser {
     var column: Int
   }
 
-  trait TokenEntry {
-    def `type`: String
-    def value: String
-    var regex: RegExp = _
-    var range: (Int, Int) = _
-    var loc: SourceLocation = _
-  }
-
   trait ParameterOptions {
     var simple: Boolean = _
     var params: ArrayBuffer[Node.FunctionParameter] = _
@@ -76,6 +71,25 @@ object Parser {
     var inFor: Boolean = _
   }
 
+  trait ArrowParameterPlaceHolderNode {
+    var `type`: String = _
+    var params = Array.empty[Node.Expression]
+    var async: Boolean = _
+  }
+
+  trait DeclarationOptions {
+    var inFor: Boolean = _
+  }
+
+  trait TokenEntry {
+    def `type`: String
+
+    def value: String
+
+    var regex: RegExp = _
+    var range: (Int, Int) = _
+    var loc: SourceLocation = _
+  }
 }
 
 class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.SourceLocation) => Unit) {
@@ -195,7 +209,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   }
   
   // Throw an exception because of the token.
-  def unexpectedTokenError(token: RawToken, message: String = null) = {
+  def unexpectedTokenError(token: RawToken, message: String = null): Error = {
     var msg = message || Messages.UnexpectedToken
     var value: String = null
     if (token) {
@@ -307,7 +321,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     t
   }
   
-  def nextToken() = {
+  def nextToken(): RawToken = {
     val token = this.lookahead
     this.lastMarker.index = this.scanner.index
     this.lastMarker.line = this.scanner.lineNumber
@@ -325,14 +339,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         next.`type` = Token.Keyword
       }
     }
-     this.lookahead = next
+    this.lookahead = next
     if (this.config.tokens && next.`type` != Token.EOF) {
       this.tokens.push(this.convertToken(next))
     }
     token
   }
   
-  def nextRegexToken() = {
+  def nextRegexToken(): RawToken = {
     this.collectComments()
     val token = this.scanner.scanRegExp()
     if (this.config.tokens) {
@@ -642,7 +656,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.finalize(node, new Node.SpreadElement(arg))
   }
   
-  def parseArrayInitializer() = {
+  def parseArrayInitializer(): Node.ArrayExpression = {
     val node = this.createNode()
     val elements = ArrayBuffer.empty[Node.ArrayExpressionElement]
     this.expect("[")
@@ -705,7 +719,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.finalize(node, new Node.FunctionExpression(null, params.params, method, isGenerator, `type`))
   }
   
-  def parsePropertyMethodAsyncFunction() = {
+  def parsePropertyMethodAsyncFunction(): Node.AsyncFunctionExpression = {
     val node = this.createNode()
     val previousAllowYield = this.context.allowYield
     val previousAwait = this.context.await
@@ -757,7 +771,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   def isPropertyKey(key: Node.Node, value: String) = {
     key.isInstanceOf[Node.Identifier] && key.asInstanceOf[Node.Identifier].name == value || key.isInstanceOf[Node.Literal] && key.asInstanceOf[Node.Literal].value === value
   }
-  
+
   def parseObjectProperty(hasProto: ByRef[Boolean]): Node.Property = {
     val node = this.createNode()
     val token = this.lookahead
@@ -839,7 +853,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.finalize(node, new Node.PropertyEx(kind, key, computed, value, method, shorthand, readOnly))
   }
   
-  def parseObjectInitializer() = {
+  def parseObjectInitializer(): Node.ObjectExpression = {
     val node = this.createNode()
     this.expect("{")
     val properties = ArrayBuffer.empty[Node.ObjectExpressionProperty]
@@ -867,7 +881,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }, token.tail))
   }
   
-  def parseTemplateElement() = {
+  def parseTemplateElement(): Node.TemplateElement = {
     if (this.lookahead.`type` != Token.Template) {
       this.throwUnexpectedToken(this.lookahead)
     }
@@ -939,7 +953,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
   }
   
-  def parseGroupExpression() = {
+  def parseGroupExpression(): Node.Expression = {
     var expr: Node.Expression = null
     this.expect("(")
     if (this.`match`(")")) {
@@ -1025,7 +1039,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
               var expr_cast = expr.asInstanceOf[Node.Identifier]
               arrow = true
               expr = new Node.ArrowParameterPlaceHolder {
-                params = ArrayBuffer(expr_cast)
+                params = ArrayBuffer(expr)
                 async = false
               }
             }
@@ -1077,12 +1091,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     args
   }
   
-  def isIdentifierName(token: RawToken) = {
+  def isIdentifierName(token: RawToken): Boolean = {
     token.`type` == Token.Identifier ||  token.`type` == Token.Keyword ||  token.`type` == Token.BooleanLiteral ||  token.`type` == Token.NullLiteral
   }
   
 
-  def parseIdentifierName(token: RawToken = this.nextToken()) = {
+  def parseIdentifierName(token: RawToken = this.nextToken()): Node.Identifier = {
     val node = this.startNode(token)
     if (!this.isIdentifierName(token)) {
       this.throwUnexpectedToken(token)
@@ -1152,7 +1166,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     args
   }
   
-  def matchImportCall() = {
+  def matchImportCall(): Boolean = {
     var `match` = this.matchKeyword("import")
     if (`match`) {
       val state = this.scanner.saveState()
@@ -1272,7 +1286,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   }
   
   // https://tc39.github.io/ecma262/#sec-update-expressions
-  def parseUpdateExpression() = {
+  def parseUpdateExpression(): Node.Expression = {
     var expr: Node.Expression = null
     val startToken = this.lookahead
     if (this.`match`("++") || this.`match`("--")) {
@@ -2078,7 +2092,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   }
   
   // https://tc39.github.io/ecma262/#sec-do-while-statement
-  def parseDoWhileStatement() = {
+  def parseDoWhileStatement(): Node.DoWhileStatement = {
     val node = this.createNode()
     this.expectKeyword("do")
     val previousInIteration = this.context.inIteration
@@ -2100,7 +2114,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   }
   
   // https://tc39.github.io/ecma262/#sec-while-statement
-  def parseWhileStatement() = {
+  def parseWhileStatement(): Node.WhileStatement = {
     val node = this.createNode()
     var body: Node.Statement = null
     this.expectKeyword("while")
@@ -2316,7 +2330,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   }
   
   // https://tc39.github.io/ecma262/#sec-with-statement
-  def parseWithStatement() = {
+  def parseWithStatement(): Node.WithStatement = {
     if (this.context.strict) {
       this.tolerateError(Messages.StrictModeWith)
     }
@@ -2398,7 +2412,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     if (expr.isInstanceOf[Node.Identifier] && this.`match`(":")) {
       val expr_cast = expr.asInstanceOf[Node.Identifier]
       this.nextToken()
-      val id = expr_cast
+      val id = expr.asInstanceOf[Node.Identifier]
       val key = "$" + id.name
       if (this.context.labelSet contains key) {
         this.throwError(Messages.Redeclaration, "Label", id.name)
@@ -2556,7 +2570,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   }
   
   // https://tc39.github.io/ecma262/#sec-function-definitions
-  def parseFunctionSourceElements() = {
+  def parseFunctionSourceElements(): Node.BlockStatement = {
     if (!options.typescript || this.`match`("{")) {
       val node = this.createNode()
       this.expect("{")
@@ -2675,7 +2689,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
   }
   
-  def matchAsyncFunction() = {
+  def matchAsyncFunction(): Boolean = {
     var `match` = this.matchContextualKeyword("async")
     if (`match`) {
       val state = this.scanner.saveState()
@@ -2881,7 +2895,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.finalize(node, new Node.FunctionExpression(null, formalParameters.params, method, isGenerator, null))
   }
   
-  def parseSetterMethod() = {
+  def parseSetterMethod(): Node.FunctionExpression = {
     val node = this.createNode()
     val isGenerator = false
     val previousAllowYield = this.context.allowYield
@@ -2889,7 +2903,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val formalParameters = this.parseFormalParameters()
     if (formalParameters.params.length != 1) {
       this.tolerateError(Messages.BadSetterArity)
-    } else if (formalParameters.params(0).isInstanceOf[Node.RestElement]) {
+    } else if (formalParameters.params(0).isInstanceOf[Node.Identifier]) {
       this.tolerateError(Messages.BadSetterRestParameter)
     }
     val method = this.parsePropertyMethod(formalParameters)
@@ -2897,7 +2911,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.finalize(node, new Node.FunctionExpression(null, formalParameters.params, method, isGenerator, null))
   }
   
-  def parseGeneratorMethod() = {
+  def parseGeneratorMethod(): Node.FunctionExpression = {
     val node = this.createNode()
     val isGenerator = true
     val previousAllowYield = this.context.allowYield
@@ -2910,7 +2924,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   }
   
   // https://tc39.github.io/ecma262/#sec-generator-function-definitions
-  def isStartOfExpression() = {
+  def isStartOfExpression(): Boolean = {
     var start = true
     val value: String = this.lookahead.value
     this.lookahead.`type` match {
@@ -3423,7 +3437,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         throwError("Class expected as a parent")
     }
   }
-  
+
   def parseClassDeclaration(identifierIsOptional: Boolean = false, keyword: String = "class"): Node.ClassDeclaration = {
     val node = this.createNode()
     val previousStrict = this.context.strict
@@ -3645,14 +3659,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   }
   
   // import <foo> ...;
-  def parseImportDefaultSpecifier() = {
+  def parseImportDefaultSpecifier(): Node.ImportDefaultSpecifier = {
     val node = this.createNode()
     val local = this.parseIdentifierName()
     this.finalize(node, new Node.ImportDefaultSpecifier(local))
   }
   
   // import <* as foo> ...;
-  def parseImportNamespaceSpecifier() = {
+  def parseImportNamespaceSpecifier(): Node.ImportNamespaceSpecifier = {
     val node = this.createNode()
     this.expect("*")
     if (!this.matchContextualKeyword("as")) {

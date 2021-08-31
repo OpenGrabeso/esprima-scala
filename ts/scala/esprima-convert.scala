@@ -1,5 +1,5 @@
 /*
-ScalaFromJS: Dev 2019-12-19 17:19:14
+ScalaFromJS: Dev
 esprima-convert.ts
 */
 
@@ -20,3 +20,4 @@ package esprima-convert.ts
 /* export * from "src/token" */
 /* export * from "src/tokenizer" */
 /* export * from "src/xhtml-entities" */
+/* export * from "types" */

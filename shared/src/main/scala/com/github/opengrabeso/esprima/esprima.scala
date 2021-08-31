@@ -1,6 +1,6 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-esprima.js
+ScalaFromJS: Dev
+esprima.ts
 */
 
 package com.github.opengrabeso.esprima
@@ -36,6 +36,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+  /* import { CommentHandler } from './comment-handler' */
+  /* import { JSXParser } from './jsx-parser' */
+  /* import { Parser } from './parser' */
+  /* import { Tokenizer } from './tokenizer' */
 def parse(code: String, options: Parser.Options = Parser.DefaultOptions, delegate: (Node.Node, SourceLocation) => Unit = null) = {
   var commentHandler: CommentHandler = null
   def proxyDelegate(node: Node.Node, metadata: SourceLocation): Unit = {
