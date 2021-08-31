@@ -44,6 +44,14 @@ var ScalaFromJS_settings = {
         },
 
     ],
+    preprocess: [
+        {
+            operation: "replace",
+            pattern: "import \\{ JSXParser \\} from '\\./jsx-parser';",
+            replace: ""
+        },
+    ],
+
     postprocess: [
         {
             operation: "replace",
