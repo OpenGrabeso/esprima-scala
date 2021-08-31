@@ -31,7 +31,7 @@ lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Full)
 )
 
 lazy val root = project.in(file("root")).
-  aggregate(projs.js, projs.jvm).
+  aggregate(projs.jvm, projs.js).
   settings(
     name := "esprima-scala",
     publish / skip := true,
