@@ -850,7 +850,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         this.throwUnexpectedToken(this.nextToken())
       }
     }
-    this.finalize(node, new Node.PropertyEx(kind, key, computed, value, method, shorthand, readOnly))
+    this.finalize(node, new Node.Property(kind, key.asInstanceOf[Node.PropertyKey], computed, value, method, shorthand, readOnly))
   }
   
   def parseObjectInitializer(): Node.ObjectExpression = {
@@ -1486,7 +1486,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     options.simple = options.simple && param.isInstanceOf[Node.Identifier]
   }
-  
+
   def reinterpretAsCoverFormalsList(expr: Node.ArrowParameterPlaceHolder): ParameterOptions = {
     var paramsSource = ArrayBuffer(expr.params.toSeq:_*)
     var paramsTarget = new ArrayBuffer[Node.FunctionParameter](paramsSource.size)
@@ -2903,7 +2903,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val formalParameters = this.parseFormalParameters()
     if (formalParameters.params.length != 1) {
       this.tolerateError(Messages.BadSetterArity)
-    } else if (formalParameters.params(0).isInstanceOf[Node.Identifier]) {
+    } else if (formalParameters.params(0).isInstanceOf[Node.RestElement]) {
       this.tolerateError(Messages.BadSetterRestParameter)
     }
     val method = this.parsePropertyMethod(formalParameters)

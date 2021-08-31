@@ -82,13 +82,6 @@ class Reader() {
   
 }
 
-trait Config {
-  var tolerant: Boolean = _
-  var comment: Boolean = _
-  var range: Boolean = _
-  var loc: Boolean = _
-}
-
 class Tokenizer(code: String, config: Parser.Options) {
   self =>
   var errorHandler: ErrorHandler = new ErrorHandler()

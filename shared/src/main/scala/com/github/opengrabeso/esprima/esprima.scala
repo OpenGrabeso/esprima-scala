@@ -37,8 +37,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
   /* import { CommentHandler } from './comment-handler' */
-  /* import { JSXParser } from './jsx-parser' */
-  /* import { Parser } from './parser' */
+  /* import {  Parser } from './parser' */
   /* import { Tokenizer } from './tokenizer' */
 def parse(code: String, options: Parser.Options = Parser.DefaultOptions, delegate: (Node.Node, SourceLocation) => Unit = null) = {
   var commentHandler: CommentHandler = null
