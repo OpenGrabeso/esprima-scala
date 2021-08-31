@@ -1,6 +1,6 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-assert.js
+ScalaFromJS: Dev 2020-02-24 19:42:52
+assert.ts
 */
 
 package com.github.opengrabeso.esprima
