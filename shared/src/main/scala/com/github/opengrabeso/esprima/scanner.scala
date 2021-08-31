@@ -84,7 +84,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     this.index >= this.length
   }
   
-  def throwUnexpectedToken(message: String = Messages.UnexpectedTokenIllegal): never = {
+  def throwUnexpectedToken(message: String = Messages.UnexpectedTokenIllegal): Nothing = {
     this.errorHandler.throwError(this.index, this.lineNumber, this.index - this.lineStart + 1, message)
   }
   

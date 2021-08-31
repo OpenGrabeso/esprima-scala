@@ -4,6 +4,7 @@ parser.ts
 */
 
 package com.github.opengrabeso.esprima
+
 /* import { assert } from './assert' */
 /* import { ErrorHandler } from './error-handler' */
 /* import { Messages } from './messages' */
@@ -62,7 +63,7 @@ trait TokenEntry {
   var loc: SourceLocation = _
 }
 
-class Parser(code: String, options: Any = new {}, var delegate: (Any, AnyRef) => Any) {
+class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef) => Any) {
   var tokens = Array.empty[Any]
   var config: Config = new {
     var range = options.range.getClass == "boolean" && options.range
@@ -175,9 +176,9 @@ class Parser(code: String, options: Any = new {}, var delegate: (Any, AnyRef) =>
   }
   
   // Throw an exception because of the token.
-  def unexpectedTokenError(token: Any, message: String): Error = {
+  def unexpectedTokenError(token: RawToken, message: String): Error = {
     var msg = message || Messages.UnexpectedToken
-    var value: String = _
+    var value: String | Double = _
     if (token) {
       if (!message) {
         msg = if (token.`type` == Token.EOF) Messages.UnexpectedEOS else if (token.`type` == Token.Identifier) Messages.UnexpectedIdentifier else if (token.`type` == Token.NumericLiteral) Messages.UnexpectedNumber else if (token.`type` == Token.StringLiteral) Messages.UnexpectedString else if (token.`type` == Token.Template) Messages.UnexpectedTemplate else Messages.UnexpectedToken
@@ -208,7 +209,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (Any, AnyRef) =>
     }
   }
   
-  def throwUnexpectedToken(token: Any, message: String): never = {
+  def throwUnexpectedToken(token: RawToken, message: String): Nothing = {
     throw this.unexpectedTokenError(token, message)
   }
   
@@ -252,7 +253,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (Any, AnyRef) =>
   }
   
   // From internal representation to an external structure
-  def getTokenRaw(token: Any): String = {
+  def getTokenRaw(token: RawToken): String = {
     this.scanner.source.slice(token.start, token.end)
   }
   
@@ -783,7 +784,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (Any, AnyRef) =>
         this.throwUnexpectedToken(this.nextToken())
       }
     }
-    this.finalize(node, new Node.Property(kind, key.asInstanceOf[StaticMemberExpression(Identifier(Node),Identifier(PropertyKey))], computed, value, method, shorthand))
+    this.finalize(node, new Node.Property(kind, key.asInstanceOf[Node.PropertyKey], computed, value, method, shorthand))
   }
   
   def parseObjectInitializer(): Node.ObjectExpression = {
@@ -1191,7 +1192,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (Any, AnyRef) =>
   
   // https://tc39.github.io/ecma262/#sec-update-expressions
   def parseUpdateExpression(): Node.Expression = {
-    var expr = _
+    var expr: Identifier = _
     val startToken = this.lookahead
     if (this.`match`("++") || this.`match`("--")) {
       val node = this.startNode(startToken)
@@ -1383,7 +1384,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (Any, AnyRef) =>
         }
       case _ =>
     }
-    options.simple = options.simple && param.isInstanceOf[StaticMemberExpression(Identifier(Node),Identifier(Identifier))]
+    options.simple = options.simple && param.isInstanceOf[Node.Identifier]
   }
   
   def reinterpretAsCoverFormalsList(expr: String) = {
@@ -1507,7 +1508,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (Any, AnyRef) =>
             this.tolerateError(Messages.InvalidLHSInAssignment)
           }
           if (this.context.strict && expr.`type` == Syntax.Identifier) {
-            val id = expr.asInstanceOf[StaticMemberExpression(Identifier(Node),Identifier(Identifier))]
+            val id = expr.asInstanceOf[Node.Identifier]
             if (this.scanner.isRestrictedWord(id.name)) {
               this.tolerateUnexpectedToken(token, Messages.StrictLHSAssignment)
             }
@@ -1613,7 +1614,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (Any, AnyRef) =>
     val params = Array.empty[Unit]
     val id = this.parsePattern(params, kind)
     if (this.context.strict && id.`type` == Syntax.Identifier) {
-      if (this.scanner.isRestrictedWord(id.asInstanceOf[StaticMemberExpression(Identifier(Node),Identifier(Identifier))].name)) {
+      if (this.scanner.isRestrictedWord(id.asInstanceOf[Node.Identifier].name)) {
         this.tolerateError(Messages.StrictVarName)
       }
     }
@@ -1812,7 +1813,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (Any, AnyRef) =>
     val params = Array.empty[RawToken]
     val id = this.parsePattern(params, "var")
     if (this.context.strict && id.`type` == Syntax.Identifier) {
-      if (this.scanner.isRestrictedWord(id.asInstanceOf[StaticMemberExpression(Identifier(Node),Identifier(Identifier))].name)) {
+      if (this.scanner.isRestrictedWord(id.asInstanceOf[Node.Identifier].name)) {
         this.tolerateError(Messages.StrictVarName)
       }
     }
@@ -2206,7 +2207,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (Any, AnyRef) =>
     var statement: Node.ExpressionStatement | Node.LabeledStatement = _
     if (expr.`type` == Syntax.Identifier && this.`match`(":")) {
       this.nextToken()
-      val id = expr.asInstanceOf[StaticMemberExpression(Identifier(Node),Identifier(Identifier))]
+      val id = expr.asInstanceOf[Node.Identifier]
       val key = "$" + id.name
       if (Object.prototype.hasOwnProperty.call(this.context.labelSet, key)) {
         this.throwError(Messages.Redeclaration, "Label", id.name)
@@ -2268,7 +2269,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (Any, AnyRef) =>
       paramMap(key) = true
     }
     if (this.context.strict && param.`type` == Syntax.Identifier) {
-      if (this.scanner.isRestrictedWord(param.asInstanceOf[StaticMemberExpression(Identifier(Node),Identifier(Identifier))].name)) {
+      if (this.scanner.isRestrictedWord(param.asInstanceOf[Node.Identifier].name)) {
         this.tolerateError(Messages.StrictCatchVariable)
       }
     }
@@ -2442,7 +2443,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (Any, AnyRef) =>
     for (i <- params) {
       this.validateParam(options, i, i.value)
     }
-    options.simple = options.simple && param.isInstanceOf[StaticMemberExpression(Identifier(Node),Identifier(Identifier))]
+    options.simple = options.simple && param.isInstanceOf[Node.Identifier]
     options.params.push(param)
   }
   
@@ -2626,7 +2627,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (Any, AnyRef) =>
       }
       val statement = this.parseDirective()
       body.push(statement)
-      val directive = statement.asInstanceOf[StaticMemberExpression(Identifier(Node),Identifier(Directive))].directive
+      val directive = statement.asInstanceOf[Node.Directive].directive
       if (directive.getClass != "string") {
         /* Unsupported: Break */ break;
       }
@@ -2681,7 +2682,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (Any, AnyRef) =>
     val formalParameters = this.parseFormalParameters()
     if (formalParameters.params.length != 1) {
       this.tolerateError(Messages.BadSetterArity)
-    } else if (formalParameters.params(0).isInstanceOf[StaticMemberExpression(Identifier(Node),Identifier(RestElement))]) {
+    } else if (formalParameters.params(0).isInstanceOf[Node.RestElement]) {
       this.tolerateError(Messages.BadSetterRestParameter)
     }
     val method = this.parsePropertyMethod(formalParameters)
@@ -2751,7 +2752,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (Any, AnyRef) =>
     } else {
       computed = this.`match`("[")
       key = this.parseObjectPropertyKey()
-      val id = key.asInstanceOf[StaticMemberExpression(Identifier(Node),Identifier(Identifier))]
+      val id = key.asInstanceOf[Node.Identifier]
       if (id.name == "static" && (this.qualifiedPropertyName(this.lookahead) || this.`match`("*"))) {
         token = this.lookahead
         isStatic = true

@@ -57,7 +57,7 @@ class ErrorHandler {
     error
   }
   
-  def throwError(index: Double, line: Double, col: Double, description: String): never = {
+  def throwError(index: Double, line: Double, col: Double, description: String): Nothing = {
     throw this.createError(index, line, col, description)
   }
   

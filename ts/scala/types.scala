@@ -4,6 +4,7 @@ types.ts
 */
 
 package types.ts
+
 /* import {SourceLocation, Comment} from "./src/scanner" */
 import esprima.{SourceLocation,Comment}
 

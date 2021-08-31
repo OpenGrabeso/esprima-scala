@@ -28,7 +28,6 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 /* import { CommentHandler } from './comment-handler' */
-/* import { JSXParser } from './jsx-parser' */
 /* import { Parser } from './parser' */
 /* import { Tokenizer } from './tokenizer' */
 def parse(code: String, options: Any, delegate: (Unit, Unit) => Any) = {
