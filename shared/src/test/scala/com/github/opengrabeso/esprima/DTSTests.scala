@@ -668,6 +668,31 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
   }
 
 
+  it should "parse type guards" in {
+    parse("""
+    function isFish(pet: Fish | Bird): pet is Fish {
+      return (pet as Fish).swim !== undefined;
+    }
+    function isDecimalDigitChar(ch: string): ch is '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' {
+        return ch.length === 1 && Character.isDecimalDigit(ch.charCodeAt(0));
+    }
+    """, DTSOptions)
+
+  }
+
+  it should "parse arrow function with explicit return type" in {
+    parse("""
+    const f = (par) => {};
+    const fn = (par): number => {};
+    const fv = (p1, p2): void => {};
+    """, DTSOptions)
+  }
+
+  it should "parse a conditional expression resembling an arrow function" in {
+    parse("""
+    var x = c ? (true) : false;
+    """, DTSOptions)
+  }
 
   behavior of "Parsing Three.js d.ts"
 
@@ -698,7 +723,4 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
     assert(tree.body.nonEmpty)
     assert(tree.errors.isEmpty)
   }
-
-
-  it should "process"
 }

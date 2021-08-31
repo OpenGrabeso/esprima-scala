@@ -12,10 +12,9 @@ import port.RegExp
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.Breaks._
+import scala.collection.Seq
 
 import ErrorHandler.Error
-
-import scala.util.Try
 
 object Parser {
 
@@ -712,7 +711,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     // parse return type
     if (options.typescript && this.`match`(":")) {
       this.nextToken()
-      `type` = this.parseTypeAnnotation()
+      `type` = this.parseTypeAnnotationWithTypeGuard(params = params.params)
     }
     val method = this.parsePropertyMethod(params)
     this.context.allowYield = previousAllowYield
@@ -952,12 +951,46 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         expr
     }
   }
-  
+
+
+  /**
+   * Typescript syntax of arrow function with a type and a conditional expression is similar, it is hard to know what we are parsing
+   * This is a dirty hack - we look for following lexical symbols
+   *
+   * If there is an arrow found before a statement end, we assume an arrow expression.
+   *
+   * I am not sure if such grammar could be implemented in a proper way without a backtracking parser
+   * */
+  def isArrow(): Boolean = {
+    val state = this.scanner.saveState()
+    this.scanner.scanComments()
+    // scan until you find a semicolon or end of line
+    var endReached = false
+    var arrowFound = false
+    val currentLine = this.scanner.lineNumber
+    do {
+      this.scanner.scanComments()
+      val next = this.scanner.lex()
+      if (next.`match`("=>")) {
+        arrowFound = true
+      }
+      if (next.`match`(";") || next.`type` == Token.EOF) {
+        endReached = true
+      }
+    } while (!endReached && !arrowFound && this.scanner.lineNumber == currentLine)
+    this.scanner.restoreState(state)
+    arrowFound
+  }
+
   def parseGroupExpression(): Node.Expression = {
     var expr: Node.Expression = null
     this.expect("(")
     if (this.`match`(")")) {
       this.nextToken()
+      if (this.options.typescript && this.`match`(":")) {
+        // TODO: a type guard can be provided here?
+        this.parseTypeAnnotation()
+      }
       if (!this.`match`("=>")) {
         this.expect("=>")
       }
@@ -1034,6 +1067,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         }
         if (!arrow) {
           this.expect(")")
+          if (this.options.typescript && this.`match`(":") && this.isArrow()) {
+            this.nextToken()
+            // TODO: store the result type somewhere
+            this.parseTypeAnnotationWithTypeGuard(Seq(expr))
+          }
           if (this.`match`("=>")) {
             if (expr.isInstanceOf[Node.Identifier] && expr.asInstanceOf[Node.Identifier].name == "yield") {
               var expr_cast = expr.asInstanceOf[Node.Identifier]
@@ -2746,7 +2784,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     if (options.typescript && this.`match`(":")) {
       this.nextToken()
-      typeAnnotation = parseTypeAnnotation()
+      typeAnnotation = this.parseTypeAnnotationWithTypeGuard(params = formalParameters.params)
     }
     val previousStrict = this.context.strict
     val previousAllowStrictDirective = this.context.allowStrictDirective
@@ -3194,6 +3232,29 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
 
     this.finalize(node, mayBeConditional)
+  }
+
+  def parseTypeAnnotationWithTypeGuard(params: Seq[Node.Node]): Node.TypeAnnotation = {
+    val token = this.nextToken()
+    // check for type guards
+    def isParameterName(name: String) = params.exists {
+      case Node.Identifier(`name`) =>
+        true
+      case Node.FunctionParameterWithType(Node.Identifier(`name`), _, _, _) =>
+        true
+      // TODO: support other parameter forms (assignments)
+      case _ =>
+        false
+    }
+
+    if (token.`type` == Token.Identifier && isParameterName(token.value)) {
+      this.expectKeyword("is")
+      val guardType = this.parseTypeAnnotation()
+      // TODO: return type is always boolean
+      null
+    } else {
+      this.parseTypeAnnotation(token)
+    }
   }
 
 
