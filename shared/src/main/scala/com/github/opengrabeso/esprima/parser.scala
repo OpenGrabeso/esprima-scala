@@ -1525,16 +1525,27 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     options.simple = options.simple && param.isInstanceOf[Node.Identifier]
   }
 
-  def reinterpretAsCoverFormalsList(expr: Node.ArrowParameterPlaceHolder): ParameterOptions = {
-    var paramsSource = ArrayBuffer(expr.params.toSeq:_*)
-    var paramsTarget = new ArrayBuffer[Node.FunctionParameter](paramsSource.size)
-    var asyncArrow = expr.async
+  def reinterpretAsCoverFormalsList(expr: Node.Node): ParameterOptions = {
     object options extends ParameterOptions {
       simple = true
       paramSet = mutable.Map.empty
     }
-    for (i <- paramsSource.indices) {
-      val param = paramsSource(i)
+    var asyncArrow = false
+    var params: Seq[Node.Node] = null
+
+    expr match {
+      case _: Node.Identifier =>
+        params = Seq(expr)
+
+      case expr: Node.ArrowParameterPlaceHolder =>
+        params = expr.params
+        asyncArrow = expr.async
+      case _ =>
+        return null
+    }
+    var paramsTarget = new ArrayBuffer[Node.FunctionParameter](params.size)
+    for (i <- params.indices) {
+      val param = params(i)
       val paramReinterpreted = (param: @unchecked) match {
         case param_cast: Node.AssignmentPattern =>
           if (param_cast.right.isInstanceOf[Node.YieldExpression]) {
@@ -1609,7 +1620,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         this.context.isAssignmentTarget = false
         this.context.isBindingElement = false
         val isAsync = expr_cast.exists(_.async)
-        val list = expr_cast.map(this.reinterpretAsCoverFormalsList).orNull
+        val list = this.reinterpretAsCoverFormalsList(exprTemp)
         if (list) {
           if (this.hasLineTerminator) {
             this.tolerateUnexpectedToken(this.lookahead)

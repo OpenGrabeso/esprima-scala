@@ -77,12 +77,10 @@ class BasicTests extends AnyFlatSpec with TestInputs with TestOptions {
   }
 
   it should "parse arrow function without parens" in {
-    pendingUntilFixed {
-      parse(
-        """
-          var f = s =>{};
-          """)
-    }
+    parse(
+      """
+        var f = s =>{};
+        """)
   }
 
   it should "parse arrow function without braces" in {
@@ -99,17 +97,15 @@ class BasicTests extends AnyFlatSpec with TestInputs with TestOptions {
     """)
   }
 
-  it should "parse arrow function with parens passed as an argument (a different example)" in {
-    pendingUntilFixed {
-      parse(
-        """
-          function f() {
-            ss.forEach( s =>{
-              s.call();
-            } );
-          }
-          """)
-    }
+  it should "parse arrow function without parens passed as an argument (a different example)" in {
+    parse(
+      """
+        function f() {
+          ss.forEach( s =>{
+            s.call();
+          } );
+        }
+        """)
   }
 
 
