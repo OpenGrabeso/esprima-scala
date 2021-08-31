@@ -4,8 +4,6 @@ error-handler.ts
 */
 
 package com.github.opengrabeso.esprima
-/*tslint:disable:max-classes-per-file */
-
 class Error(message_par: String) {
   var name: String = _
   var message: String = _

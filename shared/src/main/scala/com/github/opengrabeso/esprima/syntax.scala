@@ -17,6 +17,7 @@ object Syntax {
   var BreakStatement = "BreakStatement"
   var CallExpression = "CallExpression"
   var CatchClause = "CatchClause"
+  var ChainExpression = "ChainExpression"
   var ClassBody = "ClassBody"
   var ClassDeclaration = "ClassDeclaration"
   var ClassExpression = "ClassExpression"

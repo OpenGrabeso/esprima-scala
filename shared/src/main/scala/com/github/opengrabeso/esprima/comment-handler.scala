@@ -60,12 +60,12 @@ class CommentHandler {
       this.trailing.length = 0
       return trailingComments
     }
-    val entry = this.stack(this.stack.length - 1)
-    if (entry && entry.node.trailingComments) {
-      val firstComment = entry.node.trailingComments(0)
+    val last = this.stack(this.stack.length - 1)
+    if (last && last.node.trailingComments) {
+      val firstComment = last.node.trailingComments(0)
       if (firstComment && firstComment.range(0) >= metadata.end.offset) {
-        trailingComments = entry.node.trailingComments
-        delete entry.node.trailingComments
+        trailingComments = last.node.trailingComments
+        delete last.node.trailingComments
       }
     }
     trailingComments

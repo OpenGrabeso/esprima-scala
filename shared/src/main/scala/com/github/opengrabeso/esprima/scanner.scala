@@ -35,6 +35,8 @@ trait Comment {
   var loc: SourceLocation = _
 }
 
+// See: https://tc39.es/ecma262/#prod-NotEscapeSequence
+type NotEscapeSequenceHead = String
 trait RawToken {
   var `type`: Token = _
   var value: String | Double = _
@@ -43,6 +45,7 @@ trait RawToken {
   var regex: (String) => Any = _
   var octal: Boolean = _
   var cooked: String = _
+  var notEscapeSequenceHead: String = _
   var head: Boolean = _
   var tail: Boolean = _
   var lineNumber: Double = _
@@ -55,6 +58,7 @@ trait ScannerState {
   var index: Double = _
   var lineNumber: Double = _
   var lineStart: Double = _
+  var curlyStack = Array.empty[String]
 }
 
 class Scanner(code: String, var errorHandler: ErrorHandler) {
@@ -71,6 +75,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       var index = this.index
       var lineNumber = this.lineNumber
       var lineStart = this.lineStart
+      var curlyStack = this.curlyStack.slice()
     }
   }
   
@@ -78,6 +83,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     this.index = state.index
     this.lineNumber = state.lineNumber
     this.lineStart = state.lineStart
+    this.curlyStack = state.curlyStack
   }
   
   def eof(): Boolean = {
@@ -356,12 +362,12 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     String.fromCharCode(code)
   }
   
-  def scanUnicodeCodePointEscape(): String = {
+  def tryToScanUnicodeCodePointEscape(): String = {
     var ch = this.source(this.index)
     var code = 0
     // At least, one hex digit is required.
     if (ch == "}") {
-      this.throwUnexpectedToken()
+      return null
     }
     while (!this.eof()) {
       ch = this.source({
@@ -375,9 +381,17 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       code = code * 16 + hexValue(ch)
     }
     if (code > 0x10FFFF || ch != "}") {
-      this.throwUnexpectedToken()
+      return null
     }
     Character.fromCodePoint(code)
+  }
+  
+  def scanUnicodeCodePointEscape(): String = {
+    val result = this.tryToScanUnicodeCodePointEscape()
+    if (result == null) {
+      return this.throwUnexpectedToken()
+    }
+    result
   }
   
   def getIdentifier(): String = {
@@ -541,7 +555,19 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       case "}" =>
         this.index += 1
         this.curlyStack.pop()
-      case ")" | ";" | "," | "[" | "]" | ":" | "?" | "~" =>
+      case "?" =>
+        this.index += 1
+        if (this.source(this.index) == "?") {
+          this.index += 1
+          str = "??"
+        }
+        if (this.source(this.index) == "." && !"/^\d$/".r.test(this.source(this.index + 1))) {
+          // "?." in "foo?.3:0" should not be treated as optional chaining.
+          // See https://github.com/tc39/proposal-optional-chaining#notes
+          this.index += 1
+          str = "?."
+        }
+      case ")" | ";" | "," | "[" | "]" | ":" | "~" =>
         this.index += 1
       case _ =>
         // 4-character punctuator.
@@ -556,7 +582,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
           } else {
             // 2-character punctuators.
             str = str.substr(0, 2)
-            if (str == "&&" || str == "||" || str == "==" || str == "!=" || str == "+=" || str == "-=" || str == "*=" || str == "/=" || str == "++" || str == "--" || str == "<<" || str == ">>" || str == "&=" || str == "|=" || str == "^=" || str == "%=" || str == "<=" || str == ">=" || str == "=>" || str == "**") {
+            if (str == "&&" || str == "||" || str == "??" || str == "==" || str == "!=" || str == "+=" || str == "-=" || str == "*=" || str == "/=" || str == "++" || str == "--" || str == "<<" || str == ">>" || str == "&=" || str == "|=" || str == "^=" || str == "%=" || str == "<=" || str == ">=" || str == "=>" || str == "**") {
               this.index += 2
             } else {
               // 1-character punctuators.
@@ -828,11 +854,11 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
                 this.index += 1
                 str += this.scanUnicodeCodePointEscape()
               } else {
-                val unescaped = this.scanHexEscape(ch)
-                if (unescaped == null) {
+                val unescapedChar = this.scanHexEscape(ch)
+                if (unescapedChar == null) {
                   this.throwUnexpectedToken()
                 }
-                str += unescaped
+                str += unescapedChar
               }
             case "x" =>
               val unescaped = this.scanHexEscape(ch)
@@ -899,6 +925,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val start = this.index
     val head = this.source(start) == "`"
     var tail = false
+    var notEscapeSequenceHead: String = null
     var rawOffset = 2
     this.index += 1
     while (!this.eof()) {
@@ -920,6 +947,8 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
           /* Unsupported: Break */ break;
         }
         cooked += ch
+      } else if (notEscapeSequenceHead != null) {
+        /* Unsupported: Continue */ continue;
       } else if (ch == "\\") {
         ch = this.source({
           val temp = this.index
@@ -937,23 +966,27 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
             case "u" =>
               if (this.source(this.index) == "{") {
                 this.index += 1
-                cooked += this.scanUnicodeCodePointEscape()
-              } else {
-                val restore = this.index
-                val unescaped = this.scanHexEscape(ch)
-                if (unescaped != null) {
-                  cooked += unescaped
+                val unicodeCodePointEscape = this.tryToScanUnicodeCodePointEscape()
+                if (unicodeCodePointEscape == null) {
+                  notEscapeSequenceHead = "u"
                 } else {
-                  this.index = restore
-                  cooked += ch
+                  cooked += unicodeCodePointEscape
+                }
+              } else {
+                val unescapedChar = this.scanHexEscape(ch)
+                if (unescapedChar == null) {
+                  notEscapeSequenceHead = "u"
+                } else {
+                  cooked += unescapedChar
                 }
               }
             case "x" =>
               val unescaped = this.scanHexEscape(ch)
               if (unescaped == null) {
-                this.throwUnexpectedToken(Messages.InvalidHexEscapeSequence)
+                notEscapeSequenceHead = "x"
+              } else {
+                cooked += unescaped
               }
-              cooked += unescaped
             case "b" =>
               cooked += "\b"
             case "f" =>
@@ -963,13 +996,14 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
             case _ =>
               if (ch == "0") {
                 if (Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
-                  // Illegal: \01 \02 and so on
-                  this.throwUnexpectedToken(Messages.TemplateOctalLiteral)
+                  // NotEscapeSequence: \01 \02 and so on
+                  notEscapeSequenceHead = "0"
+                } else {
+                  cooked += "\u0000"
                 }
-                cooked += "\u0000"
-              } else if (Character.isOctalDigit(ch.charCodeAt(0))) {
-                // Illegal: \1 \2
-                this.throwUnexpectedToken(Messages.TemplateOctalLiteral)
+              } else if (Character.isDecimalDigitChar(ch)) {
+                // NotEscapeSequence: \1 \2
+                notEscapeSequenceHead = ch
               } else {
                 cooked += ch
               }
@@ -1001,9 +1035,10 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     new {
       var `type` = Token.Template
       var value = this.source.slice(start + 1, this.index - rawOffset)
-      var cooked = cooked
+      var cooked = if (notEscapeSequenceHead == null) cooked else null
       var head = head
       var tail = tail
+      var notEscapeSequenceHead = notEscapeSequenceHead
       var lineNumber = this.lineNumber
       var lineStart = this.lineStart
       var start = start
@@ -1021,12 +1056,11 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     // pattern that would not be detected by this substitution.
     val astralSubstitute = ""
     var tmp = pattern
-    val self = this
     if (flags.indexOf("u") >= 0) {
       tmp = tmp.replace("/\\u\{([0-9a-fA-F]+)\}|\\u([a-fA-F0-9]{4})/g".r, ($0, $1, $2) => {
         val codePoint = parseInt($1 || $2, 16)
         if (codePoint > 0x10FFFF) {
-          self.throwUnexpectedToken(Messages.InvalidRegExp)
+          this.throwUnexpectedToken(Messages.InvalidRegExp)
         }
         if (codePoint <= 0xFFFF) {
           return String.fromCharCode(codePoint)

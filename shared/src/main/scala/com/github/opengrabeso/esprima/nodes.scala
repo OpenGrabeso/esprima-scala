@@ -10,6 +10,7 @@ type ArrayExpressionElement = Expression | SpreadElement
 type ArrayPatternElement = AssignmentPattern | Identifier | ArrayPattern | ObjectPattern | RestElement
 type BindingPattern = ArrayPattern | ObjectPattern
 type BindingIdentifier = Identifier
+type ChainElement = CallExpression | ComputedMemberExpression | StaticMemberExpression
 type Declaration = Any
 type ExportableDefaultDeclaration = Any
 type ExportableNamedDeclaration = AsyncFunctionDeclaration | ClassDeclaration | FunctionDeclaration | VariableDeclaration
@@ -53,16 +54,14 @@ class AsyncArrowFunctionExpression(var params: Array[AssignmentPattern | Identif
   var async: Boolean = true
 }
 
-class AsyncFunctionDeclaration(var id: Identifier, var params: Array[AssignmentPattern | Identifier | ArrayPattern | ObjectPattern], var body: BlockStatement) {
+class AsyncFunctionDeclaration(var id: Identifier, var params: Array[AssignmentPattern | Identifier | ArrayPattern | ObjectPattern], var body: BlockStatement, var generator: Boolean) {
   var `type`: String = Syntax.FunctionDeclaration
-  var generator: Boolean = false
   var expression: Boolean = false
   var async: Boolean = true
 }
 
-class AsyncFunctionExpression(var id: Identifier, var params: Array[AssignmentPattern | Identifier | ArrayPattern | ObjectPattern], var body: BlockStatement) {
+class AsyncFunctionExpression(var id: Identifier, var params: Array[AssignmentPattern | Identifier | ArrayPattern | ObjectPattern], var body: BlockStatement, var generator: Boolean) {
   var `type`: String = Syntax.FunctionExpression
-  var generator: Boolean = false
   var expression: Boolean = false
   var async: Boolean = true
 }
@@ -79,7 +78,7 @@ class BinaryExpression(operator_par: String, left_par: Expression, right_par: Ex
   this.constructor(operator_par, left_par, right_par)
 
   def constructor(operator: String, left: Expression, right: Expression) = {
-    val logical = operator == "||" || operator == "&&"
+    val logical = operator == "||" || operator == "&&" || operator == "??"
     this.`type` = if (logical) Syntax.LogicalExpression else Syntax.BinaryExpression
     this.operator = operator
     this.left = left
@@ -96,12 +95,16 @@ class BreakStatement(var label: Identifier) {
   var `type`: String = Syntax.BreakStatement
 }
 
-class CallExpression(var callee: Expression | Import, var arguments: Array[Expression | SpreadElement]) {
+class CallExpression(var callee: Expression | Import, var arguments: Array[Expression | SpreadElement], var optional: Boolean) {
   var `type`: String = Syntax.CallExpression
 }
 
 class CatchClause(var param: Identifier | ArrayPattern | ObjectPattern, var body: BlockStatement) {
   var `type`: String = Syntax.CatchClause
+}
+
+class ChainExpression(var expression: CallExpression | ComputedMemberExpression | StaticMemberExpression) {
+  var `type`: String = Syntax.ChainExpression
 }
 
 class ClassBody(var body: Array[Property]) {
@@ -116,7 +119,7 @@ class ClassExpression(var id: Identifier, var superClass: Identifier, var body: 
   var `type`: String = Syntax.ClassExpression
 }
 
-class ComputedMemberExpression(var `object`: Expression, var property: Expression) {
+class ComputedMemberExpression(var `object`: Expression, var property: Expression, var optional: Boolean) {
   var `type`: String = Syntax.MemberExpression
   var computed: Boolean = true
 }
@@ -170,7 +173,7 @@ class ForInStatement(var left: Expression, var right: Expression, var body: Stat
   var each: Boolean = false
 }
 
-class ForOfStatement(var left: Expression, var right: Expression, var body: Statement) {
+class ForOfStatement(var left: Expression, var right: Expression, var body: Statement, var await: Boolean) {
   var `type`: String = Syntax.ForOfStatement
 }
 
@@ -284,7 +287,7 @@ class SpreadElement(var argument: Expression) {
   var `type`: String = Syntax.SpreadElement
 }
 
-class StaticMemberExpression(var `object`: Expression, var property: Expression) {
+class StaticMemberExpression(var `object`: Expression, var property: Expression, var optional: Boolean) {
   var `type`: String = Syntax.MemberExpression
   var computed: Boolean = false
 }
