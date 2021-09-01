@@ -11,6 +11,10 @@ import scala.collection.mutable.ArrayBuffer
 
 object Node {
 
+  def outputSeq(name: String, body: collection.Seq[Node.Node]): String = {
+    name +  "{" + body.mkString("\n", "\n", "\n") + "}\n"
+  }
+
   trait Node {
     def simpleName: String = {
       // getSimpleName is nice, but sometimes throws InternalError("Malformed class name")
@@ -252,6 +256,7 @@ object Node {
 
   // actually MethodDefinition seems to work
   case class ClassBody(var body: collection.Seq[ClassBodyElement]) extends Node {
+    override def toString = Node.outputSeq("ClassBody", body)
 
     override def clone = copy().copyNode(this)
   }
@@ -503,6 +508,7 @@ object Node {
 
   abstract class Program(var body: collection.Seq[StatementListItem]) extends Node {
 
+    override def toString = Node.outputSeq(sourceType, body)
 
     def sourceType: String
 

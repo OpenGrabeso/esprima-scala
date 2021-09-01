@@ -30,6 +30,13 @@ lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Full)
 
 )
 
+lazy val interactive = project.dependsOn(projs.jvm)
+  .settings(
+    scalaVersion := "2.13.6",
+    libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "2.1.1",
+    libraryDependencies += "com.fifesoft" % "rsyntaxtextarea" % "3.0.8",
+  )
+
 lazy val root = project.in(file("root")).
   aggregate(projs.jvm, projs.js).
   settings(
