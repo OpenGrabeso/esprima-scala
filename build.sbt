@@ -23,6 +23,7 @@ lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Full)
     crossScalaVersions := Seq("2.12.14", "2.11.12", "2.13.6"),
 
     libraryDependencies += "org.scalatest" %%% "scalatest" % "3.2.2" % "test",
+    libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value, // needed for macros
 
     publishMavenStyle := true,
     Compile / packageDoc / publishArtifact := false,

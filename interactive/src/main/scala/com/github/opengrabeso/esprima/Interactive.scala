@@ -53,6 +53,8 @@ object Interactive extends SimpleSwingApplication {
       override lazy val peer: RTextScrollPane = new RTextScrollPane(panel.peer, false) with SuperMixin
     }
 
+    var output: OutputType = OutputType.AST
+
     private def mySplit(o: Orientation.Value, w: Double)(l: Component, r: Component): SplitPane = new SplitPane(o, l, r) {
       resizeWeight = w
     }
@@ -60,7 +62,10 @@ object Interactive extends SimpleSwingApplication {
     val input = new MyTextArea(true)
     val statusBar = new Label
 
-
+    def switchOutput(o: OutputType): Unit = {
+      output = o
+      BackgroundConversion.process(input.text)
+    }
 
     contents = new BorderPanel {
       layout += mySplit(Orientation.Vertical, 0.5)(new MyScrollPane(input), new MyScrollPane(result)) -> Center
@@ -142,7 +147,7 @@ object Interactive extends SimpleSwingApplication {
               override def run() =
                 println(s"Duration $duration")
               resultValue.map { ast =>
-                result.text = ast.toString
+                result.text = output.output(ast)
                 statusBar.text = s"Conversion duration $duration ms"
               }.failed.map { ex =>
                 statusBar.text = s"Conversion duration $duration ms, error ${ex.toString}"
@@ -162,9 +167,10 @@ object Interactive extends SimpleSwingApplication {
 
     menuBar = new MenuBar {
       contents ++= Seq(
-        new Menu("File") {
+        new Menu("Output") {
           contents ++= Seq(
-            new MenuItem(new ActionWithCode("Clear history", {}, KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK))
+            new MenuItem(new ActionWithCode("Use toString", {switchOutput(OutputType.ToString)}, KeyEvent.VK_1, InputEvent.CTRL_DOWN_MASK)),
+            new MenuItem(new ActionWithCode("Use AST walker", {switchOutput(OutputType.AST)}, KeyEvent.VK_2, InputEvent.CTRL_DOWN_MASK))
           )
         }
       )
