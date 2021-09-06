@@ -78,6 +78,12 @@ object Scanner {
     def lineStart: Int
   }
 
+  // avoid Breaks.breakable in some common loops, it hurts performance too much (esp. when debugging)
+  case class Breakable() {
+    var broken = false
+
+    def break(): Unit = broken = true
+  }
 }
 
 //noinspection ComparingUnrelatedTypes,RemoveRedundantReturn
@@ -254,63 +260,62 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       comments = ArrayBuffer()
     }
     var start = this.index == 0
-    breakable {
-      while (!this.eof()) {
-        var ch = this.source.charCodeAt(this.index)
-        if (Character.isWhiteSpace(ch)) {
+    val brk = Breakable() // very common, Breaks.breakable was slowing down debugging a lot
+    while (!this.eof() && !brk.broken) {
+      var ch = this.source.charCodeAt(this.index)
+      if (Character.isWhiteSpace(ch)) {
+        this.index += 1
+      } else if (Character.isLineTerminator(ch)) {
+        this.index += 1
+        if (ch == 0x0D && this.source.charCodeAt(this.index) == 0x0A) {
           this.index += 1
-        } else if (Character.isLineTerminator(ch)) {
-          this.index += 1
-          if (ch == 0x0D && this.source.charCodeAt(this.index) == 0x0A) {
-            this.index += 1
+        }
+        this.lineNumber += 1
+        this.lineStart = this.index
+        start = true
+      } else if (ch == 0x2F) { // U+002F is '/'
+        ch = this.source.charCodeAt(this.index + 1)
+        if (ch == 0x2F) {
+          this.index += 2
+          val comment = this.skipSingleLineComment(2)
+          if (this.trackComment) {
+            comments = comments.concat(comment)
           }
-          this.lineNumber += 1
-          this.lineStart = this.index
           start = true
-        } else if (ch == 0x2F) { // U+002F is '/'
-          ch = this.source.charCodeAt(this.index + 1)
-          if (ch == 0x2F) {
-            this.index += 2
-            val comment = this.skipSingleLineComment(2)
-            if (this.trackComment) {
-              comments = comments.concat(comment)
-            }
-            start = true
-          } else if (ch == 0x2A) { // U+002A is '*'
-            this.index += 2
-            val comment = this.skipMultiLineComment()
-            if (this.trackComment) {
-              comments = comments.concat(comment)
-            }
-          } else {
-            break()
-          }
-        } else if (start && ch == 0x2D) { // U+002D is '-'
-          // U+003E is '>'
-          if (this.source.charCodeAt(this.index + 1) == 0x2D && this.source.charCodeAt(this.index + 2) == 0x3E) {
-            // '-->' is a single-line comment
-            this.index += 3
-            val comment = this.skipSingleLineComment(3)
-            if (this.trackComment) {
-              comments = comments.concat(comment)
-            }
-          } else {
-            break()
-          }
-        } else if (ch == 0x3C && !this.isModule) { // U+003C is '<'
-          if (this.source.slice(this.index + 1, this.index + 4) == "!--") {
-            this.index += 4
-            // `<!--`
-            val comment = this.skipSingleLineComment(4)
-            if (this.trackComment) {
-              comments = comments.concat(comment)
-            }
-          } else {
-            break()
+        } else if (ch == 0x2A) { // U+002A is '*'
+          this.index += 2
+          val comment = this.skipMultiLineComment()
+          if (this.trackComment) {
+            comments = comments.concat(comment)
           }
         } else {
-          break()
+          brk.break()
         }
+      } else if (start && ch == 0x2D) { // U+002D is '-'
+        // U+003E is '>'
+        if (this.source.charCodeAt(this.index + 1) == 0x2D && this.source.charCodeAt(this.index + 2) == 0x3E) {
+          // '-->' is a single-line comment
+          this.index += 3
+          val comment = this.skipSingleLineComment(3)
+          if (this.trackComment) {
+            comments = comments.concat(comment)
+          }
+        } else {
+          brk.break()
+        }
+      } else if (ch == 0x3C && !this.isModule) { // U+003C is '<'
+        if (this.source.slice(this.index + 1, this.index + 4) == "!--") {
+          this.index += 4
+          // `<!--`
+          val comment = this.skipSingleLineComment(4)
+          if (this.trackComment) {
+            comments = comments.concat(comment)
+          }
+        } else {
+          brk.break()
+        }
+      } else {
+        brk.break()
       }
     }
     comments
@@ -397,16 +402,16 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (ch.toString == "}") {
       this.throwUnexpectedToken()
     }
-    breakable {
-      while (!this.eof()) {
-        ch = this.source({
-          val temp = this.index
-          this.index += 1
-          temp
-        })
-        if (!Character.isHexDigit(ch)) {
-          break()
-        }
+    val brk = Breakable()
+    while (!this.eof() && !brk.broken) {
+      ch = this.source({
+        val temp = this.index
+        this.index += 1
+        temp
+      })
+      if (!Character.isHexDigit(ch)) {
+        brk.break()
+      } else {
         code = code * 16 + hexValue(ch)
       }
     }
@@ -422,23 +427,22 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.index += 1
       temp
     }
-    breakable {
-      while (!this.eof()) {
-        val ch = this.source.charCodeAt(this.index)
-        if (ch == 0x5C) {
-          // Blackslash (U+005C) marks Unicode escape sequence.
-          this.index = start
-          return this.getComplexIdentifier()
-        } else if (ch >= 0xD800 && ch < 0xDFFF) {
-          // Need to handle surrogate pairs.
-          this.index = start
-          return this.getComplexIdentifier()
-        }
-        if (Character.isIdentifierPart(ch)) {
-          this.index += 1
-        } else {
-          break()
-        }
+    val brk = Breakable()
+    while (!this.eof() && !brk.broken) {
+      val ch = this.source.charCodeAt(this.index)
+      if (ch == 0x5C) {
+        // Blackslash (U+005C) marks Unicode escape sequence.
+        this.index = start
+        return this.getComplexIdentifier()
+      } else if (ch >= 0xD800 && ch < 0xDFFF) {
+        // Need to handle surrogate pairs.
+        this.index = start
+        return this.getComplexIdentifier()
+      }
+      if (Character.isIdentifierPart(ch)) {
+        this.index += 1
+      } else {
+        brk.break()
       }
     }
     this.source.slice(start, this.index)
@@ -859,77 +863,76 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     this.index += 1
     var octal = false
     var str = ""
-    breakable {
-      while (!this.eof()) {
-        var ch: String = this.source({
+    val brk = Breakable()
+    while (!this.eof() && !brk.broken) {
+      var ch: String = this.source({
+        val temp = this.index
+        this.index += 1
+        temp
+      })
+      if (ch == quote) {
+        quote = ""
+        brk.break()
+      } else if (ch == "\\") {
+        ch = this.source({
           val temp = this.index
           this.index += 1
           temp
         })
-        if (ch == quote) {
-          quote = ""
-          break()
-        } else if (ch == "\\") {
-          ch = this.source({
-            val temp = this.index
-            this.index += 1
-            temp
-          })
-          if (!ch || !Character.isLineTerminator(ch.charCodeAt(0))) {
-            ch match {
-              case "u" =>
-                if (this.source(this.index).toString == "{") {
-                  this.index += 1
-                  str += this.scanUnicodeCodePointEscape()
-                } else {
-                  val unescaped = this.scanHexEscape(ch)
-                  if (unescaped == null) {
-                    this.throwUnexpectedToken()
-                  }
-                  str += unescaped
-                }
-              case "x" =>
+        if (!ch || !Character.isLineTerminator(ch.charCodeAt(0))) {
+          ch match {
+            case "u" =>
+              if (this.source(this.index).toString == "{") {
+                this.index += 1
+                str += this.scanUnicodeCodePointEscape()
+              } else {
                 val unescaped = this.scanHexEscape(ch)
                 if (unescaped == null) {
-                  this.throwUnexpectedToken(Messages.InvalidHexEscapeSequence)
+                  this.throwUnexpectedToken()
                 }
                 str += unescaped
-              case "n" =>
-                str += "\n"
-              case "r" =>
-                str += "\r"
-              case "t" =>
-                str += "\t"
-              case "b" =>
-                str += "\b"
-              case "f" =>
-                str += "\f"
-              case "v" =>
-                str += "\u000b"
-              case "8" | "9" =>
+              }
+            case "x" =>
+              val unescaped = this.scanHexEscape(ch)
+              if (unescaped == null) {
+                this.throwUnexpectedToken(Messages.InvalidHexEscapeSequence)
+              }
+              str += unescaped
+            case "n" =>
+              str += "\n"
+            case "r" =>
+              str += "\r"
+            case "t" =>
+              str += "\t"
+            case "b" =>
+              str += "\b"
+            case "f" =>
+              str += "\f"
+            case "v" =>
+              str += "\u000b"
+            case "8" | "9" =>
+              str += ch
+              this.tolerateUnexpectedToken()
+            case _ =>
+              if (ch && Character.isOctalDigit(ch.charCodeAt(0))) {
+                val octToDec = this.octalToDecimal(ch)
+                octal = octToDec._2 || octal
+                str += fromCharCode(octToDec._1)
+              } else {
                 str += ch
-                this.tolerateUnexpectedToken()
-              case _ =>
-                if (ch && Character.isOctalDigit(ch.charCodeAt(0))) {
-                  val octToDec = this.octalToDecimal(ch)
-                  octal = octToDec._2 || octal
-                  str += fromCharCode(octToDec._1)
-                } else {
-                  str += ch
-                }
-            }
-          } else {
-            this.lineNumber += 1
-            if (ch == "\r" && this.source(this.index).toString == "\n") {
-              this.index += 1
-            }
-            this.lineStart = this.index
+              }
           }
-        } else if (Character.isLineTerminator(ch.charCodeAt(0))) {
-          break()
         } else {
-          str += ch
+          this.lineNumber += 1
+          if (ch == "\r" && this.source(this.index).toString == "\n") {
+            this.index += 1
+          }
+          this.lineStart = this.index
         }
+      } else if (Character.isLineTerminator(ch.charCodeAt(0))) {
+        brk.break()
+      } else {
+        str += ch
       }
     }
     if (quote != "") {
