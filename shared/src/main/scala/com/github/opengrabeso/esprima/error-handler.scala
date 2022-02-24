@@ -37,7 +37,7 @@ class ErrorHandler {
         /*istanbul ignore else */
         if (Object.create && Object.defineProperty) {
           error = Object.create(base)
-          Object.defineProperty(error, "column", new {
+          Object.defineProperty(error, "column", new /*ErrorHandler/constructError*/ {
             var value = column
           })
         }

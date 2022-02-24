@@ -119,12 +119,12 @@ class Tokenizer(code: String, config: Config) {
       if (!this.scanner.eof()) {
         var loc: SourceLocation = _
         if (this.trackLoc) {
-          loc = new {
-            var start = new {
+          loc = new /*Tokenizer/getNextToken/loc*/ {
+            var start = new /*Tokenizer/getNextToken/loc/start*/ {
               var line = this.scanner.lineNumber
               var column = this.scanner.index - this.scanner.lineStart
             }
-            var end = new {}
+            var end = new /*Tokenizer/getNextToken/loc/end*/ {}
           }
         }
         val maybeRegex = this.scanner.source(this.scanner.index) == "/" && this.reader.isRegexStart()
@@ -150,7 +150,7 @@ class Tokenizer(code: String, config: Config) {
           entry.range = Array(token.start, token.end)
         }
         if (this.trackLoc) {
-          loc.end = new {
+          loc.end = new /*Tokenizer/getNextToken/loc/end*/ {
             var line = this.scanner.lineNumber
             var column = this.scanner.index - this.scanner.lineStart
           }
@@ -159,7 +159,7 @@ class Tokenizer(code: String, config: Config) {
         if (token.`type` == Token.RegularExpression) {
           val pattern = token.pattern.asInstanceOf[String]
           val flags = token.flags.asInstanceOf[String]
-          entry.regex = new {
+          entry.regex = new /*Tokenizer/getNextToken/entry/regex*/ {
             var pattern = pattern
             var flags = flags
           }

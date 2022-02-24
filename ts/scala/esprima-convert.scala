@@ -3,7 +3,7 @@ ScalaFromJS: Dev
 esprima-convert.ts
 */
 
-package esprima-convert.ts
+
 /* export * from "src/assert" */
 /* export * from "src/character" */
 /* export * from "src/comment-handler" */

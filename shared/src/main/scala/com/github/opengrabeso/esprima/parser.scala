@@ -68,9 +68,8 @@ trait ParseTemplateLiteralOptions {
   var isTagged: Boolean = _
 }
 
-class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef) => Any) {
-  var tokens = Array.empty[Any]
-  var config: Config = new {
+class Parser(code: String, options: Any = new /*Parser*/ {}, var delegate: (AnyRef, AnyRef) => Any) {
+  var config: Config = new /*Parser/config*/ {
     var range = options.range.getClass == "boolean" && options.range
     var loc = options.loc.getClass == "boolean" && options.loc
     var source = null
@@ -85,7 +84,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
   errorHandler.tolerant = config.tolerant
   var scanner: Scanner = new Scanner(code, errorHandler)
   scanner.trackComment = config.comment
-  var operatorPrecedence = new {
+  var operatorPrecedence = new /*Parser/operatorPrecedence*/ {
     var `)` = 0
     var `;` = 0
     var `,` = 0
@@ -114,7 +113,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
     var `/` = 15
     var `%` = 15
   }
-  var lookahead: RawToken = new {
+  var lookahead: RawToken = new /*Parser/lookahead*/ {
     var `type` = Token.EOF
     var value = ""
     var lineNumber = scanner.lineNumber
@@ -123,7 +122,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
     var end = 0
   }
   var hasLineTerminator: Boolean = false
-  var context: Context = new {
+  var context: Context = new /*Parser/context*/ {
     var isModule = false
     var isAsync = false
     var allowIn = true
@@ -136,22 +135,22 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
     var inIteration = false
     var inSwitch = false
     var inClassConstructor = false
-    var labelSet = new {}
+    var labelSet = new /*Parser/context/labelSet*/ {}
     var strict = false
   }
-  tokens = Array()
-  var startMarker: Marker = new {
+  var tokens = Array.empty[Any]
+  var startMarker: Marker = new /*Parser/startMarker*/ {
     var index = 0
     var line = scanner.lineNumber
     var column = 0
   }
-  var lastMarker: Marker = new {
+  var lastMarker: Marker = new /*Parser/lastMarker*/ {
     var index = 0
     var line = scanner.lineNumber
     var column = 0
   }
   this.nextToken()
-  lastMarker = new {
+  lastMarker = new /*Parser/lastMarker*/ {
     var index = scanner.index
     var line = scanner.lineNumber
     var column = scanner.index - scanner.lineStart
@@ -248,12 +247,12 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
             node.loc = e.loc
           }
           object metadata {
-            var start = new {
+            var start = new /*Parser/collectComments/metadata/start*/ {
               var line = e.loc.start.line
               var column = e.loc.start.column
               var offset = e.range(0)
             }
-            var end = new {
+            var end = new /*Parser/collectComments/metadata/end*/ {
               var line = e.loc.end.line
               var column = e.loc.end.column
               var offset = e.range(1)
@@ -279,12 +278,12 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
       t.range = Array(token.start, token.end)
     }
     if (this.config.loc) {
-      t.loc = new {
-        var start = new {
+      t.loc = new /*Parser/convertToken/t/loc*/ {
+        var start = new /*Parser/convertToken/t/loc/start*/ {
           var line = this.startMarker.line
           var column = this.startMarker.column
         }
-        var end = new {
+        var end = new /*Parser/convertToken/t/loc/end*/ {
           var line = this.scanner.lineNumber
           var column = this.scanner.index - this.scanner.lineStart
         }
@@ -293,7 +292,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
     if (token.`type` == Token.RegularExpression) {
       val pattern = token.pattern.asInstanceOf[String]
       val flags = token.flags.asInstanceOf[String]
-      t.regex = new {
+      t.regex = new /*Parser/convertToken/t/regex*/ {
         var pattern = pattern
         var flags = flags
       }
@@ -342,7 +341,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
   }
   
   def createNode(): Marker = {
-    new {
+    new /*Parser/createNode*/ {
       var index = this.startMarker.index
       var line = this.startMarker.line
       var column = this.startMarker.column
@@ -356,7 +355,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
       column += lastLineStart
       line -= 1
     }
-    new {
+    new /*Parser/startNode*/ {
       var index = token.start
       var line = line
       var column = column
@@ -368,12 +367,12 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
       node.range = Array(marker.index, this.lastMarker.index)
     }
     if (this.config.loc) {
-      node.loc = new {
-        var start = new {
+      node.loc = new /*Parser/finalize/node/loc*/ {
+        var start = new /*Parser/finalize/node/loc/start*/ {
           var line = marker.line
           var column = marker.column
         }
-        var end = new {
+        var end = new /*Parser/finalize/node/loc/end*/ {
           var line = this.lastMarker.line
           var column = this.lastMarker.column
         }
@@ -384,12 +383,12 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
     }
     if (this.delegate) {
       object metadata {
-        var start = new {
+        var start = new /*Parser/finalize/metadata/start*/ {
           var line = marker.line
           var column = marker.column
           var offset = marker.index
         }
-        var end = new {
+        var end = new /*Parser/finalize/metadata/end*/ {
           var line = this.lastMarker.line
           var column = this.lastMarker.column
           var offset = this.lastMarker.index
@@ -569,7 +568,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
         raw = this.getTokenRaw(token)
         expr = this.finalize(node, new Node.Literal(null, raw))
       case Token.Template =>
-        expr = this.parseTemplateLiteral(new {
+        expr = this.parseTemplateLiteral(new /*Parser/parsePrimaryExpression/expr*/ {
           var isTagged = false
         })
       case Token.Punctuator =>
@@ -853,7 +852,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
     }
     val raw = token.value.asInstanceOf[String]
     val cooked = token.cooked.asInstanceOf[String]
-    this.finalize(node, new Node.TemplateElement(new {
+    this.finalize(node, new Node.TemplateElement(new /*Parser/parseTemplateHead*/ {
       var raw = raw
       var cooked = cooked
     }, token.tail.asInstanceOf[Boolean]))
@@ -870,7 +869,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
     }
     val raw = token.value.asInstanceOf[String]
     val cooked = token.cooked.asInstanceOf[String]
-    this.finalize(node, new Node.TemplateElement(new {
+    this.finalize(node, new Node.TemplateElement(new /*Parser/parseTemplateElement*/ {
       var raw = raw
       var cooked = cooked
     }, token.tail.asInstanceOf[Boolean]))
@@ -925,7 +924,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
       if (!this.`match`("=>")) {
         this.expect("=>")
       }
-      expr = new {
+      expr = new /*Parser/parseGroupExpression/expr*/ {
         var `type` = ArrowParameterPlaceHolder
         var params = Array()
         var async = false
@@ -939,7 +938,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
         if (!this.`match`("=>")) {
           this.expect("=>")
         }
-        expr = new {
+        expr = new /*Parser/parseGroupExpression/expr*/ {
           var `type` = ArrowParameterPlaceHolder
           var params = Array(expr)
           var async = false
@@ -963,7 +962,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
                 this.reinterpretExpressionAsPattern(i)
               }
               arrow = true
-              expr = new {
+              expr = new /*Parser/parseGroupExpression/expr*/ {
                 var `type` = ArrowParameterPlaceHolder
                 var params = expressions
                 var async = false
@@ -982,7 +981,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
                 this.reinterpretExpressionAsPattern(i)
               }
               arrow = true
-              expr = new {
+              expr = new /*Parser/parseGroupExpression/expr*/ {
                 var `type` = ArrowParameterPlaceHolder
                 var params = expressions
                 var async = false
@@ -1003,7 +1002,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
           if (this.`match`("=>")) {
             if (expr.`type` == Syntax.Identifier && expr.name == "yield") {
               arrow = true
-              expr = new {
+              expr = new /*Parser/parseGroupExpression/expr*/ {
                 var `type` = ArrowParameterPlaceHolder
                 var params = Array(expr)
                 var async = false
@@ -1021,7 +1020,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
                 this.reinterpretExpressionAsPattern(expr)
               }
               val parameters = if (expr.`type` == Syntax.SequenceExpression) expr.expressions else Array(expr)
-              expr = new {
+              expr = new /*Parser/parseGroupExpression/expr*/ {
                 var `type` = ArrowParameterPlaceHolder
                 var params = parameters
                 var async = false
@@ -1211,7 +1210,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
           for (i <- args) {
             this.reinterpretExpressionAsPattern(i)
           }
-          expr = new {
+          expr = new /*Parser/parseLeftHandSideExpressionAllowCall/expr*/ {
             var `type` = ArrowParameterPlaceHolder
             var params = args
             var async = true
@@ -1233,7 +1232,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
         if (hasOptional) {
           this.throwError(Messages.InvalidTaggedTemplateOnOptionalChain)
         }
-        val quasi = this.parseTemplateLiteral(new {
+        val quasi = this.parseTemplateLiteral(new /*Parser/parseLeftHandSideExpressionAllowCall/quasi*/ {
           var isTagged = true
         })
         expr = this.finalize(this.startNode(startToken), new Node.TaggedTemplateExpression(expr, quasi))
@@ -1293,7 +1292,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
         if (hasOptional) {
           this.throwError(Messages.InvalidTaggedTemplateOnOptionalChain)
         }
-        val quasi = this.parseTemplateLiteral(new {
+        val quasi = this.parseTemplateLiteral(new /*Parser/parseLeftHandSideExpression/quasi*/ {
           var isTagged = true
         })
         expr = this.finalize(node, new Node.TaggedTemplateExpression(expr, quasi))
@@ -1533,7 +1532,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
     var params = Array(expr)
     object options {
       var simple = true
-      var paramSet = new {}
+      var paramSet = new /*Parser/reinterpretAsCoverFormalsList/options/paramSet*/ {}
     }
     var asyncArrow = false
     expr.`type` match {
@@ -1573,7 +1572,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
       val token = if (this.context.strict) options.stricted else options.firstRestricted
       this.throwUnexpectedToken(token, Messages.DuplicateParameter)
     }
-    new {
+    new /*Parser/reinterpretAsCoverFormalsList*/ {
       var simple = options.simple
       var params = params
       var stricted = options.stricted
@@ -1594,7 +1593,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
         if (this.lookahead.`type` == Token.Identifier || this.matchKeyword("yield")) {
           val arg = this.parsePrimaryExpression()
           this.reinterpretExpressionAsPattern(arg)
-          expr = new {
+          expr = new /*Parser/parseAssignmentExpression/expr*/ {
             var `type` = ArrowParameterPlaceHolder
             var params = Array(arg)
             var async = true
@@ -1718,7 +1717,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
             statement = this.parseImportDeclaration()
           }
         case "const" =>
-          statement = this.parseLexicalDeclaration(new {
+          statement = this.parseLexicalDeclaration(new /*Parser/parseStatementListItem/statement*/ {
             var inFor = false
           })
         case "function" =>
@@ -1726,7 +1725,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
         case "class" =>
           statement = this.parseClassDeclaration()
         case "let" =>
-          statement = if (this.isLexicalDeclaration()) this.parseLexicalDeclaration(new {
+          statement = if (this.isLexicalDeclaration()) this.parseLexicalDeclaration(new /*Parser/parseStatementListItem/statement*/ {
             var inFor = false
           }) else this.parseStatement()
         case _ =>
@@ -1987,7 +1986,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
   def parseVariableStatement(): Node.VariableDeclaration = {
     val node = this.createNode()
     this.expectKeyword("var")
-    val declarations = this.parseVariableDeclarationList(new {
+    val declarations = this.parseVariableDeclarationList(new /*Parser/parseVariableStatement/declarations*/ {
       var inFor = false
     })
     this.consumeSemicolon()
@@ -2109,7 +2108,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
         this.nextToken()
         val previousAllowIn = this.context.allowIn
         this.context.allowIn = false
-        val declarations = this.parseVariableDeclarationList(new {
+        val declarations = this.parseVariableDeclarationList(new /*Parser/parseForStatement/declarations*/ {
           var inFor = true
         })
         this.context.allowIn = previousAllowIn
@@ -2146,7 +2145,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
         } else {
           val previousAllowIn = this.context.allowIn
           this.context.allowIn = false
-          val declarations = this.parseBindingList(kind, new {
+          val declarations = this.parseBindingList(kind, new /*Parser/parseForStatement/declarations*/ {
             var inFor = true
           })
           this.context.allowIn = previousAllowIn
@@ -2534,7 +2533,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
     val previousInIteration = this.context.inIteration
     val previousInSwitch = this.context.inSwitch
     val previousInFunctionBody = this.context.inFunctionBody
-    this.context.labelSet = new {}
+    this.context.labelSet = new /*Parser/parseFunctionSourceElements/context/labelSet*/ {}
     this.context.inIteration = false
     this.context.inSwitch = false
     this.context.inFunctionBody = true
@@ -2577,7 +2576,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
     }
     /*istanbul ignore next */
     if (Object.defineProperty.getClass == "function") {
-      Object.defineProperty(options.paramSet, key, new {
+      Object.defineProperty(options.paramSet, key, new /*Parser/validateParam*/ {
         var value = true
         var enumerable = true
         var writable = true
@@ -2620,7 +2619,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
     }
     this.expect("(")
     if (!this.`match`(")")) {
-      options.paramSet = new {}
+      options.paramSet = new /*Parser/parseFormalParameters/options/paramSet*/ {}
       while (this.lookahead.`type` != Token.EOF) {
         this.parseFormalParameter(options)
         if (this.`match`(")")) {
@@ -2638,7 +2637,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
         this.throwError(Messages.DuplicateParameter)
       }
     }
-    new {
+    new /*Parser/parseFormalParameters*/ {
       var simple = options.simple
       var params = options.params
       var stricted = options.stricted
@@ -3266,7 +3265,7 @@ class Parser(code: String, options: Any = new {}, var delegate: (AnyRef, AnyRef)
       var declaration: Any = _
       this.lookahead.value match {
         case "let" | "const" =>
-          declaration = this.parseLexicalDeclaration(new {
+          declaration = this.parseLexicalDeclaration(new /*Parser/parseExportDeclaration/declaration*/ {
             var inFor = false
           })
         case "var" | "class" | "function" =>

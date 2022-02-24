@@ -120,7 +120,7 @@ class CommentHandler {
     if (trailingComments.length > 0) {
       node.trailingComments = trailingComments
     }
-    this.stack.push(new {
+    this.stack.push(new /*CommentHandler/visitNode*/ {
       var node = node
       var start = metadata.start.offset
     })
@@ -141,7 +141,7 @@ class CommentHandler {
     this.comments.push(comment)
     if (this.attach) {
       object entry extends Entry {
-        var comment = new {
+        var comment = new /*CommentHandler/visitComment/entry/comment*/ {
           var `type` = `type`
           var value = node.value
           var range = Array(metadata.start.offset, metadata.end.offset)

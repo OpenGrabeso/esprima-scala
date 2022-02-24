@@ -71,7 +71,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
   var lineStart: Double = 0
   var curlyStack = Array.empty[String]
   def saveState(): ScannerState = {
-    new {
+    new /*Scanner/saveState*/ {
       var index = this.index
       var lineNumber = this.lineNumber
       var lineStart = this.lineStart
@@ -106,12 +106,12 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (this.trackComment) {
       comments = Array()
       start = this.index - offset
-      loc = new {
-        var start = new {
+      loc = new /*Scanner/skipSingleLineComment/loc*/ {
+        var start = new /*Scanner/skipSingleLineComment/loc/start*/ {
           var line = this.lineNumber
           var column = this.index - this.lineStart - offset
         }
-        var end = new {}
+        var end = new /*Scanner/skipSingleLineComment/loc/end*/ {}
       }
     }
     while (!this.eof()) {
@@ -119,7 +119,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.index += 1
       if (Character.isLineTerminator(ch)) {
         if (this.trackComment) {
-          loc.end = new {
+          loc.end = new /*Scanner/skipSingleLineComment/loc/end*/ {
             var line = this.lineNumber
             var column = this.index - this.lineStart - 1
           }
@@ -140,7 +140,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       }
     }
     if (this.trackComment) {
-      loc.end = new {
+      loc.end = new /*Scanner/skipSingleLineComment/loc/end*/ {
         var line = this.lineNumber
         var column = this.index - this.lineStart
       }
@@ -162,12 +162,12 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (this.trackComment) {
       comments = Array()
       start = this.index - 2
-      loc = new {
-        var start = new {
+      loc = new /*Scanner/skipMultiLineComment/loc*/ {
+        var start = new /*Scanner/skipMultiLineComment/loc/start*/ {
           var line = this.lineNumber
           var column = this.index - this.lineStart - 2
         }
-        var end = new {}
+        var end = new /*Scanner/skipMultiLineComment/loc/end*/ {}
       }
     }
     while (!this.eof()) {
@@ -184,7 +184,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         if (this.source.charCodeAt(this.index + 1) == 0x2F) {
           this.index += 2
           if (this.trackComment) {
-            loc.end = new {
+            loc.end = new /*Scanner/skipMultiLineComment/loc/end*/ {
               var line = this.lineNumber
               var column = this.index - this.lineStart
             }
@@ -205,7 +205,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     }
     // Ran off the end of the file - the whole thing is a comment
     if (this.trackComment) {
-      loc.end = new {
+      loc.end = new /*Scanner/skipMultiLineComment/loc/end*/ {
         var line = this.lineNumber
         var column = this.index - this.lineStart
       }
@@ -493,7 +493,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         }))
       }
     }
-    new {
+    new /*Scanner/octalToDecimal*/ {
       var code = code
       var octal = octal
     }
@@ -524,7 +524,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.tolerateUnexpectedToken(Messages.InvalidEscapedReservedWord)
       this.index = restore
     }
-    new {
+    new /*Scanner/scanIdentifier*/ {
       var `type` = `type`
       var value = id
       var lineNumber = this.lineNumber
@@ -597,7 +597,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (this.index == start) {
       this.throwUnexpectedToken()
     }
-    new {
+    new /*Scanner/scanPunctuator*/ {
       var `type` = Token.Punctuator
       var value = str
       var lineNumber = this.lineNumber
@@ -626,7 +626,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (Character.isIdentifierStart(this.source.charCodeAt(this.index))) {
       this.throwUnexpectedToken()
     }
-    new {
+    new /*Scanner/scanHexLiteral*/ {
       var `type` = Token.NumericLiteral
       var value = parseInt("0x" + num, 16)
       var lineNumber = this.lineNumber
@@ -661,7 +661,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
         this.throwUnexpectedToken()
       }
     }
-    new {
+    new /*Scanner/scanBinaryLiteral*/ {
       var `type` = Token.NumericLiteral
       var value = parseInt(num, 2)
       var lineNumber = this.lineNumber
@@ -701,7 +701,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (Character.isIdentifierStart(this.source.charCodeAt(this.index)) || Character.isDecimalDigit(this.source.charCodeAt(this.index))) {
       this.throwUnexpectedToken()
     }
-    new {
+    new /*Scanner/scanOctalLiteral*/ {
       var `type` = Token.NumericLiteral
       var value = parseInt(num, 8)
       var octal = octal
@@ -814,7 +814,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (Character.isIdentifierStart(this.source.charCodeAt(this.index))) {
       this.throwUnexpectedToken()
     }
-    new {
+    new /*Scanner/scanNumericLiteral*/ {
       var `type` = Token.NumericLiteral
       var value = parseFloat(num)
       var lineNumber = this.lineNumber
@@ -907,7 +907,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
       this.index = start
       this.throwUnexpectedToken()
     }
-    new {
+    new /*Scanner/scanStringLiteral*/ {
       var `type` = Token.StringLiteral
       var value = str
       var octal = octal
@@ -1032,7 +1032,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     if (!head) {
       this.curlyStack.pop()
     }
-    new {
+    new /*Scanner/scanTemplate*/ {
       var `type` = Token.Template
       var value = this.source.slice(start + 1, this.index - rawOffset)
       var cooked = if (notEscapeSequenceHead == null) cooked else null
@@ -1185,7 +1185,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
     val pattern = this.scanRegExpBody()
     val flags = this.scanRegExpFlags()
     val value = this.testRegExp(pattern, flags)
-    new {
+    new /*Scanner/scanRegExp*/ {
       var `type` = Token.RegularExpression
       var value = ""
       var pattern = pattern
@@ -1200,7 +1200,7 @@ class Scanner(code: String, var errorHandler: ErrorHandler) {
   
   def lex(): RawToken = {
     if (this.eof()) {
-      return new {
+      return new /*Scanner/lex*/ {
         var `type` = Token.EOF
         var value = ""
         var lineNumber = this.lineNumber

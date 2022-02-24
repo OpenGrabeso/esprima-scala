@@ -1,23 +1,36 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-tokenizer.js
+ScalaFromJS: Dev
+tokenizer.ts
 */
 
-package esprima
+package com.github.opengrabeso.esprima
 /* import { ErrorHandler } from './error-handler' */
-/* import { Scanner } from './scanner' */
-/* import { TokenName } from './token' */
-class Reader() {
+/* import { Comment, RawToken, Scanner, SourceLocation } from './scanner' */
+/* import { Token, TokenName } from './token' */
+type ReaderEntry = String
+trait BufferEntry {
+  var `type`: String = _
+  var value: String = _
+  var regex = new {}
+  var range = Array.empty[Double]
+  var loc: SourceLocation = _
+}
+
+class Reader {
   var paren: Double = _
-  var values = Array.empty[String]
+  var values = Array.empty[ReaderEntry]
   var curly: Double = paren = -1
   // A function following one of those tokens is an expression.
-  def beforeFunctionExpression(t: String) = {
-    Array("(", "{", "[", "in", "typeof", "instanceof", "new", "return", "case", "delete", "throw", "void", 
-    // assignment operators
-    "=", "+=", "-=", "*=", "**=", "/=", "%=", "<<=", ">>=", ">>>=", "&=", "|=", "^=", ",", 
-    // binary/unary operators
-    "+", "-", "*", "**", "/", "%", "++", "--", "<<", ">>", ">>>", "&", "|", "^", "!", "~", "&&", "||", "?", ":", "===", "==", ">=", "<=", "<", ">", "!=", "!==").indexOf(t) >= 0
+  def beforeFunctionExpression(t: String): Boolean = {
+    Array("(", "{", "[", "in", "typeof", "instanceof", "new", 
+      "return", "case", "delete", "throw", "void", 
+      // assignment operators
+      "=", "+=", "-=", "*=", "**=", "/=", "%=", "<<=", ">>=", ">>>=", 
+      "&=", "|=", "^=", ",", 
+      // binary/unary operators
+      "+", "-", "*", "**", "/", "%", "++", "--", "<<", ">>", ">>>", "&", 
+      "|", "^", "!", "~", "&&", "||", "??", "?", ":", "===", "==", ">=", 
+      "<=", "<", ">", "!=", "!==").indexOf(t) >= 0
   }
   
   // Determine if forward slash (/) is an operator or part of a regular expression
@@ -49,8 +62,8 @@ class Reader() {
     regex
   }
   
-  def push(token: Any) = {
-    if (token.`type` == 7 ||  /*Punctuator */token.`type` == 4)  /*Keyword */{
+  def push(token: RawToken): Unit = {
+    if (token.`type` == Token.Punctuator || token.`type` == Token.Keyword) {
       if (token.value == "{") {
         this.curly = this.values.length
       } else if (token.value == "(") {
@@ -64,14 +77,21 @@ class Reader() {
   
 }
 
-class Tokenizer(code: Double, config: Any) {
+trait Config {
+  var tolerant: Boolean = _
+  var comment: Boolean = _
+  var range: Boolean = _
+  var loc: Boolean = _
+}
+
+class Tokenizer(code: String, config: Config) {
   var errorHandler: ErrorHandler = new ErrorHandler()
   errorHandler.tolerant = if (config) config.tolerant.getClass == "boolean" && config.tolerant else false
   var scanner: Scanner = new Scanner(code, errorHandler)
   scanner.trackComment = if (config) config.comment.getClass == "boolean" && config.comment else false
   var trackRange: Boolean = if (config) config.range.getClass == "boolean" && config.range else false
   var trackLoc: Boolean = if (config) config.loc.getClass == "boolean" && config.loc else false
-  var buffer = Array.empty[Any]
+  var buffer = Array.empty[BufferEntry]
   var reader: Reader = new Reader()
   def errors() = {
     this.errorHandler.errors
@@ -83,7 +103,7 @@ class Tokenizer(code: Double, config: Any) {
       if (this.scanner.trackComment) {
         this.buffer ++= comments.map { e =>
           val value = this.scanner.source.slice(e.slice(0), e.slice(1))
-          object comment {
+          object comment extends BufferEntry {
             var `type` = if (e.multiLine) "BlockComment" else "LineComment"
             var value = value
           }
@@ -97,18 +117,18 @@ class Tokenizer(code: Double, config: Any) {
         }
       }
       if (!this.scanner.eof()) {
-        var loc = new {}
+        var loc: SourceLocation = _
         if (this.trackLoc) {
-          loc = new {
-            var start = new {
+          loc = new /*Tokenizer/getNextToken/loc*/ {
+            var start = new /*Tokenizer/getNextToken/loc/start*/ {
               var line = this.scanner.lineNumber
               var column = this.scanner.index - this.scanner.lineStart
             }
-            var end = new {}
+            var end = new /*Tokenizer/getNextToken/loc/end*/ {}
           }
         }
         val maybeRegex = this.scanner.source(this.scanner.index) == "/" && this.reader.isRegexStart()
-        var token = new {}
+        var token: RawToken = _
         if (maybeRegex) {
           val state = this.scanner.saveState()
           try {
@@ -122,7 +142,7 @@ class Tokenizer(code: Double, config: Any) {
           token = this.scanner.lex()
         }
         this.reader.push(token)
-        object entry {
+        object entry extends BufferEntry {
           var `type` = TokenName(token.`type`)
           var value = this.scanner.source.slice(token.start, token.end)
         }
@@ -130,16 +150,16 @@ class Tokenizer(code: Double, config: Any) {
           entry.range = Array(token.start, token.end)
         }
         if (this.trackLoc) {
-          loc.end = new {
+          loc.end = new /*Tokenizer/getNextToken/loc/end*/ {
             var line = this.scanner.lineNumber
             var column = this.scanner.index - this.scanner.lineStart
           }
           entry.loc = loc
         }
-        if (token.`type` == 9)  /*RegularExpression */{
-          val pattern = token.pattern
-          val flags = token.flags
-          entry.regex = new {
+        if (token.`type` == Token.RegularExpression) {
+          val pattern = token.pattern.asInstanceOf[String]
+          val flags = token.flags.asInstanceOf[String]
+          entry.regex = new /*Tokenizer/getNextToken/entry/regex*/ {
             var pattern = pattern
             var flags = flags
           }

@@ -1,14 +1,16 @@
 /*
-ScalaFromJS: Dev 2018-01-16 17:57:51
-messages.js
+ScalaFromJS: Dev
+messages.ts
 */
 
-package esprima
+package com.github.opengrabeso.esprima
 object Messages {
+  var AsyncFunctionInSingleStatementContext = "Async functions can only be declared at the top level or inside a block."
   var BadImportCallArity = "Unexpected token"
   var BadGetterArity = "Getter must not have any formal parameters"
   var BadSetterArity = "Setter must have exactly one formal parameter"
   var BadSetterRestParameter = "Setter function argument must not be a rest parameter"
+  var CannotUseImportMetaOutsideAModule = "Cannot use 'import.meta' outside a module"
   var ConstructorIsAsync = "Class constructor may not be an async method"
   var ConstructorSpecialMethod = "Class constructor may not be an accessor"
   var DeclarationMissingInitializer = "Missing initializer in %0 declaration"
@@ -16,6 +18,7 @@ object Messages {
   var DefaultRestProperty = "Unexpected token ="
   var DuplicateBinding = "Duplicate binding %0"
   var DuplicateConstructor = "A class may only have one constructor"
+  var DuplicateParameter = "Duplicate parameter name not allowed in this context"
   var DuplicateProtoProperty = "Duplicate __proto__ fields are not allowed in object literals"
   var ForInOfLoopInitializer = "%0 loop variable declaration may not have an initializer"
   var GeneratorInLegacyContext = "Generator declarations are not allowed in legacy contexts"
@@ -32,6 +35,8 @@ object Messages {
   var InvalidLHSInForLoop = "Invalid left-hand side in for-loop"
   var InvalidModuleSpecifier = "Unexpected token"
   var InvalidRegExp = "Invalid regular expression"
+  var InvalidTaggedTemplateOnOptionalChain = "Invalid tagged template on optional chain"
+  var InvalidUnicodeEscapeSequence = "Invalid Unicode escape sequence"
   var LetInLexicalBinding = "let is disallowed as a lexically bound name"
   var MissingFromClause = "Unexpected token"
   var MultipleDefaultsInSwitch = "More than one default clause in switch statement"
@@ -51,16 +56,17 @@ object Messages {
   var StrictLHSPrefix = "Prefix increment/decrement may not have eval or arguments operand in strict mode"
   var StrictModeWith = "Strict mode code may not include a with statement"
   var StrictOctalLiteral = "Octal literals are not allowed in strict mode."
-  var StrictParamDupe = "Strict mode function may not have duplicate parameter names"
   var StrictParamName = "Parameter name eval or arguments is not allowed in strict mode"
   var StrictReservedWord = "Use of future reserved word in strict mode"
   var StrictVarName = "Variable name may not be eval or arguments in strict mode"
   var TemplateOctalLiteral = "Octal literals are not allowed in template strings."
+  var TemplateEscape89 = "\\8 and \\9 are not allowed in template strings."
   var UnexpectedEOS = "Unexpected end of input"
   var UnexpectedIdentifier = "Unexpected identifier"
   var UnexpectedNumber = "Unexpected number"
   var UnexpectedReserved = "Unexpected reserved word"
   var UnexpectedString = "Unexpected string"
+  var UnexpectedSuper = "'super' keyword unexpected here"
   var UnexpectedTemplate = "Unexpected quasi %0"
   var UnexpectedToken = "Unexpected token %0"
   var UnexpectedTokenIllegal = "Unexpected token ILLEGAL"

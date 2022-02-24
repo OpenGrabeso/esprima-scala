@@ -78,13 +78,13 @@ def parse(code: String, options: Any, delegate: (Unit, Unit) => Any) = {
 }
 
 def parseModule(code: String, options: Any, delegate: (Unit, Unit) => Any) = {
-  val parsingOptions = options || new {}
+  val parsingOptions = options || new /*parseModule/parsingOptions*/ {}
   parsingOptions.sourceType = "module"
   parse(code, parsingOptions, delegate)
 }
 
 def parseScript(code: String, options: Any, delegate: (Unit, Unit) => Any) = {
-  val parsingOptions = options || new {}
+  val parsingOptions = options || new /*parseScript/parsingOptions*/ {}
   parsingOptions.sourceType = "script"
   parse(code, parsingOptions, delegate)
 }
