@@ -40,13 +40,14 @@ object Parser {
     var allowIn: Boolean
     var allowStrictDirective: Boolean
     var allowYield: Boolean
-    var await: Boolean
+    var isAsync: Boolean
     var firstCoverInitializedNameError: RawToken
     var isAssignmentTarget: Boolean
     var isBindingElement: Boolean
     var inFunctionBody: Boolean
     var inIteration: Boolean
     var inSwitch: Boolean
+    var inClassConstructor: Boolean
     var labelSet: mutable.Map[String, Boolean]
     var strict: Boolean
   }
@@ -59,6 +60,7 @@ object Parser {
 
   trait ParameterOptions {
     var simple: Boolean = _
+    var hasDuplicateParameterNames: Boolean = _
     var params: ArrayBuffer[Node.FunctionParameter] = _
     var paramSet: mutable.Map[String, Boolean] = _
     var stricted: RawToken = _
@@ -88,6 +90,15 @@ object Parser {
     var regex: RegExp = _
     var range: (Int, Int) = _
     var loc: SourceLocation = _
+  }
+
+  object ParseTemplateLiteralOptions {
+    object default extends ParseTemplateLiteralOptions {
+      def isTagged = false
+    }
+  }
+  trait ParseTemplateLiteralOptions {
+    def isTagged: Boolean
   }
 }
 
@@ -151,7 +162,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   var hasLineTerminator: Boolean = false
   var context: Context = new Context {
     var isModule = false
-    var await = false
+    var isAsync = false
     var allowIn = true
     var allowStrictDirective = true
     var allowYield = true
@@ -162,6 +173,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     var inIteration = false
     var inSwitch = false
     var labelSet = mutable.Map.empty[String, Boolean]
+    var inClassConstructor = false
     var strict = false
   }
   var tokens = ArrayBuffer.empty[Parser.TokenEntry]
@@ -249,6 +261,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.errorHandler.tolerate(this.unexpectedTokenError(token, message))
   }
   
+  def tolerateInvalidLoopStatement() = {
+    if (this.matchKeyword("class") || this.matchKeyword("function")) {
+      this.tolerateError(Messages.UnexpectedToken, this.lookahead.value.toString)
+    }
+  }
+
   def collectComments() = {
     if (!this.config.comment) {
       this.scanner.scanComments()
@@ -574,7 +592,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     var raw: String = null
     this.lookahead.`type` match {
       case Token.Identifier =>
-         if ((this.context.isModule || this.context.await) && this.lookahead.value === "await") {
+         if ((this.context.isModule || this.context.isAsync) && this.lookahead.value === "await") {
           this.tolerateUnexpectedToken(this.lookahead)
         }
         expr = if (this.matchAsyncFunction()) this.parseFunctionExpression() else this.finalize(node, new Node.Identifier(this.nextToken().value))
@@ -600,7 +618,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         raw = this.getTokenRaw(token)
         expr = this.finalize(node, new Node.Literal(null, raw))
       case Token.Template =>
-         expr = this.parseTemplateLiteral()
+         expr = this.parseTemplateLiteral(new ParseTemplateLiteralOptions {
+          var isTagged = false
+        })
       case Token.Punctuator =>
          this.lookahead.value.get[String] match {
           case "(" =>
@@ -637,6 +657,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
             expr = this.parseClassExpression()
           } else if (this.matchImportCall()) {
             expr = this.parseImportCall().asInstanceOf[Node.Expression] // PORT: fix incorrect type
+          } else if (this.matchImportMeta()) {
+            if (!this.context.isModule) {
+              this.tolerateUnexpectedToken(this.lookahead, Messages.CannotUseImportMetaOutsideAModule)
+            }
+            expr = this.parseImportMeta()
           } else {
             expr = this.throwUnexpectedToken(this.nextToken())
           }
@@ -701,8 +726,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     body
   }
   
-  def parsePropertyMethodFunction(): Node.FunctionExpression = {
-    val isGenerator = false
+  def parsePropertyMethodFunction(isGenerator: Boolean): Node.FunctionExpression = {
     val node = this.createNode()
     val previousAllowYield = this.context.allowYield
     this.context.allowYield = true
@@ -718,17 +742,17 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.finalize(node, new Node.FunctionExpression(null, params.params, method, isGenerator, `type`))
   }
   
-  def parsePropertyMethodAsyncFunction(): Node.AsyncFunctionExpression = {
+  def parsePropertyMethodAsyncFunction(isGenerator: Boolean): Node.AsyncFunctionExpression = {
     val node = this.createNode()
     val previousAllowYield = this.context.allowYield
-    val previousAwait = this.context.await
+    val previousIsAsync = this.context.isAsync
     this.context.allowYield = false
-    this.context.await = true
+    this.context.isAsync = true
     val params = this.parseFormalParameters()
     val method = this.parsePropertyMethod(params)
     this.context.allowYield = previousAllowYield
-    this.context.await = previousAwait
-    this.finalize(node, new Node.AsyncFunctionExpression(null, params.params, method))
+    this.context.isAsync = previousIsAsync
+    this.finalize(node, new Node.AsyncFunctionExpression(null, params.params, method, isGenerator))
   }
   
   def parseObjectPropertyKeyWithType(allowType: Boolean = true): (Node.PropertyKey, Node.TypeAnnotation) = {
@@ -782,6 +806,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     var shorthand = false
     var isAsync = false
     var readOnly = false
+    var isGenerator = false
     if (options.typescript && this.matchContextualKeyword("readonly")) {
       this.nextToken()
       readOnly = true
@@ -790,7 +815,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       val id: String = token.value
       this.nextToken()
       computed = this.`match`("[")
-      isAsync = !this.hasLineTerminator && id == "async" && !this.`match`(":") && !this.`match`("(") && !this.`match`("*") && !this.`match`(",")
+      isAsync = !this.hasLineTerminator && id == "async" && !this.`match`(":") && !this.`match`("(") && !this.`match`(",")
+      isGenerator = this.`match`("*")
+      if (isGenerator) {
+        this.nextToken()
+      }
       key = if (isAsync) this.parseObjectPropertyKey() else this.finalize(node, new Node.Identifier(id))
     } else if (this.`match`("*")) {
       this.nextToken()
@@ -831,7 +860,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         this.nextToken()
         value = this.inheritCoverGrammar(this.parseAssignmentExpression)
       } else if (this.`match`("(")) {
-        value = if (isAsync) this.parsePropertyMethodAsyncFunction() else this.parsePropertyMethodFunction()
+        value = if (isAsync) this.parsePropertyMethodAsyncFunction(isGenerator) else this.parsePropertyMethodFunction(isGenerator)
         method = true
       } else if (token.`type` == Token.Identifier) {
         val id = this.finalize(node, new Node.Identifier(token.value))
@@ -867,11 +896,29 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.finalize(node, new Node.ObjectExpression(properties))
   }
   
+  // https://tc39.es/proposal-template-literal-revision/#sec-static-semantics-template-early-errors
+  def throwTemplateLiteralEarlyErrors(token: RawToken): Nothing = {
+    token.notEscapeSequenceHead match {
+      case "u" =>
+        return this.throwUnexpectedToken(token, Messages.InvalidUnicodeEscapeSequence)
+      case "x" =>
+        return this.throwUnexpectedToken(token, Messages.InvalidHexEscapeSequence)
+      case "8" | "9" =>
+        return this.throwUnexpectedToken(token, Messages.TemplateEscape89)
+      case _ =>
+ // For 0-7
+        return this.throwUnexpectedToken(token, Messages.TemplateOctalLiteral)
+    }
+  }
+
   // https://tc39.github.io/ecma262/#sec-template-literals
-  def parseTemplateHead(): Node.TemplateElement = {
+  def parseTemplateHead(options: ParseTemplateLiteralOptions): Node.TemplateElement = {
     assert(this.lookahead.head, "Token.Template literal must start with a template head")
     val node = this.createNode()
     val token = this.nextToken()
+    if (!options.isTagged && token.notEscapeSequenceHead != null) {
+      this.throwTemplateLiteralEarlyErrors(token)
+    }
     val raw_ = token.value
     val cooked_ = token.cooked
     this.finalize(node, new Node.TemplateElement(new Node.TemplateElementValue {
@@ -880,12 +927,15 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }, token.tail))
   }
   
-  def parseTemplateElement(): Node.TemplateElement = {
+  def parseTemplateElement(options: ParseTemplateLiteralOptions): Node.TemplateElement = {
     if (this.lookahead.`type` != Token.Template) {
       this.throwUnexpectedToken(this.lookahead)
     }
     val node = this.createNode()
     val token = this.nextToken()
+    if (!options.isTagged && token.notEscapeSequenceHead != null) {
+      this.throwTemplateLiteralEarlyErrors(token)
+    }
     val raw_ = token.value
     val cooked_ = token.cooked
     this.finalize(node, new Node.TemplateElement(new Node.TemplateElementValue {
@@ -894,21 +944,22 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }, token.tail))
   }
   
-  def parseTemplateLiteral(): Node.TemplateLiteral = {
+  def parseTemplateLiteral(options: ParseTemplateLiteralOptions = ParseTemplateLiteralOptions.default): Node.TemplateLiteral = {
     val node = this.createNode()
     val expressions = ArrayBuffer.empty[Node.Expression]
     val quasis = ArrayBuffer.empty[Node.TemplateElement]
-    var quasi = this.parseTemplateHead()
+    var quasi = this.parseTemplateHead(options)
     quasis.push(quasi)
     while (!quasi.tail) {
       expressions.push(this.parseExpression())
-      quasi = this.parseTemplateElement()
+      quasi = this.parseTemplateElement(options)
       quasis.push(quasi)
     }
     this.finalize(node, new Node.TemplateLiteral(quasis, expressions))
   }
 
-  def reinterpretExpressionAsArrayPattern(expr: Node.Node): Node.ArrayPatternElement = {
+  // https://tc39.github.io/ecma262/#sec-grouping-operator
+  def reinterpretExpressionAsPattern(expr: Node.Node): Node.ArrayPatternElement = {
     (expr: @unchecked) match {
       case ex: Node.Identifier => ex
       case ex: Node.ComputedMemberExpression => ex
@@ -916,12 +967,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       case ex: Node.AssignmentPattern => ex
 
       case expr: Node.SpreadElement =>
-        val retypedArg = this.reinterpretExpressionAsArrayPattern(expr.argument)
+        val retypedArg = this.reinterpretExpressionAsPattern(expr.argument)
         new Node.RestElement(retypedArg, null)
       case expr: Node.ArrayExpression =>
         val elementsResult = expr.elements.flatMap { i =>
           Option(i).map { i =>
-            this.reinterpretExpressionAsArrayPattern(i)
+            this.reinterpretExpressionAsPattern(i)
           }
         }
         new Node.ArrayPattern(elementsResult)
@@ -951,7 +1002,6 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         expr
     }
   }
-
 
   /**
    * Typescript syntax of arrow function with a type and a conditional expression is similar, it is hard to know what we are parsing
@@ -1028,7 +1078,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
               if (this.`match`(")")) {
                 this.nextToken()
                 val expressionsRe = for (i <- expressions) yield {
-                  this.reinterpretExpressionAsArrayPattern(i).asInstanceOf[Node.ArgumentListElement]
+                  this.reinterpretExpressionAsPattern(i).asInstanceOf[Node.ArgumentListElement]
                 }
                 arrow = true
                 expr = new Node.ArrowParameterPlaceHolder {
@@ -1046,7 +1096,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
                 }
                 this.context.isBindingElement = false
                 val expressionsRe = for (i <- expressions) yield {
-                  this.reinterpretExpressionAsArrayPattern(i).asInstanceOf[Node.ArgumentListElement]
+                  this.reinterpretExpressionAsPattern(i).asInstanceOf[Node.ArgumentListElement]
                 }
                 arrow = true
                 expr = new Node.ArrowParameterPlaceHolder {
@@ -1088,10 +1138,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
               val parameters = expr match {
                 case expr_cast: Node.SequenceExpression =>
                   for (i <- expr_cast.expressions) yield {
-                    this.reinterpretExpressionAsArrayPattern(i).asInstanceOf[Node.ArgumentListElement]
+                    this.reinterpretExpressionAsPattern(i).asInstanceOf[Node.ArgumentListElement]
                   }
                 case _ =>
-                  Seq(this.reinterpretExpressionAsArrayPattern(expr).asInstanceOf[Node.ArgumentListElement])
+                  Seq(this.reinterpretExpressionAsPattern(expr).asInstanceOf[Node.ArgumentListElement])
               }
               expr = new Node.ArrowParameterPlaceHolder {
                 params = parameters
@@ -1222,6 +1272,38 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.finalize(node, new Node.Import())
   }
   
+  def matchImportMeta(): Boolean = {
+    var `match` = this.matchKeyword("import")
+    if (`match`) {
+      val state = this.scanner.saveState()
+      this.scanner.scanComments()
+      val dot = this.scanner.lex()
+      if (dot.`type` == Token.Punctuator && dot.value === ".") {
+        this.scanner.scanComments()
+        val meta = this.scanner.lex()
+        `match` = meta.`type` == Token.Identifier && meta.value === "meta"
+        if (`match`) {
+          if (meta.end - meta.start != "meta".length) {
+            this.tolerateUnexpectedToken(meta, Messages.InvalidEscapedReservedWord)
+          }
+        }
+      } else {
+        `match` = false
+      }
+      this.scanner.restoreState(state)
+    }
+    `match`
+  }
+
+  def parseImportMeta(): Node.MetaProperty = {
+    val node = this.createNode()
+    val id = this.parseIdentifierName() // 'import', already ensured by matchImportMeta
+    this.expect(".")
+    val property = this.parseIdentifierName() // 'meta', already ensured by matchImportMeta
+    this.context.isAssignmentTarget = false
+    this.finalize(node, new Node.MetaProperty(id, property))
+  }
+
   def parseLeftHandSideExpressionAllowCall(): Node.Expression = {
     val startToken = this.lookahead
     val maybeAsync = this.matchContextualKeyword("async")
@@ -1229,7 +1311,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.context.allowIn = true
     var expr: Marker = null
     var exprNode: Node.Expression = null
-    if (this.matchKeyword("super") && this.context.inFunctionBody) {
+    val isSuper = this.matchKeyword("super")
+    if (isSuper && this.context.inFunctionBody) {
       expr = this.createNode()
       this.nextToken()
       exprNode = this.finalize(expr, new Node.Super())
@@ -1239,15 +1322,19 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     } else {
       exprNode = this.inheritCoverGrammar(if (this.matchKeyword("new")) this.parseNewExpression else this.parsePrimaryExpression)
     }
+    if (isSuper && this.`match`("(") && !this.context.inClassConstructor) {
+      this.tolerateError(Messages.UnexpectedSuper)
+    }
+    var hasOptional = false
     breakable {
       while (true) {
-        if (this.`match`(".")) {
-          this.context.isBindingElement = false
-          this.context.isAssignmentTarget = true
-          this.expect(".")
-          val property = this.parseIdentifierName()
-          exprNode = this.finalize(this.startNode(startToken), new Node.StaticMemberExpression(exprNode, property))
-        } else if (this.`match`("(")) {
+        var optional = false
+        if (this.`match`("?.")) {
+          optional = true
+          hasOptional = true
+          this.expect("?.")
+        }
+        if (this.`match`("(")) {
           val asyncArrow = maybeAsync && startToken.lineNumber == this.lookahead.lineNumber
           this.context.isBindingElement = false
           this.context.isAssignmentTarget = false
@@ -1258,7 +1345,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
           exprNode = this.finalize(this.startNode(startToken), new Node.CallExpression(exprNode, args))
           if (asyncArrow && this.`match`("=>")) {
             val argsReinterpreted = for (i <- args) yield {
-              this.reinterpretExpressionAsArrayPattern(i).asInstanceOf[Node.ArgumentListElement]
+              this.reinterpretExpressionAsPattern(i).asInstanceOf[Node.ArgumentListElement]
             }
             exprNode = new Node.ArrowParameterPlaceHolder {
               params = ArrayBuffer(argsReinterpreted.toSeq: _*)
@@ -1271,16 +1358,35 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
           this.expect("[")
           val property = this.isolateCoverGrammar(this.parseExpression)
           this.expect("]")
-          exprNode = this.finalize(this.startNode(startToken), new Node.ComputedMemberExpression(exprNode, property))
+          exprNode = this.finalize(this.startNode(startToken), new Node.ComputedMemberExpression(exprNode, property, optional))
         } else if (this.lookahead.`type` == Token.Template && this.lookahead.head) {
+          // Optional template literal is not included in the spec.
+          // https://github.com/tc39/proposal-optional-chaining/issues/54
+          if (optional) {
+            this.throwUnexpectedToken(this.lookahead)
+          }
+          if (hasOptional) {
+            this.throwError(Messages.InvalidTaggedTemplateOnOptionalChain)
+          }
           val quasi = this.parseTemplateLiteral()
           exprNode = this.finalize(this.startNode(startToken), new Node.TaggedTemplateExpression(exprNode, quasi))
+        } else if (this.`match`(".") || optional) {
+          this.context.isBindingElement = false
+          this.context.isAssignmentTarget = !optional
+          if (!optional) {
+            this.expect(".")
+          }
+          val property = this.parseIdentifierName()
+          exprNode = this.finalize(this.startNode(startToken), new Node.StaticMemberExpression(exprNode, property, optional))
         } else {
           break()
         }
       }
     }
     this.context.allowIn = previousAllowIn
+    if (hasOptional) {
+      return new Node.ChainExpression(exprNode.asInstanceOf[Node.ChainExpressionValue])
+    }
     exprNode
   }
   
@@ -1297,28 +1403,48 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     assert(this.context.allowIn, "callee of new expression always allow in keyword.")
     val node = this.startNode(this.lookahead)
     var expr = if (this.matchKeyword("super") && this.context.inFunctionBody) this.parseSuper() else this.inheritCoverGrammar(if (this.matchKeyword("new")) this.parseNewExpression else this.parsePrimaryExpression)
+    var hasOptional = false
     breakable {
       while (true) {
+        var optional = false
+        if (this.`match`("?.")) {
+          optional = true
+          hasOptional = true
+          this.expect("?.")
+        }
         if (this.`match`("[")) {
           this.context.isBindingElement = false
           this.context.isAssignmentTarget = true
           this.expect("[")
           val property = this.isolateCoverGrammar(this.parseExpression)
           this.expect("]")
-          expr = this.finalize(node, new Node.ComputedMemberExpression(expr, property))
-        } else if (this.`match`(".")) {
-          this.context.isBindingElement = false
-          this.context.isAssignmentTarget = true
-          this.expect(".")
-          val property = this.parseIdentifierName()
-          expr = this.finalize(node, new Node.StaticMemberExpression(expr, property))
+          expr = this.finalize(node, new Node.ComputedMemberExpression(expr, property, optional))
         } else if (this.lookahead.`type` == Token.Template && this.lookahead.head) {
+          // Optional template literal is not included in the spec.
+          // https://github.com/tc39/proposal-optional-chaining/issues/54
+          if (optional) {
+            this.throwUnexpectedToken(this.lookahead)
+          }
+          if (hasOptional) {
+            this.throwError(Messages.InvalidTaggedTemplateOnOptionalChain)
+          }
           val quasi = this.parseTemplateLiteral()
           expr = this.finalize(node, new Node.TaggedTemplateExpression(expr, quasi))
+        } else if (this.`match`(".") || optional) {
+          this.context.isBindingElement = false
+          this.context.isAssignmentTarget = !optional
+          if (!optional) {
+            this.expect(".")
+          }
+          val property = this.parseIdentifierName()
+          expr = this.finalize(node, new Node.StaticMemberExpression(expr, property, optional))
         } else {
           break()
         }
       }
+    }
+    if (hasOptional) {
+      return new Node.ChainExpression(expr.asInstanceOf[Node.ChainExpressionValue])
     }
     expr
   }
@@ -1383,7 +1509,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       }
       this.context.isAssignmentTarget = false
       this.context.isBindingElement = false
-    } else if (this.context.await && this.matchContextualKeyword("await")) {
+    } else if (this.context.isAsync && this.matchContextualKeyword("await")) {
       expr = this.parseAwaitExpression()
     } else {
       expr = this.parseUpdateExpression()
@@ -1419,7 +1545,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     if (token.`type` == Token.Punctuator) {
       precedence = this.operatorPrecedence(op)
     } else if (token.`type` == Token.Keyword) {
-      precedence = if (op == "as" || op == "instanceof" || this.context.allowIn && op == "in") 7 else 0
+      precedence = if (op == "as" || op == "instanceof" || this.context.allowIn && op == "in") 12 else 0
     } else if (token.`type` == Token.Identifier && options.typescript) {
       precedence = if (op == "as") 7 else 0
     } else {
@@ -1431,9 +1557,21 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   def parseBinaryExpression(): Node.Expression = {
     val startToken = this.lookahead
     var expr = this.inheritCoverGrammar(this.parseExponentiationExpression)
+    var allowAndOr = true
+    var allowNullishCoalescing = true
+
+    def updateNullishCoalescingRestrictions(token: RawToken) = {
+      if (token.value === "&&" || token.value === "||") {
+        allowNullishCoalescing = false
+      }
+      if (token.value === "??") {
+        allowAndOr = false
+      }
+    }
     val token = this.lookahead
     var prec = this.binaryPrecedence(token)
     if (prec > 0) {
+      updateNullishCoalescingRestrictions(token)
       this.nextToken()
       this.context.isAssignmentTarget = false
       this.context.isBindingElement = false
@@ -1448,14 +1586,18 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
           if (prec <= 0) {
             break()
           }
-          // Reduce: make a binary expression from the three topmost entries.
+          if (!allowAndOr && (this.lookahead.value === "&&" || this.lookahead.value === "||") || !allowNullishCoalescing && this.lookahead.value === "??") {
+          this.throwUnexpectedToken(this.lookahead)
+        }
+        updateNullishCoalescingRestrictions(this.lookahead)// Reduce: make a binary expression from the three topmost entries.
           while (stack.length > 2 && prec <= precedences(precedences.length - 1)) {
             right = stack.pop().asInstanceOf[Node.Expression]
             val operator: String = stack.pop().asInstanceOf[OrType]
             precedences.pop()
             left = stack.pop().asInstanceOf[Node.Expression]
             markers.pop()
-            val node = this.startNode(markers(markers.length - 1))
+            val marker = markers(markers.length - 1)
+          val node = this.startNode(marker, marker.lineStart)
             stack.push(this.finalize(node, new Node.BinaryExpression(operator, left, right)))
           }
           // Shift.
@@ -1576,9 +1718,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         }
       }
     }
-    if (options.message == Messages.StrictParamDupe) {
+    if (options.hasDuplicateParameterNames) {
       val token = if (this.context.strict) options.stricted else options.firstRestricted
-      this.throwUnexpectedToken(token, options.message)
+      this.throwUnexpectedToken(token, Messages.DuplicateParameter)
     }
     val _params = paramsTarget
     new ParameterOptions {
@@ -1602,7 +1744,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       if (token.`type` == Token.Identifier && token.lineNumber == this.lookahead.lineNumber && token.value === "async") {
         if (this.lookahead.`type` == Token.Identifier ||  this.matchKeyword("yield")) {
           val arg = this.parsePrimaryExpression()
-          val argT = this.reinterpretExpressionAsArrayPattern(arg).asInstanceOf[Node.ArgumentListElement]
+          val argT = this.reinterpretExpressionAsPattern(arg).asInstanceOf[Node.ArgumentListElement]
           exprTemp = new Node.ArrowParameterPlaceHolder {
             params = ArrayBuffer(argT)
             async = true
@@ -1630,9 +1772,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
           val previousAllowStrictDirective = this.context.allowStrictDirective
           this.context.allowStrictDirective = list.simple
           val previousAllowYield = this.context.allowYield
-          val previousAwait = this.context.await
+          val previousIsAsync = this.context.isAsync
           this.context.allowYield = true
-          this.context.await = isAsync
+          this.context.isAsync = isAsync
           val node = this.startNode(startToken)
           this.expect("=>")
           var body: Node.BlockStatementOrExpression = null
@@ -1654,7 +1796,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
           this.context.strict = previousStrict
           this.context.allowStrictDirective = previousAllowStrictDirective
           this.context.allowYield = previousAllowYield
-          this.context.await = previousAwait
+          this.context.isAsync = previousIsAsync
           if (isAsync) this.finalize(node, new Node.AsyncArrowFunctionExpression(list.params, body, expression)) else this.finalize(node, new Node.ArrowFunctionExpression(list.params, body, expression))
         } else {
           exprTemp
@@ -1678,7 +1820,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
             this.context.isAssignmentTarget = false
             this.context.isBindingElement = false
           } else {
-            exprTemp = this.reinterpretExpressionAsArrayPattern(exprTemp).asInstanceOf[Node.Expression]
+            exprTemp = this.reinterpretExpressionAsPattern(exprTemp).asInstanceOf[Node.Expression]
           }
           token = this.nextToken()
           val operator = token.value
@@ -1727,6 +1869,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         case "import" =>
           if (this.matchImportCall()) {
             statement = this.parseExpressionStatement()
+          } else if (this.matchImportMeta()) {
+            statement = this.parseStatement()
           } else {
             if (!this.context.isModule) {
               this.tolerateUnexpectedToken(this.lookahead, Messages.IllegalImportDeclaration)
@@ -1936,7 +2080,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.finalize(node, new Node.PropertyEx("init", key, computed, value, method, shorthand, readOnly))
   }
   
-  def parseRestProperty(params: ArrayBuffer[RawToken], kind: String): Node.RestElement = {
+  def parseRestProperty(params: ArrayBuffer[RawToken]): Node.RestElement = {
     val node = this.createNode()
     this.expect("...")
     val arg = this.parsePattern(params)
@@ -1954,7 +2098,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val properties = ArrayBuffer.empty[Node.ObjectPatternProperty]
     this.expect("{")
     while (this.lookahead.`type` != Token.EOF && !this.`match`("}")) {
-      properties.push(if (this.`match`("...")) this.parseRestProperty(params, kind) else this.parsePropertyPattern(params, kind))
+      properties.push(if (this.`match`("...")) this.parseRestProperty(params) else this.parsePropertyPattern(params, kind))
       if (!this.`match`("}")) {
         this.expect(",")
       }
@@ -2042,7 +2186,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
           this.throwUnexpectedToken(token)
         }
       }
-    } else if ((this.context.isModule || this.context.await) && token.`type` == Token.Identifier && token.value === "await") {
+    } else if ((this.context.isModule || this.context.isAsync) && token.`type` == Token.Identifier && token.value === "await") {
       this.tolerateUnexpectedToken(token)
     }
     this.finalize(node, new Node.Identifier(token.value))
@@ -2144,6 +2288,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   def parseDoWhileStatement(): Node.DoWhileStatement = {
     val node = this.createNode()
     this.expectKeyword("do")
+    this.tolerateInvalidLoopStatement()
     val previousInIteration = this.context.inIteration
     this.context.inIteration = true
     val body = this.parseStatement()
@@ -2194,8 +2339,16 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     var forIn = true
     var left: Node.ExpressionOrStatement = null
     var right: Node.Expression = null
+    var _await = false
     val node = this.createNode()
     this.expectKeyword("for")
+    if (this.matchContextualKeyword("await")) {
+      if (!this.context.isAsync) {
+        this.tolerateUnexpectedToken(this.lookahead)
+      }
+      _await = true
+      this.nextToken()
+    }
     this.expect("(")
     if (this.`match`(";")) {
       this.nextToken()
@@ -2209,7 +2362,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
           inFor = true
         })
         this.context.allowIn = previousAllowIn
-        if (declarations.length == 1 && this.matchKeyword("in")) {
+        if (!_await && declarations.length == 1 && this.matchKeyword("in")) {
           val decl = declarations(0)
           if (decl.init && (decl.id.isInstanceOf[Node.ArrayPattern] || decl.id.isInstanceOf[Node.ObjectPattern] || this.context.strict)) {
             this.tolerateError(Messages.ForInOfLoopInitializer, "for-in")
@@ -2266,6 +2419,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         }
       } else {
         val initStartToken = this.lookahead
+        val previousIsBindingElement = this.context.isBindingElement
+        val previousIsAssignmentTarget = this.context.isAssignmentTarget
+        val previousFirstCoverInitializedNameError = this.context.firstCoverInitializedNameError
         val previousAllowIn = this.context.allowIn
         this.context.allowIn = false
         initNode = this.inheritCoverGrammar(this.parseAssignmentExpression)
@@ -2275,7 +2431,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
             this.tolerateError(Messages.InvalidLHSInForIn)
           }
           this.nextToken()
-          initNode = this.reinterpretExpressionAsArrayPattern(initNode).asInstanceOf[Node.ExpressionOrStatement]
+          initNode = this.reinterpretExpressionAsPattern(initNode).asInstanceOf[Node.ExpressionOrStatement]
           left = initNode
           right = this.parseExpression()
           init = null
@@ -2284,12 +2440,16 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
             this.tolerateError(Messages.InvalidLHSInForLoop)
           }
           this.nextToken()
-          initNode = this.reinterpretExpressionAsArrayPattern(initNode).asInstanceOf[Node.ExpressionOrStatement]
+          initNode = this.reinterpretExpressionAsPattern(initNode).asInstanceOf[Node.ExpressionOrStatement]
           left = initNode
           right = this.parseAssignmentExpression()
           init = null
           forIn = false
         } else {
+          // The `init` node was not parsed isolated, but we would have wanted it to.
+          this.context.isBindingElement = previousIsBindingElement
+          this.context.isAssignmentTarget = previousIsAssignmentTarget
+          this.context.firstCoverInitializedNameError = previousFirstCoverInitializedNameError
           if (this.`match`(",")) {
             val initSeq = ArrayBuffer[Node.Expression](initNode.asInstanceOf[Node.Expression])
             while (this.`match`(",")) {
@@ -2304,11 +2464,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     if (left == null) {
       if (!this.`match`(";")) {
-        testNode = this.parseExpression()
+        testNode = this.isolateCoverGrammar(this.parseExpression)
       }
       this.expect(";")
       if (!this.`match`(")")) {
-        updateNode = this.parseExpression()
+        updateNode = this.isolateCoverGrammar(this.parseExpression)
       }
     }
     var body: Node.Statement = null
@@ -2317,12 +2477,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       body = this.finalize(this.createNode(), new Node.EmptyStatement())
     } else {
       this.expect(")")
+      this.tolerateInvalidLoopStatement()
       val previousInIteration = this.context.inIteration
       this.context.inIteration = true
       body = this.isolateCoverGrammar(this.parseStatement)
       this.context.inIteration = previousInIteration
     }
-    if (left == null) this.finalize(node, new Node.ForStatement(initNode, testNode, updateNode, body)) else if (forIn) this.finalize(node, new Node.ForInStatement(left, right, body)) else this.finalize(node, new Node.ForOfStatement(left, right, body))
+    if (left == null) this.finalize(node, new Node.ForStatement(initNode, testNode, updateNode, body)) else if (forIn) this.finalize(node, new Node.ForInStatement(left, right, body)) else this.finalize(node, new Node.ForOfStatement(left, right, body, _await))
   }
   
   // https://tc39.github.io/ecma262/#sec-continue-statement
@@ -2372,7 +2533,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     val node = this.createNode()
     this.expectKeyword("return")
-    val hasArgument = !this.`match`(";") && !this.`match`("}") && !this.hasLineTerminator && this.lookahead.`type` != Token.EOF ||  this.lookahead.`type` == Token.Template
+    val hasArgument = !this.`match`(";") && !this.`match`("}") && !this.hasLineTerminator && this.lookahead.`type` != Token.EOF ||  this.lookahead.`type` == Token.StringLiteral || this.lookahead.`type` == Token.Template
      val argument = if (hasArgument) this.parseExpression() else null
     this.consumeSemicolon()
     this.finalize(node, new Node.ReturnStatement(argument))
@@ -2510,27 +2671,30 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   def parseCatchClause(): Node.CatchClause = {
     val node = this.createNode()
     this.expectKeyword("catch")
-    this.expect("(")
-    if (this.`match`(")")) {
-      this.throwUnexpectedToken(this.lookahead)
-    }
-    val params = ArrayBuffer.empty[RawToken]
-    val param = this.parsePattern(params)
-    val paramMap = mutable.Map.empty[String, Boolean]
-    for (i <- params) {
-      val key = "$" + i.value
-      if (paramMap contains key) {
-        this.tolerateError(Messages.DuplicateBinding, i.value)
+    var param: Node.BindingIdentifierOrPattern = null
+    if (this.`match`("(")) {
+      this.expect("(")
+      if (this.`match`(")")) {
+        this.throwUnexpectedToken(this.lookahead)
       }
-      paramMap(key) = true
-    }
-    if (this.context.strict && param.isInstanceOf[Node.Identifier]) {
+      val params = ArrayBuffer.empty[RawToken]
+      param = this.parsePattern(params)
+      val paramMap = mutable.Map.empty[String, Boolean]
+      for (i <- params) {
+        val key = "$" + i.value
+        if (paramMap contains key) {
+          this.tolerateError(Messages.DuplicateBinding, i.value)
+        }
+        paramMap(key) = true
+      }
+      if (this.context.strict && param.isInstanceOf[Node.Identifier]) {
       val param_cast = param.asInstanceOf[Node.Identifier]
-      if (this.scanner.isRestrictedWord(param_cast.name)) {
-        this.tolerateError(Messages.StrictCatchVariable)
+        if (this.scanner.isRestrictedWord(param_cast.name)) {
+          this.tolerateError(Messages.StrictCatchVariable)
+        }
       }
+      this.expect(")")
     }
-    this.expect(")")
     val body = this.parseBlock()
     this.finalize(node, new Node.CatchClause(param, body))
   }
@@ -2661,7 +2825,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       }
       if (options.paramSet contains key) {
         options.stricted = param
-        options.message = Messages.StrictParamDupe
+        options.hasDuplicateParameterNames = true
       }
     } else if (!options.firstRestricted) {
       if (this.scanner.isRestrictedWord(name)) {
@@ -2672,7 +2836,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         options.message = Messages.StrictReservedWord
       } else if (options.paramSet contains key) {
         options.stricted = param
-        options.message = Messages.StrictParamDupe
+        options.hasDuplicateParameterNames = true
       }
     }
     options.paramSet(key) = true
@@ -2709,6 +2873,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   def parseFormalParameters(firstRestricted_ : RawToken = null): ParameterOptions = {
     object options extends ParameterOptions {
       simple = true
+      hasDuplicateParameterNames = false
       params = ArrayBuffer()
       firstRestricted = firstRestricted_
     }
@@ -2729,6 +2894,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       }
     }
     this.expect(")")
+    if (options.hasDuplicateParameterNames) {
+      if (this.context.strict || this.context.isAsync || !options.simple) {
+        this.throwError(Messages.DuplicateParameter)
+      }
+    }
     new ParameterOptions {
       simple = options.simple
       params = options.params
@@ -2754,10 +2924,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val node = this.createNode()
     val isAsync = this.matchContextualKeyword("async")
     if (isAsync) {
+      if (this.context.inIteration) {
+        this.tolerateError(Messages.AsyncFunctionInSingleStatementContext)
+      }
       this.nextToken()
     }
     this.expectKeyword("function")
-    val isGenerator = if (isAsync) false else this.`match`("*")
+    val isGenerator = this.`match`("*")
     if (isGenerator) {
       this.nextToken()
     }
@@ -2782,9 +2955,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         }
       }
     }
-    val previousAllowAwait = this.context.await
+    val previousIsAsync = this.context.isAsync
     val previousAllowYield = this.context.allowYield
-    this.context.await = isAsync
+    this.context.isAsync = isAsync
     this.context.allowYield = !isGenerator
     val formalParameters = this.parseFormalParameters(firstRestricted)
     val params = formalParameters.params
@@ -2809,9 +2982,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.context.strict = previousStrict
     this.context.allowStrictDirective = previousAllowStrictDirective
-    this.context.await = previousAllowAwait
+    this.context.isAsync = previousIsAsync
     this.context.allowYield = previousAllowYield
-    if (isAsync) this.finalize(node, new Node.AsyncFunctionDeclaration(id, params, body)) else this.finalize(node, new Node.FunctionDeclaration(id, params, body, isGenerator, typeAnnotation))
+    if (isAsync) this.finalize(node, new Node.AsyncFunctionDeclaration(id, params, body, isGenerator)) else this.finalize(node, new Node.FunctionDeclaration(id, params, body, isGenerator, typeAnnotation))
   }
   
   def parseFunctionExpression(): Node.Expression = {
@@ -2821,16 +2994,16 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       this.nextToken()
     }
     this.expectKeyword("function")
-    val isGenerator = if (isAsync) false else this.`match`("*")
+    val isGenerator = this.`match`("*")
     if (isGenerator) {
       this.nextToken()
     }
     var message: String = null
     var id: Node.Identifier = null
     var firstRestricted: RawToken = null
-    val previousAllowAwait = this.context.await
+    val previousIsAsync = this.context.isAsync
     val previousAllowYield = this.context.allowYield
-    this.context.await = isAsync
+    this.context.isAsync = isAsync
     this.context.allowYield = !isGenerator
     if (!this.`match`("(")) {
       val token = this.lookahead
@@ -2868,9 +3041,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.context.strict = previousStrict
     this.context.allowStrictDirective = previousAllowStrictDirective
-    this.context.await = previousAllowAwait
+    this.context.isAsync = previousIsAsync
     this.context.allowYield = previousAllowYield
-    if (isAsync) this.finalize(node, new Node.AsyncFunctionExpression(id, params, body)) else this.finalize(node, new Node.FunctionExpression(id, params, body, isGenerator, null))
+    if (isAsync) this.finalize(node, new Node.AsyncFunctionExpression(id, params, body, isGenerator)) else this.finalize(node, new Node.FunctionExpression(id, params, body, isGenerator, null))
   }
   
   // https://tc39.github.io/ecma262/#sec-directive-prologues-and-the-use-strict-directive
@@ -3335,6 +3508,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     var isStatic = false
     var isAsync = false
     var readOnly = false
+    var isGenerator = false
     if (options.typescript) {
       val modifiers = Seq("public", "protected", "private")
       if ((this.lookahead.`type` == Token.Keyword || this.lookahead.`type` == Token.Identifier) && modifiers.exists(this.lookahead.value === _)) {
@@ -3380,9 +3554,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       }
       if (token.`type` == Token.Identifier && !this.hasLineTerminator && token.value === "async") {
         val punctuator: String = this.lookahead.value
-        if (punctuator != ":" && punctuator != "(" && punctuator != "*") {
+        if (punctuator != ":" && punctuator != "(") {
           isAsync = true
+          isGenerator = this.`match`("*")
+          if (isGenerator) {
+            this.nextToken()
+          }
           token = this.lookahead
+          computed = this.`match`("[")
           key = this.parseObjectPropertyKey()
           if (token.`type` == Token.Identifier) {
             if (token.value === "get" || token.value === "set") {
@@ -3428,8 +3607,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       method = true
     }
     if (!kind && key && this.`match`("(")) {
+      val previousInClassConstructor = this.context.inClassConstructor
+      this.context.inClassConstructor = token.value === "constructor"
       kind = "init"
-      value = if (isAsync) this.parsePropertyMethodAsyncFunction() else this.parsePropertyMethodFunction()
+      value = if (isAsync) this.parsePropertyMethodAsyncFunction(isGenerator) else this.parsePropertyMethodFunction(isGenerator)
+      this.context.inClassConstructor = previousInClassConstructor
       // function return type is part of the FunctionExpression, do not parse or store it here
       method = true
     } else {

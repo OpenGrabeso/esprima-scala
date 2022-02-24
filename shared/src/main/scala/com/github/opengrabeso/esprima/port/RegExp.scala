@@ -17,9 +17,16 @@ object RegExp extends Object {
 
 import RegExp._
 
+import java.util.regex.Pattern
+
 // simulate JS RegExp using Scala or Java means
 class RegExp(pattern: String, flags: String = "") {
 
-  def test(value: String): Boolean = ???
+  // TODO: parse flags
+  val pat = Pattern.compile(pattern, 0)
+
+  def test(value: String): Boolean = {
+    pat.matcher(value).matches
+  }
 
 }

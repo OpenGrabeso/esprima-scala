@@ -48,6 +48,7 @@ object Node {
     ConditionalExpression | Identifier | FunctionExpression | Literal | NewExpression | ObjectExpression |
     RegexLiteral | SequenceExpression | StaticMemberExpression | TaggedTemplateExpression |
     ThisExpression | UnaryExpression | UpdateExpression | YieldExpression; */
+  trait ChainExpressionValue extends Node
   trait ArgumentListElement extends Node // Expression | SpreadElement;
   trait ArrayExpressionElement extends Node // Expression | SpreadElement | null;
   trait BindingPattern extends Node with ArrayPatternElement with ExportableDefaultDeclaration with FunctionParameter with PropertyValue with BindingIdentifierOrPattern // ArrayPattern | ObjectPattern
@@ -60,7 +61,8 @@ object Node {
   trait FunctionParameter extends Node // = AssignmentPattern | BindingIdentifier | BindingPattern;
   trait ImportDeclarationSpecifier extends Node //= ImportDefaultSpecifier | ImportNamespaceSpecifier | ImportSpecifier;
   trait ObjectExpressionProperty extends Node //= Property | SpreadElement;
-  trait ObjectPatternProperty extends Node with BindingIdentifierOrPattern //= Property | RestElement;
+  // ported: made alias, so that reinterpretExpressionAsPattern works with the type
+  type ObjectPatternProperty = ArrayPatternElement // extends Node with BindingIdentifierOrPattern //= Property | RestElement;
   trait Statement extends Node with StatementListItem with ExpressionOrStatement
   /*= AsyncFunctionDeclaration | BreakStatement | ContinueStatement | DebuggerStatement | DoWhileStatement |
     EmptyStatement | ExpressionStatement | Directive | ForStatement | ForInStatement | ForOfStatement |
@@ -70,7 +72,7 @@ object Node {
   trait PropertyValue extends Node //= AssignmentPattern | AsyncFunctionExpression | BindingIdentifier | BindingPattern | FunctionExpression;
   trait StatementListItem extends Node with ExportableNamedDeclaration //= Declaration | Statement;
 
-  trait BindingIdentifierOrPattern extends Node // BindingIdentifier | BindingPattern
+  trait BindingIdentifierOrPattern extends FunctionParameter // BindingIdentifier | BindingPattern
   trait TypeAnnotation extends Node
 
   trait ExpressionOrImport extends Node // Expression | Import
@@ -148,7 +150,7 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
-  case class ArrayPattern(var elements: collection.Seq[ArrayPatternElement]) extends Node with BindingPattern {
+  case class ArrayPattern(var elements: collection.Seq[ArrayPatternElement]) extends Node with BindingPattern with ArgumentListElement {
     override def clone = copy().copyNode(this)
   }
 
@@ -169,7 +171,7 @@ object Node {
 
   /* ported: added ObjectPatternProperty because of reinterpretExpressionAsObjectPattern */
   case class AssignmentPattern(var left: BindingIdentifierOrPattern, var right: Expression) extends Node
-    with ArrayPatternElement with FunctionParameter with PropertyValue with ObjectPatternProperty {
+    with ArrayPatternElement with FunctionParameter with PropertyValue /*with ObjectPatternProperty*/ {
     override def clone = copy().copyNode(this)
 
   }
@@ -187,7 +189,7 @@ object Node {
   /* ported: added StatementListItem because of parseFunctionDeclaration, Statement because of parseLabelledStatement */
   trait AFunctionDeclaration extends Node with HasGenerator with StatementListItem with Statement with ExportableNamedDeclaration with ExportableDefaultDeclaration
 
-  case class AsyncFunctionDeclaration(var id: Identifier, var params: collection.Seq[FunctionParameter], var body: BlockStatement) extends Node
+  case class AsyncFunctionDeclaration(var id: Identifier, var params: collection.Seq[FunctionParameter], var body: BlockStatement, var isGenerator: Boolean) extends Node
     with AFunctionDeclaration with Declaration with ExportableNamedDeclaration with Statement {
     override def clone = copy().copyNode(this)
 
@@ -197,11 +199,11 @@ object Node {
   }
 
 
-  case class AsyncFunctionExpression(var id: Identifier, var params: collection.Seq[FunctionParameter], var body: BlockStatement) extends Node
+  case class AsyncFunctionExpression(var id: Identifier, var params: collection.Seq[FunctionParameter], var body: BlockStatement, var isGenerator: Boolean) extends Node
     with HasGenerator with Expression with PropertyValue {
 
     override def clone = copy().copyNode(this)
-    var generator: Boolean = false
+    var generator: Boolean = isGenerator
     var expression: Boolean = false
     var async: Boolean = true
   }
@@ -214,7 +216,7 @@ object Node {
 
 
   case class BinaryExpression(var operator: String, var left: Expression, var right: Expression) extends Node with Expression {
-    //private val logical = operator == "||" || operator == "&&"
+    //private val logical = operator == "||" || operator == "&&" || operator == "??"
     //def `type` = if (logical) Syntax.LogicalExpression else Syntax.BinaryExpression
     override def clone = copy().copyNode(this)
   }
@@ -233,7 +235,7 @@ object Node {
   }
 
 
-  case class CallExpression(var callee: ExpressionOrImport, var arguments: collection.Seq[ArgumentListElement]) extends Node with Expression {
+  case class CallExpression(var callee: ExpressionOrImport, var arguments: collection.Seq[ArgumentListElement]) extends Node with Expression with ChainExpressionValue {
 
     override def clone = copy().copyNode(this)
   }
@@ -258,6 +260,10 @@ object Node {
   case class ClassBody(var body: collection.Seq[ClassBodyElement]) extends Node {
     override def toString = Node.outputSeq("ClassBody", body)
 
+    override def clone = copy().copyNode(this)
+  }
+
+  case class ChainExpression(var expression: ChainExpressionValue) extends Node with Expression {
     override def clone = copy().copyNode(this)
   }
 
@@ -311,7 +317,7 @@ object Node {
 
 
   /* ported: added ArrayPatternElement because of reinterpretExpressionAsArrayPattern */
-  case class ComputedMemberExpression(var `object`: Expression, var property: Expression) extends Node with Expression with ArrayPatternElement {
+  case class ComputedMemberExpression(var `object`: Expression, var property: Expression, var optional: Boolean) extends Node with Expression with ArrayPatternElement with ChainExpressionValue {
 
     var computed: Boolean = true
     override def clone = copy().copyNode(this)
@@ -391,7 +397,7 @@ object Node {
   }
 
 
-  case class ForOfStatement(var left: ExpressionOrStatement, var right: Expression, var body: Statement) extends Node with Statement {
+  case class ForOfStatement(var left: ExpressionOrStatement, var right: Expression, var body: Statement, var await: Boolean) extends Node with Statement {
 
     override def clone = copy().copyNode(this)
   }
@@ -551,12 +557,12 @@ object Node {
 
 
   /* ported: added ObjectPatternProperty because of reinterpretExpressionAsObjectPattern */
-  case class ObjectPattern(var properties: collection.Seq[ObjectPatternProperty]) extends Node with BindingPattern with ObjectPatternProperty {
+  case class ObjectPattern(var properties: collection.Seq[ObjectPatternProperty]) extends Node with BindingPattern with ObjectPatternProperty with ArgumentListElement {
 
     override def clone = copy().copyNode(this)
   }
 
-  case class FunctionParameterWithType(name: Identifier, `type`: TypeAnnotation, defValue: Expression, optional: Boolean) extends Node
+  case class FunctionParameterWithType(name: BindingIdentifierOrPattern, `type`: TypeAnnotation, defValue: Expression, optional: Boolean) extends Node
     with FunctionParameter {
 
     override def clone = copy().copyNode(this)
@@ -587,7 +593,7 @@ object Node {
 
   /* ported: added ArgumentListElement because of parseGroupExpression */
   /* ported: added FunctionParameter because of parseFormalParameter */
-  case class RestElement(var argument: BindingIdentifierOrPattern, var `type`: TypeAnnotation) extends Node with ArrayPatternElement with ObjectPatternProperty with ArgumentListElement with FunctionParameter {
+  case class RestElement(var argument: BindingIdentifierOrPattern, var `type`: TypeAnnotation) extends Node with ArrayPatternElement /*with ObjectPatternProperty*/ with ArgumentListElement with FunctionParameter {
 
     override def clone = copy().copyNode(this)
   }
@@ -616,7 +622,7 @@ object Node {
   }
 
 
-  case class StaticMemberExpression(var `object`: Expression, var property: Expression) extends Node with Expression with ArrayPatternElement {
+  case class StaticMemberExpression(var `object`: Expression, var property: Expression, var optional: Boolean) extends Node with Expression with ArrayPatternElement with ChainExpressionValue {
 
     var computed: Boolean = false
     override def clone = copy().copyNode(this)

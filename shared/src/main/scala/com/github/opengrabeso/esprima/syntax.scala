@@ -17,6 +17,7 @@ object Syntax {
   val BreakStatement = "BreakStatement"
   val CallExpression = "CallExpression"
   val CatchClause = "CatchClause"
+  val ChainExpression = "ChainExpression"
   val ClassBody = "ClassBody"
   val ClassDeclaration = "ClassDeclaration"
   val ClassExpression = "ClassExpression"
