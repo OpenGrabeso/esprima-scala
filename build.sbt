@@ -18,9 +18,9 @@ lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Full)
     version := "0.2.12",
     organization := "com.github.opengrabeso",
 
-    scalaVersion := "2.13.6",
+    scalaVersion := "2.13.8",
     scalacOptions := Seq("-unchecked", "-deprecation", "-feature"),
-    crossScalaVersions := Seq("2.12.14", "2.11.12", "2.13.6"),
+    crossScalaVersions := Seq("2.12.15", "2.13.8"),
 
     libraryDependencies += "org.scalatest" %%% "scalatest" % "3.2.2" % "test",
     libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value, // needed for macros
