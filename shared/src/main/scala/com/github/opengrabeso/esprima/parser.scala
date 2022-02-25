@@ -3622,18 +3622,19 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       method = true
     } else {
       if (options.typescript) {
-        if(this.`match`(":")) {
+        if (this.`match`(":")) {
           this.nextToken()
           `type` = parseTypeAnnotation()
           if (kind == null) { // may already be get or set
             kind = "value"
           }
-        } else if (this.`match`("=") && kind == null) {
-          this.nextToken()
-          kind = "value"
-          // parse the initialization expression
-          this.parseExpression()
         }
+      }
+      if (this.`match`("=") && kind == null) {
+        this.nextToken()
+        kind = "value"
+        // parse the initialization expression
+        this.parseExpression()
       }
     }
     if (!kind) {

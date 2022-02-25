@@ -138,12 +138,16 @@ object Interactive extends SimpleSwingApplication {
           val start = now()
           val resultValue = Try {
             // almost all JS can be parsed as TS and we want to parse TS as well
+            // allow explicit TS/JS selection (this is sometimes important for testing)
+            val firstLine = lastInput._1.split("\n", 1)(0).toLowerCase
+
             object InteractiveOptions extends Parser.Options {
               range = true
               attachComment = true
               tolerant = true
-              typescript = true
+              typescript = !firstLine.startsWith("//js") && !firstLine.startsWith("//javascript")
               sourceType = "module" // allow exports
+              async = true
             }
             Esprima.parse(lastInput._1, InteractiveOptions)
           }
