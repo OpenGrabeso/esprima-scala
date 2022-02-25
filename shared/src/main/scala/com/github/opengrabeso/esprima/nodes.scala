@@ -41,7 +41,7 @@ object Node {
   }
 
   trait ExpressionOrStatement extends Node
-  trait Expression extends Node with ArgumentListElement with ArrayExpressionElement with ExpressionOrStatement
+  trait Expression extends Node with ArgumentListElement with ArrayExpressionElement with ExpressionOrStatement with PropertyKey
     with ExportableDefaultDeclaration with ExpressionOrImport with BlockStatementOrExpression with PropertyValue
   /* ArrayExpression | ArrowFunctionExpression | AssignmentExpression | AsyncArrowFunctionExpression | AsyncFunctionExpression |
     AwaitExpression | BinaryExpression | CallExpression | ClassExpression | ComputedMemberExpression |
@@ -626,7 +626,8 @@ object Node {
   }
 
 
-  case class StaticMemberExpression(var `object`: Expression, var property: Expression, var optional: Boolean) extends Node with Expression with ArrayPatternElement with ChainExpressionValue {
+  case class StaticMemberExpression(var `object`: Expression, var property: Expression, var optional: Boolean)
+    extends Node with Expression with ArrayPatternElement with ChainExpressionValue {
 
     var computed: Boolean = false
     override def clone = copy().copyNode(this)
