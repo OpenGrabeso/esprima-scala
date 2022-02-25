@@ -29,6 +29,7 @@ object Parser {
     var typescript: Boolean = false // sometimes it is neccessary to know it we are parsing TypeScript or JavaScript
     var attachComment: Boolean = false
     var sourceType: String = _
+    var async: Boolean = false // usefull for parsing code in HTML
   }
 
   object DefaultOptions extends Options
@@ -3846,9 +3847,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   
   // https://tc39.github.io/ecma262/#sec-scripts
   // https://tc39.github.io/ecma262/#sec-modules
-  def parseModule(): Node.Module = {
+  def parseModule(async: Boolean = false): Node.Module = {
     this.context.strict = true
     this.context.isModule = true
+    this.context.isAsync = async
     this.scanner.isModule = true
     val node = this.createNode()
     val body = this.parseDirectivePrologues()
@@ -3858,7 +3860,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.finalize(node, new Node.Module(body))
   }
   
-  def parseScript(): Node.Script = {
+  def parseScript(async: Boolean = false): Node.Script = {
+    this.context.isAsync = async
     val node = this.createNode()
     val body = this.parseDirectivePrologues()
     while (this.lookahead.`type` != Token.EOF) {

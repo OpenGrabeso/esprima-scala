@@ -64,7 +64,7 @@ def parse(code: String, options: Parser.Options = Parser.DefaultOptions, delegat
   var isModule = options.sourceType == "module"
 
   var parser = new Parser(code, options, parserDelegate)
-  val program = if (isModule) parser.parseModule() else parser.parseScript()
+  val program = if (isModule) parser.parseModule(options.async) else parser.parseScript(options.async)
   val ast = program
   if (collectComment && commentHandler) {
     ast.comments = commentHandler.comments
