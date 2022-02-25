@@ -5,7 +5,13 @@ package port
 
 
 object RegExp extends Object {
-  def apply(pattern: String, flags: String = ""): RegExp = new RegExp(pattern, flags)
+  def apply(pattern: String, flags: String = ""): RegExp = {
+    // remove starting and ending /
+    // remove ending flags
+    // if there are any {}, escape them (they have a special meaning in Java)
+    val escaped = pattern.replaceAll("\\{", "\\\\{").replaceAll("\\}", "\\\\}")
+    new RegExp(escaped, flags)
+  }
 
   trait ExecResult {
     var results: Array[String]
@@ -23,7 +29,10 @@ import java.util.regex.Pattern
 class RegExp(pattern: String, flags: String = "") {
 
   // TODO: parse flags
-  val pat = Pattern.compile(pattern, 0)
+
+  // this is lazy, so that expressions are not compiled and validated until needed
+  // we do not want errors to be thrown on invalid regexes
+  private lazy val pat = Pattern.compile(pattern, 0)
 
   def test(value: String): Boolean = {
     pat.matcher(value).matches
