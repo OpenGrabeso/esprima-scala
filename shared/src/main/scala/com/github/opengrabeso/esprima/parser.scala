@@ -3839,7 +3839,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     var superClass: Node.Identifier = null
     if (this.matchKeyword("extends")) {
       this.nextToken()
-      superClass = this.isolateCoverGrammar(this.parseLeftHandSideExpressionAllowCall).asInstanceOf[Node.Identifier]
+      superClass = this.isolateCoverGrammar(this.parseLeftHandSideExpressionAllowCall) match {
+        case id: Node.Identifier =>
+          id
+        case Node.StaticMemberExpression(cls, id: Node.Identifier, _) =>
+          id
+      }
     }
     val classBody = this.parseClassBody()
     this.context.strict = previousStrict

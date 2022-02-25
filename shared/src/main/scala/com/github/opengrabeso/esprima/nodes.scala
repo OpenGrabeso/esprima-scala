@@ -154,7 +154,7 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
-  case class ArrayPattern(var elements: collection.Seq[ArrayPatternElement]) extends Node with BindingPattern with ArgumentListElement {
+  case class ArrayPattern(var elements: collection.Seq[ArrayPatternElement]) extends Node with BindingPattern with ArgumentListElement with Expression {
     override def clone = copy().copyNode(this)
   }
 
@@ -175,7 +175,7 @@ object Node {
 
   /* ported: added ObjectPatternProperty because of reinterpretExpressionAsObjectPattern */
   case class AssignmentPattern(var left: BindingIdentifierOrPattern, var right: Expression) extends Node
-    with ArrayPatternElement with FunctionParameter with PropertyValue /*with ObjectPatternProperty*/ {
+    with ArrayPatternElement with ArgumentListElement with FunctionParameter with PropertyValue /*with ObjectPatternProperty*/ {
     override def clone = copy().copyNode(this)
 
   }
