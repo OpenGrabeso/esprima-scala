@@ -41,7 +41,7 @@ object Node {
   }
 
   trait ExpressionOrStatement extends Node
-  trait Expression extends Node with ArgumentListElement with ArrayExpressionElement with ExpressionOrStatement with PropertyKey
+  trait Expression extends Node with ArgumentListElement with ArrayExpressionElement with ChainExpressionValue with ExpressionOrStatement with PropertyKey
     with ExportableDefaultDeclaration with ExpressionOrImport with BlockStatementOrExpression with PropertyValue
   /* ArrayExpression | ArrowFunctionExpression | AssignmentExpression | AsyncArrowFunctionExpression | AsyncFunctionExpression |
     AwaitExpression | BinaryExpression | CallExpression | ClassExpression | ComputedMemberExpression |
