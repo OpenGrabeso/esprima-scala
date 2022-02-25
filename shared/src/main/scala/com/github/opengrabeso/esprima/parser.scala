@@ -3392,8 +3392,15 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       val node = this.createNode()
       if (this.`match`("[")) {
         this.nextToken()
-        this.expect("]")
-        parseArray(this.finalize(node, Node.ArrayType(tpe)))
+        if (this.lookahead.`type` == Token.StringLiteral) {
+          // there may be a string here: Indexed Access Types - https://www.typescriptlang.org/docs/handbook/2/indexed-access-types.html
+          val token = this.nextToken()
+          this.expect("]")
+          parseArray(this.finalize(node, Node.IndexedAccessType(tpe, token.value)))
+        } else {
+          this.expect("]")
+          parseArray(this.finalize(node, Node.ArrayType(tpe)))
+        }
       } else {
         tpe
       }

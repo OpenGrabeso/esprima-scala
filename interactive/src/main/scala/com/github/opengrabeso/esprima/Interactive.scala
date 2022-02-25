@@ -137,8 +137,16 @@ object Interactive extends SimpleSwingApplication {
           if (lastInput._1 == null) return
           val start = now()
           val resultValue = Try {
-            Esprima.parse(lastInput._1)
-          } // almost all JS can be parsed as TS and we want to parse TS as well
+            // almost all JS can be parsed as TS and we want to parse TS as well
+            object InteractiveOptions extends Parser.Options {
+              range = true
+              attachComment = true
+              tolerant = true
+              typescript = true
+              sourceType = "module" // allow exports
+            }
+            Esprima.parse(lastInput._1, InteractiveOptions)
+          }
           val duration = now() - start
 
           // avoid overwriting newer result
