@@ -976,29 +976,21 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
           }
         }
         new Node.ArrayPattern(elementsResult)
-      case expr: Node.AssignmentExpression =>
-        new Node.AssignmentPattern (this.reinterpretExpressionAsArrayPattern(expr.left).asInstanceOf[Node.BindingIdentifierOrPattern], expr.right)
-      case expr: Node.ArrayPatternElement =>
-        expr
-    }
-  }
-
-
-  def reinterpretExpressionAsObjectPattern(expr: Node.Node): Node.ObjectPatternProperty = {
-    // TODO: reallocation needed
-    (expr: @unchecked) match {
-      case expr: Node.SpreadElement =>
-
-        new Node.RestElement(this.reinterpretExpressionAsObjectPattern(expr.argument), null)
-
       case expr: Node.ObjectExpression =>
         val elementsResult = for (property <- expr.properties) yield {
-          this.reinterpretExpressionAsObjectPattern(if (property.isInstanceOf[Node.SpreadElement]) property else property.asInstanceOf[Node.Property].value)
+          this.reinterpretExpressionAsPattern {
+            property match {
+              case property: Node.SpreadElement =>
+                property
+              case property: Node.Property =>
+                property.value
+            }
+          }
         }
         new Node.ObjectPattern(elementsResult)
       case expr: Node.AssignmentExpression =>
-        new Node.AssignmentPattern(this.reinterpretExpressionAsObjectPattern(expr.left), expr.right)
-      case expr: Node.ObjectPatternProperty =>
+        new Node.AssignmentPattern (this.reinterpretExpressionAsPattern(expr.left).asInstanceOf[Node.BindingIdentifierOrPattern], expr.right)
+      case expr: Node.ArrayPatternElement =>
         expr
     }
   }
@@ -1660,7 +1652,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         }
       case param: Node.ObjectPattern =>
         for (property <- param.properties) {
-          this.checkPatternParam(options, if (property.isInstanceOf[Node.RestElement]) property else property.asInstanceOf[Node.Property].value)
+          this.checkPatternParam(options, property match {
+            case property: Node.RestElement =>
+              property
+            case property: Node.Property =>
+              property.value
+            case property: Node.Identifier =>
+              property
+          })
         }
       case _ =>
     }
@@ -2140,8 +2139,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
 
   def parseFunctionParameter(params: ArrayBuffer[RawToken], kind: String = ""): Node.FunctionParameter = {
     val startToken = this.lookahead
-    params.push(this.lookahead)
-    val identifier = this.parseVariableIdentifier(kind)
+    val identifier = parsePattern(params, kind)
     var `type`: Node.TypeAnnotation = null
     var init: Node.Expression = null
     var optional = false
