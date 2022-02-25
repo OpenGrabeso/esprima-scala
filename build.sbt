@@ -15,7 +15,7 @@ publishLocal / skip := true
 lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Full).in(file("."))
   .settings(
     name := "esprimascala",
-    version := "0.2.11",
+    version := "0.2.12",
     organization := "com.github.opengrabeso",
 
     scalaVersion := "2.13.6",
@@ -36,6 +36,8 @@ lazy val interactive = project.dependsOn(projs.jvm)
     scalaVersion := "2.13.6",
     libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "2.1.1",
     libraryDependencies += "com.fifesoft" % "rsyntaxtextarea" % "3.0.8",
+    publish / skip := true,
+    publishLocal / skip := true
   )
 
 lazy val root = project.in(file("root")).
