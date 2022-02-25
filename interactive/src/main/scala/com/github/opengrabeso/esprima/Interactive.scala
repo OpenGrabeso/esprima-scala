@@ -43,10 +43,10 @@ object Interactive extends SimpleSwingApplication {
       if (edit) {
         peer.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_TYPESCRIPT)
       } else {
-        peer.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_SCALA)
+        peer.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_NONE)
       }
       peer.setHighlightSecondaryLanguages(false)
-      //peer.setCodeFoldingEnabled(true)
+      peer.setCodeFoldingEnabled(true)
     }
 
     class MyScrollPane(panel: TextComponent) extends ScrollPane(panel) {
