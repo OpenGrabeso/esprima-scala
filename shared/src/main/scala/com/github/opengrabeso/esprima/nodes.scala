@@ -41,8 +41,9 @@ object Node {
   }
 
   trait ExpressionOrStatement extends Node
+  trait ExpressionOrPattern extends Node
   trait Expression extends Node with ArgumentListElement with ArrayExpressionElement with ChainExpressionValue with ExpressionOrStatement with PropertyKey
-    with ExportableDefaultDeclaration with ExpressionOrImport with BlockStatementOrExpression with PropertyValue
+    with ExportableDefaultDeclaration with ExpressionOrImport with ExpressionOrPattern with BlockStatementOrExpression with PropertyValue
   /* ArrayExpression | ArrowFunctionExpression | AssignmentExpression | AsyncArrowFunctionExpression | AsyncFunctionExpression |
     AwaitExpression | BinaryExpression | CallExpression | ClassExpression | ComputedMemberExpression |
     ConditionalExpression | Identifier | FunctionExpression | Literal | NewExpression | ObjectExpression |
@@ -53,7 +54,7 @@ object Node {
   trait ArrayExpressionElement extends Node // Expression | SpreadElement | null;
   trait BindingPattern extends Node with ArrayPatternElement with ExportableDefaultDeclaration with FunctionParameter with PropertyValue with BindingIdentifierOrPattern // ArrayPattern | ObjectPattern
   trait BindingIdentifier extends Node with ArrayPatternElement with ExportableDefaultDeclaration with FunctionParameter with PropertyValue with BindingIdentifierOrPattern // Identifier;
-  trait ArrayPatternElement extends Node with BindingIdentifierOrPattern // AssignmentPattern | BindingIdentifier | BindingPattern | RestElement | null;
+  trait ArrayPatternElement extends Node with BindingIdentifierOrPattern with ExpressionOrPattern // AssignmentPattern | BindingIdentifier | BindingPattern | RestElement | null;
   trait ExportDeclaration extends Node with Declaration // ExportAllDeclaration | ExportDefaultDeclaration | ExportNamedDeclaration;
   trait Declaration extends Node with StatementListItem // = AsyncFunctionDeclaration | ClassDeclaration | ExportDeclaration | FunctionDeclaration | ImportDeclaration | VariableDeclaration;
   trait ExportableDefaultDeclaration extends Node // BindingIdentifier | BindingPattern | ClassDeclaration | Expression | FunctionDeclaration;
@@ -168,7 +169,7 @@ object Node {
   }
 
 
-  case class AssignmentExpression(var operator: String, var left: Expression, var right: Expression) extends Node with Expression {
+  case class AssignmentExpression(var operator: String, var left: ExpressionOrPattern, var right: Expression) extends Node with Expression {
     override def clone = copy().copyNode(this)
 
   }

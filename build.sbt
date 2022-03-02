@@ -15,7 +15,7 @@ publishLocal / skip := true
 lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Full).in(file("."))
   .settings(
     name := "esprimascala",
-    version := "0.2.12",
+    version := "0.2.13",
     organization := "com.github.opengrabeso",
 
     scalaVersion := "2.13.8",

@@ -1734,7 +1734,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
 
   /* called when result may be a normal expression or assignment expression */
   def parseAssignmentExpression(): Node.Expression = {
-    var exprTemp: Node.Expression = null
+    var exprTemp: Node.ExpressionOrPattern = null
     if (!this.context.allowYield && this.matchKeyword("yield")) {
       this.parseYieldExpression()
     } else {
@@ -1799,7 +1799,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
           this.context.isAsync = previousIsAsync
           if (isAsync) this.finalize(node, new Node.AsyncArrowFunctionExpression(list.params, body, expression)) else this.finalize(node, new Node.ArrowFunctionExpression(list.params, body, expression))
         } else {
-          exprTemp
+          exprTemp.asInstanceOf[Node.Expression]
         }
       } else {
         if (this.matchAssign()) {
@@ -1820,7 +1820,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
             this.context.isAssignmentTarget = false
             this.context.isBindingElement = false
           } else {
-            exprTemp = this.reinterpretExpressionAsPattern(exprTemp).asInstanceOf[Node.Expression]
+            exprTemp = this.reinterpretExpressionAsPattern(exprTemp)
           }
           token = this.nextToken()
           val operator = token.value
@@ -1828,7 +1828,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
           this.context.firstCoverInitializedNameError = null
           this.finalize(this.startNode(startToken), new Node.AssignmentExpression(operator, exprTemp, right))
         } else {
-          exprTemp
+          exprTemp.asInstanceOf[Node.Expression]
         }
       }
     }
