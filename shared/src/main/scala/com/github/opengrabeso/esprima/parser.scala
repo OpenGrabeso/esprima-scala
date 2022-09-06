@@ -206,7 +206,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val column = this.lastMarker.column + 1
     throw this.errorHandler.createError(index, line, column, msg)
   }
-  
+
   def tolerateError(messageFormat: String, args: String*) = {
     val msg = "%(\\d)".r.replaceAllIn(messageFormat, m => {
       val idx = m.toString.drop(1).toInt
@@ -219,7 +219,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val column = this.lastMarker.column + 1
     this.errorHandler.tolerateError(index, line, column, msg)
   }
-  
+
   // Throw an exception because of the token.
   def unexpectedTokenError(token: RawToken, message: String = null): Error = {
     var msg = message || Messages.UnexpectedToken
@@ -253,15 +253,15 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       this.errorHandler.createError(index, line, column, msg)
     }
   }
-  
+
   def throwUnexpectedToken(token: RawToken, message: String = null) = {
     throw this.unexpectedTokenError(token, message)
   }
-  
+
   def tolerateUnexpectedToken(token: RawToken, message: String = null) = {
     this.errorHandler.tolerate(this.unexpectedTokenError(token, message))
   }
-  
+
   def tolerateInvalidLoopStatement() = {
     if (this.matchKeyword("class") || this.matchKeyword("function")) {
       this.tolerateError(Messages.UnexpectedToken, this.lookahead.value.toString)
@@ -302,12 +302,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       }
     }
   }
-  
+
   // From internal representation to an external structure
   def getTokenRaw(token: RawToken): String = {
     this.scanner.source.slice(token.start, token.end)
   }
-  
+
   def convertToken(token: RawToken): TokenEntry = {
     object t extends TokenEntry {
       var `type` = TokenName(token.`type`)
@@ -338,7 +338,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     t
   }
-  
+
   def nextToken(): RawToken = {
     val token = this.lookahead
     this.lastMarker.index = this.scanner.index
@@ -363,7 +363,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     token
   }
-  
+
   def nextRegexToken(): RawToken = {
     this.collectComments()
     val token = this.scanner.scanRegExp()
@@ -378,7 +378,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.nextToken()
     token
   }
-  
+
   def createNode(): Marker = {
     new Marker {
       var index = self.startMarker.index
@@ -386,7 +386,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       var column = self.startMarker.column
     }
   }
-  
+
   def startNode(token: RawToken, lastLineStart: Int = 0): Marker = {
     var column_ = token.start - token.lineStart
     var line_ = token.lineNumber
@@ -400,7 +400,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       var column = column_
     }
   }
-  
+
   def finalize[T <: Node.Node](marker: Marker, node: T): T = {
     if (this.config.range) {
       node.range = (marker.index, this.lastMarker.index)
@@ -437,7 +437,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     node
   }
-  
+
   // Expect the next token to match the specified punctuator.
   // If not, an exception will be thrown.
   def expect(value: String) = {
@@ -458,7 +458,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       }
     }
   }
-  
+
   // Quietly expect a comma when in tolerant mode, otherwise delegates to expect().
   def expectCommaSeparator() = {
     if (this.config.tolerant) {
@@ -475,7 +475,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       this.expect(",")
     }
   }
-  
+
   // Expect the next token to match the specified keyword.
   // If not, an exception will be thrown.
   def expectKeyword(keyword: String) = {
@@ -484,23 +484,23 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       this.throwUnexpectedToken(token)
     }
   }
-  
+
   // Return true if the next token matches the specified punctuator.
   def `match`(value: String) = {
     this.lookahead.`match`(value)
   }
-  
+
   // Return true if the next token matches the specified keyword
   def matchKeyword(keyword: String) = {
     this.lookahead.`type` == Token.Keyword && this.lookahead.value === keyword
   }
-  
+
   // Return true if the next token matches the specified contextual keyword
   // (where an identifier is sometimes a keyword depending on the context)
   def matchContextualKeyword(keyword: String) = {
     (this.lookahead.`type` == Token.Keyword || this.lookahead.`type` == Token.Identifier) && this.lookahead.value === keyword
   }
-  
+
   // Return true if the next token is an assignment operator
   def matchAssign(): Boolean = {
     if (this.lookahead.`type` != Token.Punctuator) {
@@ -509,7 +509,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val op: String = this.lookahead.value
     op == "=" || op == "*=" || op == "**=" || op == "/=" || op == "%=" || op == "+=" || op == "-=" || op == "<<=" || op == ">>=" || op == ">>>=" || op == "&=" || op == "^=" || op == "|="
   }
-  
+
   // Cover grammar support.
   //
   // When an assignment expression position starts with an left parenthesis, the determination of the type
@@ -557,7 +557,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.context.firstCoverInitializedNameError = previousFirstCoverInitializedNameError
     result
   }
-  
+
   def inheritCoverGrammar[T <:Node.Node](parseFunction: () => T): T = {
     val previousIsBindingElement = this.context.isBindingElement
     val previousIsAssignmentTarget = this.context.isAssignmentTarget
@@ -571,7 +571,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.context.firstCoverInitializedNameError = previousFirstCoverInitializedNameError || this.context.firstCoverInitializedNameError
     result
   }
-  
+
   def consumeSemicolon() = {
     if (this.`match`(";")) {
       this.nextToken()
@@ -584,7 +584,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       this.lastMarker.column = this.startMarker.column
     }
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-primary-expression
   def parsePrimaryExpression(): Node.Expression = {
     val node = this.createNode()
@@ -672,7 +672,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     expr
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-array-initializer
   def parseSpreadElement(): Node.SpreadElement = {
     val node = this.createNode()
@@ -680,7 +680,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val arg = this.inheritCoverGrammar(this.parseAssignmentExpression)
     this.finalize(node, new Node.SpreadElement(arg))
   }
-  
+
   def parseArrayInitializer(): Node.ArrayExpression = {
     val node = this.createNode()
     val elements = ArrayBuffer.empty[Node.ArrayExpressionElement]
@@ -707,7 +707,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.expect("]")
     this.finalize(node, new Node.ArrayExpression(elements))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-object-initializer
   def parsePropertyMethod(params: ParameterOptions) = {
     this.context.isAssignmentTarget = false
@@ -726,7 +726,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.context.allowStrictDirective = previousAllowStrictDirective
     body
   }
-  
+
   def parsePropertyMethodFunction(isGenerator: Boolean): Node.FunctionExpression = {
     val node = this.createNode()
     val previousAllowYield = this.context.allowYield
@@ -742,7 +742,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.context.allowYield = previousAllowYield
     this.finalize(node, new Node.FunctionExpression(null, params.params, method, isGenerator, `type`))
   }
-  
+
   def parsePropertyMethodAsyncFunction(isGenerator: Boolean): Node.AsyncFunctionExpression = {
     val node = this.createNode()
     val previousAllowYield = this.context.allowYield
@@ -755,7 +755,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.context.isAsync = previousIsAsync
     this.finalize(node, new Node.AsyncFunctionExpression(null, params.params, method, isGenerator))
   }
-  
+
   def parseObjectPropertyKeyWithType(allowType: Boolean = true): (Node.PropertyKey, Node.TypeAnnotation) = {
     val node = this.createNode()
     val token = this.nextToken()
@@ -881,7 +881,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.Property(kind, key.asInstanceOf[Node.PropertyKey], computed, value, method, shorthand, readOnly))
   }
-  
+
   def parseObjectInitializer(): Node.ObjectExpression = {
     val node = this.createNode()
     this.expect("{")
@@ -896,7 +896,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.expect("}")
     this.finalize(node, new Node.ObjectExpression(properties))
   }
-  
+
   // https://tc39.es/proposal-template-literal-revision/#sec-static-semantics-template-early-errors
   def throwTemplateLiteralEarlyErrors(token: RawToken): Nothing = {
     token.notEscapeSequenceHead match {
@@ -927,7 +927,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       var cooked = cooked_
     }, token.tail))
   }
-  
+
   def parseTemplateElement(options: ParseTemplateLiteralOptions): Node.TemplateElement = {
     if (this.lookahead.`type` != Token.Template) {
       this.throwUnexpectedToken(this.lookahead)
@@ -944,7 +944,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       var cooked = cooked_
     }, token.tail))
   }
-  
+
   def parseTemplateLiteral(options: ParseTemplateLiteralOptions = ParseTemplateLiteralOptions.default): Node.TemplateLiteral = {
     val node = this.createNode()
     val expressions = ArrayBuffer.empty[Node.Expression]
@@ -1148,7 +1148,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     expr
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-left-hand-side-expressions
   def parseArguments(): Array[Node.ArgumentListElement] = {
     this.expect("(")
@@ -1171,11 +1171,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.expect(")")
     args
   }
-  
+
   def isIdentifierName(token: RawToken): Boolean = {
     token.`type` == Token.Identifier ||  token.`type` == Token.Keyword ||  token.`type` == Token.BooleanLiteral ||  token.`type` == Token.NullLiteral
   }
-  
+
 
   def parseIdentifierName(token: RawToken = this.nextToken()): Node.Identifier = {
     val node = this.startNode(token)
@@ -1185,7 +1185,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     import OrType._
     this.finalize(node, new Node.Identifier(token.value))
   }
-  
+
   def parseNewExpression(): Node.Expression = {
     val node = this.createNode()
     val id = this.parseIdentifierName()
@@ -1218,13 +1218,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, expr)
   }
-  
+
   def parseAsyncArgument(): Node.ArgumentListElement = {
     val arg = this.parseAssignmentExpression()
     this.context.firstCoverInitializedNameError = null
     arg
   }
-  
+
   def parseAsyncArguments(): Array[Node.ArgumentListElement] = {
     this.expect("(")
     val args = ArrayBuffer.empty[Node.ArgumentListElement]
@@ -1246,7 +1246,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.expect(")")
     args
   }
-  
+
   def matchImportCall(): Boolean = {
     var `match` = this.matchKeyword("import")
     if (`match`) {
@@ -1258,13 +1258,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     `match`
   }
-  
+
   def parseImportCall(): Node.Import = {
     val node = this.createNode()
     this.expectKeyword("import")
     this.finalize(node, new Node.Import())
   }
-  
+
   def matchImportMeta(): Boolean = {
     var `match` = this.matchKeyword("import")
     if (`match`) {
@@ -1382,7 +1382,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     exprNode
   }
-  
+
   def parseSuper(): Node.Super = {
     val node = this.createNode()
     this.expectKeyword("super")
@@ -1391,7 +1391,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.Super())
   }
-  
+
   def parseLeftHandSideExpression(): Node.Expression = {
     assert(this.context.allowIn, "callee of new expression always allow in keyword.")
     val node = this.startNode(this.lookahead)
@@ -1441,7 +1441,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     expr
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-update-expressions
   def parseUpdateExpression(): Node.Expression = {
     var expr: Node.Expression = null
@@ -1480,7 +1480,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     expr
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-unary-operators
   def parseAwaitExpression(): Node.AwaitExpression = {
     val node = this.createNode()
@@ -1488,7 +1488,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val argument = this.parseUnaryExpression()
     this.finalize(node, new Node.AwaitExpression(argument))
   }
-  
+
   def parseUnaryExpression(): Node.Expression = {
     var expr: Node.Expression = null
     if (this.`match`("+") || this.`match`("-") || this.`match`("~") || this.`match`("!") || this.matchKeyword("delete") || this.matchKeyword("void") || this.matchKeyword("typeof")) {
@@ -1509,7 +1509,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     expr
   }
-  
+
   def parseExponentiationExpression(): Node.Expression = {
     val startToken = this.lookahead
     var expr = this.inheritCoverGrammar(this.parseUnaryExpression)
@@ -1523,7 +1523,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     expr
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-exp-operator
   // https://tc39.github.io/ecma262/#sec-multiplicative-operators
   // https://tc39.github.io/ecma262/#sec-additive-operators
@@ -1546,7 +1546,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     precedence
   }
-  
+
   def parseBinaryExpression(): Node.Expression = {
     val startToken = this.lookahead
     var expr = this.inheritCoverGrammar(this.parseExponentiationExpression)
@@ -1616,7 +1616,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     expr
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-conditional-operator
   def parseConditionalExpression(): Node.Expression = {
     val startToken = this.lookahead
@@ -1635,7 +1635,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     expr
   }
-  
+
   def checkPatternParam(options: ParameterOptions, param: Node.Node): Unit = {
     param match {
       case param: Node.Identifier =>
@@ -1853,7 +1853,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     expr
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-block
   def parseStatementListItem(): Node.StatementListItem = {
     var statement: Node.StatementListItem = null
@@ -1931,7 +1931,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     statement
   }
-  
+
   def parseBlock(): Node.BlockStatement = {
     val node = this.createNode()
     this.expect("{")
@@ -1947,7 +1947,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.expect("}")
     this.finalize(node, new Node.BlockStatement(block))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-let-and-const-declarations
   def parseLexicalBinding(kind: String, options: VariableOptions): Node.VariableDeclarator = {
     val node = this.createNode()
@@ -1980,7 +1980,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.VariableDeclarator(id, init, typeAnnotation))
   }
-  
+
   def parseBindingList(kind: String, options: VariableOptions): Array[Node.VariableDeclarator] = {
     val list = ArrayBuffer(this.parseLexicalBinding(kind, options))
     while (this.`match`(",")) {
@@ -1989,7 +1989,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     list
   }
-  
+
   def isLexicalDeclaration(): Boolean = {
     val state = this.scanner.saveState()
     this.scanner.scanComments()
@@ -1997,7 +1997,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.scanner.restoreState(state)
     next.`type` == Token.Identifier ||  next.`type` == Token.Punctuator && next.value === "[" || next.`type` == Token.Punctuator && next.value === "{" || next.`type` == Token.Keyword && next.value === "let" || next.`type` == Token.Keyword && next.value === "yield"
   }
-  
+
   def parseLexicalDeclaration(options: VariableOptions): Node.VariableDeclaration = {
     val node = this.createNode()
     val kind: String = this.nextToken().value
@@ -2006,7 +2006,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.consumeSemicolon()
     this.finalize(node, new Node.VariableDeclaration(declarations, kind))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-destructuring-binding-patterns
   def parseBindingRestElement(params: ArrayBuffer[RawToken], kind: String): Node.RestElement = {
     val node = this.createNode()
@@ -2014,7 +2014,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val arg = this.parsePattern(params, kind)
     this.finalize(node, new Node.RestElement(arg, null))
   }
-  
+
   def parseArrayPattern(params: ArrayBuffer[RawToken], kind: String): Node.ArrayPattern = {
     val node = this.createNode()
     this.expect("[")
@@ -2040,7 +2040,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.expect("]")
     this.finalize(node, new Node.ArrayPattern(elements))
   }
-  
+
   def parsePropertyPattern(params: ArrayBuffer[RawToken], kind: String): Node.Property = {
     val node = this.createNode()
     var computed = false
@@ -2079,7 +2079,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.PropertyEx("init", key, computed, value, method, shorthand, readOnly))
   }
-  
+
   def parseRestProperty(params: ArrayBuffer[RawToken]): Node.RestElement = {
     val node = this.createNode()
     this.expect("...")
@@ -2092,7 +2092,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.RestElement(arg, null))
   }
-  
+
   def parseObjectPattern(params: ArrayBuffer[RawToken], kind: String): Node.ObjectPattern = {
     val node = this.createNode()
     val properties = ArrayBuffer.empty[Node.ObjectPatternProperty]
@@ -2106,7 +2106,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.expect("}")
     this.finalize(node, new Node.ObjectPattern(properties))
   }
-  
+
   def parsePattern(params: ArrayBuffer[RawToken], kind: String = ""): Node.BindingIdentifierOrPattern = {
     var pattern: Node.BindingIdentifierOrPattern = null
     if (this.`match`("[")) {
@@ -2190,7 +2190,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.Identifier(token.value))
   }
-  
+
   def parseVariableDeclaration(options: VariableOptions): Node.VariableDeclarator = {
     val node = this.createNode()
     val params = ArrayBuffer.empty[RawToken]
@@ -2215,7 +2215,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.VariableDeclarator(id, init, typeAnnotation))
   }
-  
+
   def parseVariableDeclarationList(options: VariableOptions) = {
     object opt extends VariableOptions{
       inFor = options.inFor
@@ -2228,7 +2228,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     list
   }
-  
+
   def parseVariableStatement(): Node.VariableDeclaration = {
     val node = this.createNode()
     this.expectKeyword("var")
@@ -2238,14 +2238,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.consumeSemicolon()
     this.finalize(node, new Node.VariableDeclaration(declarations, "var"))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-empty-statement
   def parseEmptyStatement(): Node.EmptyStatement = {
     val node = this.createNode()
     this.expect(";")
     this.finalize(node, new Node.EmptyStatement())
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-expression-statement
   def parseExpressionStatement(): Node.ExpressionStatement = {
     val node = this.createNode()
@@ -2253,7 +2253,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.consumeSemicolon()
     this.finalize(node, new Node.ExpressionStatement(expr))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-if-statement
   def parseIfClause(): Node.Statement = {
     if (this.context.strict && this.matchKeyword("function")) {
@@ -2261,7 +2261,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.parseStatement()
   }
-  
+
   def parseIfStatement(): Node.IfStatement = {
     val node = this.createNode()
     var consequent: Node.Statement = null
@@ -2282,7 +2282,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.IfStatement(test, consequent, alternate))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-do-while-statement
   def parseDoWhileStatement(): Node.DoWhileStatement = {
     val node = this.createNode()
@@ -2305,7 +2305,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.DoWhileStatement(body, test))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-while-statement
   def parseWhileStatement(): Node.WhileStatement = {
     val node = this.createNode()
@@ -2325,7 +2325,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.WhileStatement(test, body))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-for-statement
   // https://tc39.github.io/ecma262/#sec-for-in-and-for-of-statements
   def parseForStatement() = {
@@ -2484,7 +2484,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     if (left == null) this.finalize(node, new Node.ForStatement(initNode, testNode, updateNode, body)) else if (forIn) this.finalize(node, new Node.ForInStatement(left, right, body)) else this.finalize(node, new Node.ForOfStatement(left, right, body, _await))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-continue-statement
   def parseContinueStatement(): Node.ContinueStatement = {
     val node = this.createNode()
@@ -2504,7 +2504,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.ContinueStatement(label))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-break-statement
   def parseBreakStatement(): Node.BreakStatement = {
     val node = this.createNode()
@@ -2524,7 +2524,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.BreakStatement(label))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-return-statement
   def parseReturnStatement(): Node.ReturnStatement = {
     if (!this.context.inFunctionBody) {
@@ -2537,7 +2537,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.consumeSemicolon()
     this.finalize(node, new Node.ReturnStatement(argument))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-with-statement
   def parseWithStatement(): Node.WithStatement = {
     if (this.context.strict) {
@@ -2557,7 +2557,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.WithStatement(`object`, body))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-switch-statement
   def parseSwitchCase(): Node.SwitchCase = {
     val node = this.createNode()
@@ -2581,7 +2581,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.SwitchCase(test, consequent))
   }
-  
+
   def parseSwitchStatement(): Node.SwitchStatement = {
     val node = this.createNode()
     this.expectKeyword("switch")
@@ -2612,7 +2612,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.context.inSwitch = previousInSwitch
     this.finalize(node, new Node.SwitchStatement(discriminant, cases))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-labelled-statements
   def parseLabelledStatement(): Node.Statement = {
     val node = this.createNode()
@@ -2653,7 +2653,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, statement)
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-throw-statement
   def parseThrowStatement(): Node.ThrowStatement = {
     val node = this.createNode()
@@ -2665,7 +2665,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.consumeSemicolon()
     this.finalize(node, new Node.ThrowStatement(argument))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-try-statement
   def parseCatchClause(): Node.CatchClause = {
     val node = this.createNode()
@@ -2697,12 +2697,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val body = this.parseBlock()
     this.finalize(node, new Node.CatchClause(param, body))
   }
-  
+
   def parseFinallyClause(): Node.BlockStatement = {
     this.expectKeyword("finally")
     this.parseBlock()
   }
-  
+
   def parseTryStatement(): Node.TryStatement = {
     val node = this.createNode()
     this.expectKeyword("try")
@@ -2714,7 +2714,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.TryStatement(block, handler, finalizer))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-debugger-statement
   def parseDebuggerStatement(): Node.DebuggerStatement = {
     val node = this.createNode()
@@ -2722,7 +2722,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.consumeSemicolon()
     this.finalize(node, new Node.DebuggerStatement())
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-ecmascript-language-statements-and-declarations
   def parseStatement(): Node.Statement = {
     var statement: Node.Statement = null
@@ -2780,7 +2780,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     statement
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-function-definitions
   def parseFunctionSourceElements(): Node.BlockStatement = {
     if (!options.typescript || this.`match`("{")) {
@@ -2814,7 +2814,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       null
     }
   }
-  
+
   def validateParam(options: ParameterOptions, param: RawToken, name: String) = {
     val key = "$" + name
     if (this.context.strict) {
@@ -2840,7 +2840,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     options.paramSet(key) = true
   }
-  
+
   def parseRestElement(params: ArrayBuffer[RawToken]): Node.RestElement = {
     val node = this.createNode()
     this.expect("...")
@@ -2858,7 +2858,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.RestElement(arg, `type`))
   }
-  
+
   def parseFormalParameter(options: ParameterOptions) = {
     val params = ArrayBuffer.empty[RawToken]
     val param: Node.FunctionParameter = if (this.`match`("...")) this.parseRestElement(params) else this.parseFunctionParameter(params)
@@ -2906,7 +2906,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       message = options.message
     }
   }
-  
+
   def matchAsyncFunction(): Boolean = {
     var `match` = this.matchContextualKeyword("async")
     if (`match`) {
@@ -2918,7 +2918,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     `match`
   }
-  
+
   def parseFunctionDeclaration(identifierIsOptional: Boolean = false): Node.AFunctionDeclaration = {
     val node = this.createNode()
     val isAsync = this.matchContextualKeyword("async")
@@ -2985,7 +2985,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.context.allowYield = previousAllowYield
     if (isAsync) this.finalize(node, new Node.AsyncFunctionDeclaration(id, params, body, isGenerator)) else this.finalize(node, new Node.FunctionDeclaration(id, params, body, isGenerator, typeAnnotation))
   }
-  
+
   def parseFunctionExpression(): Node.Expression = {
     val node = this.createNode()
     val isAsync = this.matchContextualKeyword("async")
@@ -3044,7 +3044,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.context.allowYield = previousAllowYield
     if (isAsync) this.finalize(node, new Node.AsyncFunctionExpression(id, params, body, isGenerator)) else this.finalize(node, new Node.FunctionExpression(id, params, body, isGenerator, null))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-directive-prologues-and-the-use-strict-directive
   def parseDirective(): Node.StatementListItem = {
     val token = this.lookahead
@@ -3054,7 +3054,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.consumeSemicolon()
     this.finalize(node, if (directive) new Node.Directive(expr, directive) else new Node.ExpressionStatement(expr))
   }
-  
+
   def parseDirectivePrologues(): ArrayBuffer[Node.StatementListItem] = {
     var firstRestricted: RawToken = null
     val body = ArrayBuffer.empty[Node.StatementListItem]
@@ -3089,7 +3089,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     body
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-method-definitions
   def qualifiedPropertyName(token: RawToken): Boolean = {
     token.`type` match {
@@ -3101,7 +3101,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     false
   }
-  
+
   def parseGetterMethod(): Node.FunctionExpression = {
     val node = this.createNode()
     val isGenerator = false
@@ -3115,7 +3115,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.context.allowYield = previousAllowYield
     this.finalize(node, new Node.FunctionExpression(null, formalParameters.params, method, isGenerator, null))
   }
-  
+
   def parseSetterMethod(): Node.FunctionExpression = {
     val node = this.createNode()
     val isGenerator = false
@@ -3131,7 +3131,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.context.allowYield = previousAllowYield
     this.finalize(node, new Node.FunctionExpression(null, formalParameters.params, method, isGenerator, null))
   }
-  
+
   def parseGeneratorMethod(): Node.FunctionExpression = {
     val node = this.createNode()
     val isGenerator = true
@@ -3143,7 +3143,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.context.allowYield = previousAllowYield
     this.finalize(node, new Node.FunctionExpression(null, params.params, method, isGenerator, null))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-generator-function-definitions
   def isStartOfExpression(): Boolean = {
     var start = true
@@ -3157,7 +3157,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     start
   }
-  
+
   def parseYieldExpression(): Node.YieldExpression = {
     val node = this.createNode()
     this.expectKeyword("yield")
@@ -3543,7 +3543,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         key = t._1
       }
 
-      val id = key.asInstanceOf[Node.Identifier]
+      val id = key match {
+        case null =>
+          null
+        case ident: Node.Identifier =>
+          ident
+        case Node.StaticMemberExpression(obj, member: Node.Identifier, _) =>
+          member
+      }
       if (id != null && id.name == "static" && (this.qualifiedPropertyName(this.lookahead) || this.`match`("*"))) {
         if (options.typescript && this.matchContextualKeyword("readonly")) {
           readOnly = true
@@ -3662,7 +3669,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.MethodDefinitionEx(key, typePars, `type`, computed, value, kind, isStatic, optional, readOnly))
   }
-  
+
   def parseClassElementList(): Array[Node.MethodDefinition] = {
     val body = ArrayBuffer.empty[Node.MethodDefinition]
     object hasConstructor extends ByRef[Boolean](false)
@@ -3677,7 +3684,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.expect("}")
     body
   }
-  
+
   def parseClassBody(): Node.ClassBody = {
     val node = this.createNode()
     val elementList = this.parseClassElementList()
@@ -3850,7 +3857,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.context.strict = previousStrict
     this.finalize(node, new Node.ClassExpression(id, superClass, classBody))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-scripts
   // https://tc39.github.io/ecma262/#sec-modules
   def parseModule(async: Boolean = false): Node.Module = {
@@ -3865,7 +3872,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.Module(body))
   }
-  
+
   def parseScript(async: Boolean = false): Node.Script = {
     this.context.isAsync = async
     val node = this.createNode()
@@ -3875,7 +3882,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.Script(body))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-imports
   def parseModuleSpecifier(): Node.Literal = {
     val node = this.createNode()
@@ -3886,7 +3893,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val raw = this.getTokenRaw(token)
     this.finalize(node, new Node.Literal(token.value, raw))
   }
-  
+
   // import {<foo as bar>} ...;
   def parseImportSpecifier(): Node.ImportSpecifier = {
     val node = this.createNode()
@@ -3911,7 +3918,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     this.finalize(node, new Node.ImportSpecifier(local, imported))
   }
-  
+
   // {foo, bar as bas}
   def parseNamedImports(): ArrayBuffer[Node.ImportSpecifier] = {
     this.expect("{")
@@ -3925,14 +3932,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.expect("}")
     specifiers
   }
-  
+
   // import <foo> ...;
   def parseImportDefaultSpecifier(): Node.ImportDefaultSpecifier = {
     val node = this.createNode()
     val local = this.parseIdentifierName()
     this.finalize(node, new Node.ImportDefaultSpecifier(local))
   }
-  
+
   // import <* as foo> ...;
   def parseImportNamespaceSpecifier(): Node.ImportNamespaceSpecifier = {
     val node = this.createNode()
@@ -3944,7 +3951,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val local = this.parseIdentifierName()
     this.finalize(node, new Node.ImportNamespaceSpecifier(local))
   }
-  
+
   def parseImportDeclaration(): Node.ImportDeclaration = {
     if (this.context.inFunctionBody) {
       this.throwError(Messages.IllegalImportDeclaration)
@@ -3991,7 +3998,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.consumeSemicolon()
     this.finalize(node, new Node.ImportDeclaration(specifiers, src))
   }
-  
+
   // https://tc39.github.io/ecma262/#sec-exports
   def parseExportSpecifier(): Node.ExportSpecifier = {
     val node = this.createNode()
@@ -4137,7 +4144,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     exportDeclaration
   }
-  
+
 }
 
 
