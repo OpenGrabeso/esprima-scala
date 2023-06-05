@@ -1908,6 +1908,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
             this.lookahead.value.get[String] match {
               case "class" =>
                 statement = this.parseClassDeclaration()
+              case "function" =>
+                statement = this.parseFunctionDeclaration()
               case "interface" if options.typescript && this.isLexicalDeclaration() =>
                 statement = this.parseClassDeclaration(keyword = "interface")
               case "type" if options.typescript && this.isLexicalDeclaration() => // may be normal identifier when not in ts
