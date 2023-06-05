@@ -3389,6 +3389,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       // starting with generic - a function type?
       val pars = parseTypeParameterList(token) // TODO: store pars in AST
       parseTypeStartingWithParen(this.nextToken())
+    } else if (options.typescript && token.`type` == Token.Identifier && token.value === "keyof") {
+      // TODO: AST for keyof
+      val keyOfType = parseTypeAnnotation()
+      keyOfType
     } else {
       parseTypeReference(token)
     }
