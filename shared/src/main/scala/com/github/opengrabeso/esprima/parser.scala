@@ -3284,7 +3284,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val node = this.startNode(token)
     val types = mutable.ArrayBuffer.empty[Node.TypeAnnotation]
     while (!this.`match`("]")) {
+      if (this.`match`("...")) {
+        this.nextToken()
+      }
       types += parseTypeAnnotation()
+      if (this.`match`("?")) {
+        this.nextToken()
+      }
       if (this.`match`(",")) {
         this.nextToken()
       } else if (!this.`match`("]")) {
