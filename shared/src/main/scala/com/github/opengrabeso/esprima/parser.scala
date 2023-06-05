@@ -807,7 +807,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     var shorthand = false
     var isAsync = false
     var readOnly = false
+    var isOverride = false
     var isGenerator = false
+    if (options.typescript && this.matchContextualKeyword("override")) {
+      this.nextToken()
+      isOverride = true
+    }
     if (options.typescript && this.matchContextualKeyword("readonly")) {
       this.nextToken()
       readOnly = true
@@ -3393,11 +3398,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       val node = this.createNode()
       if (this.`match`("[")) {
         this.nextToken()
-        if (this.lookahead.`type` == Token.StringLiteral) {
-          // there may be a string here: Indexed Access Types - https://www.typescriptlang.org/docs/handbook/2/indexed-access-types.html
+        if (!this.`match`("]")) {
+          // there may be a string here, or some type identifier: Indexed Access Types - https://www.typescriptlang.org/docs/handbook/2/indexed-access-types.html
           val token = this.nextToken()
+          val indexingType = parseTypeAnnotation(token)
           this.expect("]")
-          parseArray(this.finalize(node, Node.IndexedAccessType(tpe, token.value)))
+          parseArray(this.finalize(node, Node.IndexedAccessType(tpe, indexingType)))
         } else {
           this.expect("]")
           parseArray(this.finalize(node, Node.ArrayType(tpe)))
@@ -3518,6 +3524,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     if (options.typescript) {
       val modifiers = Seq("public", "protected", "private")
       if ((this.lookahead.`type` == Token.Keyword || this.lookahead.`type` == Token.Identifier) && modifiers.exists(this.lookahead.value === _)) {
+        this.nextToken() // TODO: store in AST
+      }
+      if (this.matchContextualKeyword("override")) {
         this.nextToken() // TODO: store in AST
       }
       if (this.matchContextualKeyword("readonly")) {

@@ -588,6 +588,22 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
+  it should "Parse override properties" in {
+    val input =
+      """
+      export declare class C {
+        readonly s: string;
+        n: number;
+      }
+      export declare class D extends C {
+        override readonly s: string | "S";
+        override n: number | 0.0;
+      }
+  """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
 
   it should "Parse a generic type" in {
     val input =
@@ -620,6 +636,24 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
 
   }
+
+  it should "Parse extends keyof" in {
+    val input =
+      """
+      export class B<
+        A extends C = D,
+      > extends ED {
+        setAttribute<K extends keyof A>(name: K, attribute: A[K]): this;
+      }
+      """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+
+  }
+
+
+
 
   it should "Parse class and function in export namespace" in {
     val input =

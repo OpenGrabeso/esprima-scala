@@ -119,7 +119,7 @@ object Node {
     override def clone = copy().copyNode(this)
   }
 
-  case class IndexedAccessType(t: TypeAnnotation, index: String) extends TypeAnnotation {
+  case class IndexedAccessType(t: TypeAnnotation, index: TypeAnnotation) extends TypeAnnotation {
     override def clone = copy().copyNode(this)
   }
 
