@@ -1910,6 +1910,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
                 statement = this.parseClassDeclaration()
               case "function" =>
                 statement = this.parseFunctionDeclaration()
+              case "const" | "let" =>
+                statement = this.parseLexicalDeclaration(new VariableOptions {
+                  inFor = false
+                })
               case "interface" if options.typescript && this.isLexicalDeclaration() =>
                 statement = this.parseClassDeclaration(keyword = "interface")
               case "type" if options.typescript && this.isLexicalDeclaration() => // may be normal identifier when not in ts
@@ -3399,8 +3403,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       parseTypeStartingWithParen(this.nextToken())
     } else if (options.typescript && token.`type` == Token.Identifier && token.value === "keyof") {
       // TODO: AST for keyof
-      val keyOfType = parseTypeAnnotation()
-      keyOfType
+      val ofType = parseTypeAnnotation()
+      ofType
+    } else if (options.typescript && token.`type` == Token.Keyword && token.value === "typeof") {
+      // TODO: AST for typeof
+      val ofType = parseTypeAnnotation()
+      ofType
     } else {
       parseTypeReference(token)
     }
