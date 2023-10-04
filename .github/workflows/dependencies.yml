@@ -1,0 +1,25 @@
+name: Submit dependencies
+
+on:
+  push:
+    branches:
+      - master
+      - dependencies
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      - uses: scalacenter/sbt-dependency-submission@v2
+        id: submit
+        with:
+          modules-ignore: interactive_2.13 # We are interested only in security issues in the library itself
+          configs-ignore: test # test-internal
+
+      - name: Print Dependency Snapshot
+        run: |
+          jq . ${{ steps.submit.outputs.snapshot-json-path }}
