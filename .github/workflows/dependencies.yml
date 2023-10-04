@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - dependencies
 
 jobs:
   build:
@@ -18,7 +17,7 @@ jobs:
         id: submit
         with:
           modules-ignore: interactive_2.13 # We are interested only in security issues in the library itself
-          configs-ignore: test # test-internal
+          configs-ignore: test test-internal
 
       - name: Print Dependency Snapshot
         run: |
