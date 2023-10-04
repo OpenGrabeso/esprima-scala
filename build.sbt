@@ -15,14 +15,14 @@ publishLocal / skip := true
 lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Full).in(file("."))
   .settings(
     name := "esprimascala",
-    version := "0.2.15",
+    version := "0.2.16",
     organization := "com.github.opengrabeso",
 
-    scalaVersion := "2.13.8",
+    scalaVersion := "2.13.12",
     scalacOptions := Seq("-unchecked", "-deprecation", "-feature"),
-    crossScalaVersions := Seq("2.12.15", "2.13.8"),
+    crossScalaVersions := Seq("2.13.12"),
 
-    libraryDependencies += "org.scalatest" %%% "scalatest" % "3.2.2" % "test",
+    libraryDependencies += "org.scalatest" %%% "scalatest" % "3.2.17" % "test",
     libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value, // needed for macros
 
     publishMavenStyle := true,
@@ -33,7 +33,7 @@ lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Full)
 
 lazy val interactive = project.dependsOn(projs.jvm)
   .settings(
-    scalaVersion := "2.13.6",
+    scalaVersion := "2.13.12",
     libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "2.1.1",
     libraryDependencies += "com.fifesoft" % "rsyntaxtextarea" % "3.0.8",
     publish / skip := true,
