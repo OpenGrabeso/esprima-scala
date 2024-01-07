@@ -1948,6 +1948,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
           statement = this.parseClassDeclaration()
         case "interface" if options.typescript && this.isLexicalDeclaration() =>
           statement = this.parseClassDeclaration(keyword = "interface")
+        case "namespace" if options.typescript && this.isLexicalDeclaration() =>
+          statement = this.parseClassDeclaration(keyword = "namespace")
         case "type" if options.typescript && this.isLexicalDeclaration() => // may be normal identifier when not in ts
           statement = this.parseTypeAliasDeclaration()
         case "enum" if options.typescript && this.isLexicalDeclaration() =>
@@ -3567,18 +3569,32 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       val modifiers = Seq("public", "protected", "private")
       if (modifiers.exists(this.matchContextualKeyword)) {
         this.nextToken() // TODO: store in AST
+        token = this.lookahead
       }
       val otherModifiers = Seq("override", "abstract")
       if (otherModifiers.exists(this.matchContextualKeyword)) {
         this.nextToken() // TODO: store in AST
+        token = this.lookahead
       }
       if (this.matchContextualKeyword("readonly")) {
         readOnly = true
         this.nextToken()
+        token = this.lookahead
       }
     }
 
-    if (this.`match`("*")) {
+    val innerClassKeywords = Seq("class", "interface", "namespace")
+    if (options.typescript && !readOnly && matchContextualKeyword("enum")) {
+      val innerEnum = parseEnumDeclaration()
+      kind = "value"
+      key = innerEnum.name
+      value = innerEnum.body
+    } else if (options.typescript && !readOnly && innerClassKeywords.exists(matchContextualKeyword)) {
+      val innerClass = parseClassDeclaration(keyword = lookahead.value)
+      kind = "value"
+      key = innerClass.id
+      value = Node.ClassExpression(null, innerClass.superClass.asInstanceOf[Node.Identifier], innerClass.body)
+    } else if (this.`match`("*")) {
       this.nextToken()
     } else {
       computed = this.`match`("[")

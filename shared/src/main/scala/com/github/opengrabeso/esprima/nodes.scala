@@ -251,7 +251,7 @@ object Node {
   case class EnumBodyElement(var name: Identifier, var value: Expression) extends Node {
     override def clone = copy().copyNode(this)
   }
-  case class EnumBody(var body: collection.Seq[EnumBodyElement]) extends Node {
+  case class EnumBody(var body: collection.Seq[EnumBodyElement]) extends Node with PropertyValue {
     override def clone = copy().copyNode(this)
   }
   case class EnumDeclaration(var name: Identifier, var body: EnumBody) extends Node with Declaration {
