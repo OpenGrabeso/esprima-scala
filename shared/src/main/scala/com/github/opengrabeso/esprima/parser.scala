@@ -3543,10 +3543,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     var isGenerator = false
     if (options.typescript) {
       val modifiers = Seq("public", "protected", "private")
-      if ((this.lookahead.`type` == Token.Keyword || this.lookahead.`type` == Token.Identifier) && modifiers.exists(this.lookahead.value === _)) {
+      if (modifiers.exists(this.matchContextualKeyword)) {
         this.nextToken() // TODO: store in AST
       }
-      if (this.matchContextualKeyword("override")) {
+      val otherModifiers = Seq("override", "readonly", "abstract")
+      if (otherModifiers.exists(this.matchContextualKeyword)) {
         this.nextToken() // TODO: store in AST
       }
       if (this.matchContextualKeyword("readonly")) {
