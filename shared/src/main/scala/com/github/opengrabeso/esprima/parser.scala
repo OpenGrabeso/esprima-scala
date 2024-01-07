@@ -750,10 +750,16 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.context.allowYield = false
     this.context.isAsync = true
     val params = this.parseFormalParameters()
+    // parse return type
+    var `type`: Node.TypeAnnotation = null
+    if (options.typescript && this.`match`(":")) {
+      this.nextToken()
+      `type` = this.parseTypeAnnotationWithTypeGuard(params = params.params)
+    }
     val method = this.parsePropertyMethod(params)
     this.context.allowYield = previousAllowYield
     this.context.isAsync = previousIsAsync
-    this.finalize(node, new Node.AsyncFunctionExpression(null, params.params, method, isGenerator))
+    this.finalize(node, new Node.AsyncFunctionExpression(null, params.params, method, isGenerator, `type`))
   }
 
   def parseObjectPropertyKeyWithType(allowType: Boolean = true): (Node.PropertyKey, Node.TypeAnnotation) = {
@@ -764,8 +770,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     token.`type` match {
       case Token.StringLiteral | Token.NumericLiteral =>
       if (this.context.strict && token.octal) {
-      this.tolerateUnexpectedToken(token, Messages.StrictOctalLiteral)
-    }
+        this.tolerateUnexpectedToken(token, Messages.StrictOctalLiteral)
+      }
       val raw = this.getTokenRaw(token)
       key = this.finalize(node, new Node.Literal(token.value, raw))
     case Token.Identifier | Token.BooleanLiteral | Token.NullLiteral | Token.Keyword =>
@@ -778,6 +784,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
           `type` = this.parseTypeAnnotation()
         }
         this.expect("]")
+      } else if (options.typescript && token.value === "=") {
+        // initial member value provided - this is allowed in TS
+        key = this.finalize(node, new Node.Identifier(token.value))
       } else {
         key = this.throwUnexpectedToken(token)
       }
@@ -1063,12 +1072,22 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         var arrow = false
         this.context.isBindingElement = true
         expr = this.inheritCoverGrammar(this.parseAssignmentExpression)
+        if (this.options.typescript && this.`match`(":")) {
+          // it may be an arrow function with typed parameters
+          this.nextToken() // skip :
+          this.parseTypeAnnotation() // TODO: store the type
+        }
         if (this.`match`(",")) {
           val expressions = ArrayBuffer.empty[Node.ArgumentListElement]
           this.context.isAssignmentTarget = false
           expressions.push(expr)
           breakable {
             while (this.lookahead.`type` != Token.EOF) {
+              if (this.options.typescript && this.`match`(":")) {
+                // it may be an arrow function with typed parameters
+                this.nextToken() // skip :
+                this.parseTypeAnnotation() // TODO: store the type
+              }
               if (!this.`match`(",")) {
                 break()
               }
@@ -1212,8 +1231,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       if (this.`match`("<")) {
         typeArgs = mutable.ArrayBuffer.empty[Node.TypeAnnotation]
         this.nextToken()
-        // TODO: multiple types
         typeArgs += parseTypeAnnotation()
+        while (this.lookahead.`type` != Token.EOF && this.`match`(",")) {
+          this.nextToken()
+          typeArgs += parseTypeAnnotation()
+        }
         this.expect(">")
       }
       val args = if (this.`match`("(")) this.parseArguments() else Array[Node.ArgumentListElement]()
@@ -3053,7 +3075,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.context.allowStrictDirective = previousAllowStrictDirective
     this.context.isAsync = previousIsAsync
     this.context.allowYield = previousAllowYield
-    if (isAsync) this.finalize(node, new Node.AsyncFunctionExpression(id, params, body, isGenerator)) else this.finalize(node, new Node.FunctionExpression(id, params, body, isGenerator, null))
+    if (isAsync) this.finalize(node, new Node.AsyncFunctionExpression(id, params, body, isGenerator, null)) else this.finalize(node, new Node.FunctionExpression(id, params, body, isGenerator, null))
   }
 
   // https://tc39.github.io/ecma262/#sec-directive-prologues-and-the-use-strict-directive
@@ -3546,7 +3568,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       if (modifiers.exists(this.matchContextualKeyword)) {
         this.nextToken() // TODO: store in AST
       }
-      val otherModifiers = Seq("override", "readonly", "abstract")
+      val otherModifiers = Seq("override", "abstract")
       if (otherModifiers.exists(this.matchContextualKeyword)) {
         this.nextToken() // TODO: store in AST
       }
@@ -3667,11 +3689,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
           }
         }
       }
-      if (this.`match`("=") && kind == null) {
+      if (this.`match`("=") && (kind == null || options.typescript && kind == "value")) {
         this.nextToken()
         kind = "value"
         // parse the initialization expression
-        this.parseExpression()
+        value = this.parseExpression()
       }
     }
     if (!kind) {

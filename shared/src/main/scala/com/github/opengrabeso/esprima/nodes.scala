@@ -204,7 +204,10 @@ object Node {
   }
 
 
-  case class AsyncFunctionExpression(var id: Identifier, var params: collection.Seq[FunctionParameter], var body: BlockStatement, var isGenerator: Boolean) extends Node
+  case class AsyncFunctionExpression(
+    var id: Identifier, var params: collection.Seq[FunctionParameter], var body: BlockStatement, var isGenerator: Boolean,
+    var ret: TypeAnnotation
+  ) extends Node
     with HasGenerator with Expression with PropertyValue {
 
     override def clone = copy().copyNode(this)
