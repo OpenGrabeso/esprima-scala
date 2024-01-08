@@ -1949,7 +1949,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         case "interface" if options.typescript && this.isLexicalDeclaration() =>
           statement = this.parseClassDeclaration(keyword = "interface")
         case "namespace" if options.typescript && this.isLexicalDeclaration() =>
-          statement = this.parseClassDeclaration(keyword = "namespace")
+          statement = this.parseNamespace()
         case "type" if options.typescript && this.isLexicalDeclaration() => // may be normal identifier when not in ts
           statement = this.parseTypeAliasDeclaration()
         case "enum" if options.typescript && this.isLexicalDeclaration() =>
@@ -3383,7 +3383,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.finalize(node, tpe)
   }
 
-  def parseNamespace(): Node.Declaration = {
+  def parseNamespace(): Node.NamespaceDeclaration = {
     val node = this.createNode()
     this.expectKeyword("namespace")
     val name = this.parseIdentifierName()
@@ -3583,13 +3583,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       }
     }
 
-    val innerClassKeywords = Seq("class", "interface", "namespace")
-    if (options.typescript && !readOnly && matchContextualKeyword("enum")) {
-      val innerEnum = parseEnumDeclaration()
-      kind = "value"
-      key = innerEnum.name
-      value = innerEnum.body
-    } else if (options.typescript && !readOnly && innerClassKeywords.exists(matchContextualKeyword)) {
+    val innerClassKeywords = Seq("class", "interface") // namespace not possible inside of a class or interface
+    if (options.typescript && !readOnly && innerClassKeywords.exists(matchContextualKeyword)) {
       val innerClass = parseClassDeclaration(keyword = lookahead.value)
       kind = "value"
       key = innerClass.id
