@@ -1,13 +1,13 @@
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 import sbtcrossproject.Platform
 
-githubOwner in ThisBuild := "OpenGrabeso"
+ThisBuild / githubOwner := "OpenGrabeso"
 
-githubRepository in ThisBuild := "packages"
+ThisBuild / githubRepository  := "packages"
 
-githubActor in ThisBuild := sys.env.getOrElse("GITHUB_USERNAME", "OpenGrabeso")
+ThisBuild / githubActor := sys.env.getOrElse("GITHUB_USERNAME", "OpenGrabeso")
 
-githubTokenSource in ThisBuild := TokenSource.GitConfig("github.token") || TokenSource.Environment("GITHUB_USERTOKEN") || TokenSource.Environment("GITHUB_TOKEN")
+ThisBuild / githubTokenSource := TokenSource.GitConfig("github.token") || TokenSource.Environment("GITHUB_USERTOKEN") || TokenSource.Environment("GITHUB_TOKEN")
 
 lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(new CrossType{
   override def projectDir(crossBase: File, platform: Platform) = CrossType.Full.projectDir(crossBase, platform)
@@ -26,8 +26,8 @@ lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(new CrossType{
     libraryDependencies += "org.scalatest" %%% "scalatest" % "3.2.2" % "test",
 
     publishMavenStyle := true,
-    publishArtifact in (Compile, packageDoc) := false,
-    publish := (publish dependsOn (test in Test)).value,
+    Compile / packageDoc / publishArtifact := false,
+    publish := (publish dependsOn (Test / test)).value,
 
 )
 
