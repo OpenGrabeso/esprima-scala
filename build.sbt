@@ -18,11 +18,10 @@ lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Full)
     version := "0.2.19",
     organization := "com.github.opengrabeso",
 
-    scalaVersion := "2.13.12",
+    scalaVersion := "2.13.14",
     scalacOptions := Seq("-unchecked", "-deprecation", "-feature"),
-    crossScalaVersions := Seq("2.13.12"),
 
-    libraryDependencies += "org.scalatest" %%% "scalatest" % "3.2.17" % "test",
+    libraryDependencies += "org.scalatest" %%% "scalatest" % "3.2.18" % "test",
     libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value, // needed for macros
 
     publishMavenStyle := true,
@@ -33,9 +32,9 @@ lazy val projs = crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Full)
 
 lazy val interactive = project.dependsOn(projs.jvm)
   .settings(
-    scalaVersion := "2.13.12",
-    libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "2.1.1",
-    libraryDependencies += "com.fifesoft" % "rsyntaxtextarea" % "3.0.8",
+    scalaVersion := "2.13.14",
+    libraryDependencies += "org.scala-lang.modules" %% "scala-swing" % "3.0.0",
+    libraryDependencies += "com.fifesoft" % "rsyntaxtextarea" % "3.3.4",
     publish / skip := true,
     publishLocal / skip := true
   )
