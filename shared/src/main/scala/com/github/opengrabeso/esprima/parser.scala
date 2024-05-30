@@ -2185,9 +2185,6 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     if (options.typescript && this.`match`(":")) {
       this.nextToken()
-      if (this.`matchContextualKeyword`("readonly")) {
-        this.nextToken() // skip readonly in parameter lists
-      }
       `type` = this.parseTypeAnnotation()
     }
     if (this.`match`("=")) {
@@ -3418,6 +3415,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   def parsePrimaryType(token: RawToken): Node.TypeAnnotation = {
     val node = this.startNode(token)
 
+    if (this.`matchContextualKeyword`("readonly")) {
+      this.nextToken() // skip readonly in parameter lists
+    }
+
     val tpe = if (token.`match`("{")) {
       parseObjectType(token)
     } else if (token.`match`("(")) {
@@ -3502,46 +3503,50 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
 
 
   def parseTypeAnnotation(token: RawToken = this.nextToken()): Node.TypeAnnotation = {
-    val node = this.startNode(token)
 
-    // see parseUnion for marker rationale
-    @scala.annotation.tailrec
-    def parseIntersection(marker: RawToken, tpe: Node.TypeAnnotation): Node.TypeAnnotation = {
-      val node = this.startNode(marker)
-      if (this.`match`("&")) {
-        this.nextToken()
-        val right = parsePrimaryType(this.nextToken())
-        parseIntersection(marker, this.finalize(node, Node.IntersectionType(tpe, right)))
-      } else {
-        tpe
-      }
-    }
-
-    def parseIntersectionType(token: RawToken = this.nextToken()): Node.TypeAnnotation = {
-      val tpe = parsePrimaryType(token)
-      parseIntersection(token, tpe)
-    }
-
-    // silently skip leading | - this seems invalid, but some d.ts files contain it
-    val tpe = if (token.`match`("|")) {
-      parseIntersectionType(this.nextToken())
+    if ((token.`type` == Token.Identifier || token.`type` == Token.Keyword) && token.value === "readonly") {
+      parseTypeAnnotation()
     } else {
-      parseIntersectionType(token)
-    }
-
-    // recursive (repeating) syntax - the same opening marker is used for all expressions, because of associativity (A|B)|C
-    @scala.annotation.tailrec
-    def parseUnion(marker: RawToken, tpe: Node.TypeAnnotation): Node.TypeAnnotation = {
-      val node = this.startNode(marker)
-      if (this.`match`("|")) {
-        this.nextToken()
-        val right = parseIntersectionType(this.nextToken())
-        parseUnion(marker, this.finalize(node, Node.UnionType(tpe, right)))
-      } else {
-        tpe
+      val node = this.startNode(token)
+      // see parseUnion for marker rationale
+      @scala.annotation.tailrec
+      def parseIntersection(marker: RawToken, tpe: Node.TypeAnnotation): Node.TypeAnnotation = {
+        val node = this.startNode(marker)
+        if (this.`match`("&")) {
+          this.nextToken()
+          val right = parsePrimaryType(this.nextToken())
+          parseIntersection(marker, this.finalize(node, Node.IntersectionType(tpe, right)))
+        } else {
+          tpe
+        }
       }
+
+      def parseIntersectionType(token: RawToken = this.nextToken()): Node.TypeAnnotation = {
+        val tpe = parsePrimaryType(token)
+        parseIntersection(token, tpe)
+      }
+
+      // silently skip leading | - this seems invalid, but some d.ts files contain it
+      val tpe = if (token.`match`("|")) {
+        parseIntersectionType(this.nextToken())
+      } else {
+        parseIntersectionType(token)
+      }
+
+      // recursive (repeating) syntax - the same opening marker is used for all expressions, because of associativity (A|B)|C
+      @scala.annotation.tailrec
+      def parseUnion(marker: RawToken, tpe: Node.TypeAnnotation): Node.TypeAnnotation = {
+        val node = this.startNode(marker)
+        if (this.`match`("|")) {
+          this.nextToken()
+          val right = parseIntersectionType(this.nextToken())
+          parseUnion(marker, this.finalize(node, Node.UnionType(tpe, right)))
+        } else {
+          tpe
+        }
+      }
+      this.finalize(node, parseUnion(token, tpe))
     }
-    this.finalize(node, parseUnion(token, tpe))
   }
 
   def previewToken(): RawToken = {
