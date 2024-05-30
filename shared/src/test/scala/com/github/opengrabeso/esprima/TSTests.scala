@@ -77,4 +77,29 @@ class TSTests extends AnyFlatSpec with TestInputs with Matchers {
     }
     """, TSOptions)
   }
+
+  it should "parse complex declarations with named tuples" in {
+    parse ("""
+    export class C {
+        set(...args: [color: CR] | [r: number, g: number, b: number]): this;
+    }
+    """, TSOptions)
+  }
+
+  it should "parse complex declarations with this type" in {
+    parse ("""
+    declare class BM {
+        cs: ((this: this, list: Array<{ s: number; c: number; z: number }>, c: Cls) => void) | null;
+    }
+
+    export { BM };
+    """, TSOptions)
+  }
+
+  it should "parse generic functions" in {
+    parse ("""
+    export function cu<T extends { [u: string]: IU }>(uSrc: T): T;
+    """, TSOptions)
+
+  }
 }

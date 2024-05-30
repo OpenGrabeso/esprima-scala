@@ -2993,6 +2993,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val previousAllowYield = this.context.allowYield
     this.context.isAsync = isAsync
     this.context.allowYield = !isGenerator
+    if (options.typescript && this.`match`("<")) { // generic function
+      this.parseTypeParameterList() // TODO: use the result
+    }
+
     val formalParameters = this.parseFormalParameters(firstRestricted)
     val params = formalParameters.params
     val stricted = formalParameters.stricted
@@ -3315,7 +3319,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       if (this.`match`("...")) {
         this.nextToken()
       }
-      types += parseTypeAnnotation()
+      var token = this.nextToken()
+      // if this is token followed by :, it is a named tuple, like [n: Number, s: String]
+      if (token.`type` == Token.Identifier && this.lookahead.`match`(":")) {
+        // TODO: store into the AST
+        this.expect(":")
+        token = this.nextToken()
+      }
+      types += parseTypeAnnotation(token)
       if (this.`match`("?")) {
         this.nextToken()
       }
@@ -3334,7 +3345,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val node = this.startNode(token)
     var pars = mutable.ArrayBuffer.empty[(Node.Identifier, Node.TypeAnnotation)]
     if (!token.`match`(")")) {
-      assert(token.`type` == Token.Identifier)
+      assert(token.`type` == Token.Identifier || token.`type` == Token.Keyword && token.value === "this")
 
       // TODO: maybe we could use parseFormalParameters or other existing method?
       val name = this.parseIdentifierName(token)
@@ -3373,7 +3384,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val node = this.startNode(parenToken)
     val types = ArrayBuffer.empty[Node.TypeAnnotation]
     val token = this.nextToken()
-    val tpe = if (token.`type` == Token.Identifier && this.`match`(":") || token.`match`(")")) {
+    val tpe = if ((token.`type` == Token.Identifier || token.`type` == Token.Keyword && token.value === "this") && this.`match`(":") || token.`match`(")")) {
       parseFunctionType(token)
     } else {
       val t = parseTypeAnnotation(token)
