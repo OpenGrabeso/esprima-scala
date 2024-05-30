@@ -67,4 +67,14 @@ class TSTests extends AnyFlatSpec with TestInputs with Matchers {
     }
       """, TSOptions)
   }
+
+  it should "parse functions with readonly parameters" in {
+    parse ("""
+    export function f(a: readonly number): number
+
+    export class C {
+        m(x: readonly number): string;
+    }
+    """, TSOptions)
+  }
 }

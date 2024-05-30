@@ -2185,6 +2185,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     if (options.typescript && this.`match`(":")) {
       this.nextToken()
+      if (this.`matchContextualKeyword`("readonly")) {
+        this.nextToken() // skip readonly in parameter lists
+      }
       `type` = this.parseTypeAnnotation()
     }
     if (this.`match`("=")) {
