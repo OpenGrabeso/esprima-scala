@@ -22,4 +22,4 @@ jobs:
     - name: Publish
       run: |
         printf "[github]\n  actor=${{ secrets.GITHUB_USERNAME }}\n  token=${{ secrets.GITHUB_USERTOKEN }}" > ~/.gitconfig
-        sbt +projsJVM/publish +projsJS/publish
+        sbt +rootVM/publish +rootJS/publish
