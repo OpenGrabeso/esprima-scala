@@ -4104,6 +4104,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     val node = this.createNode()
     this.expectKeyword("export")
+    if (options.typescript && this.matchContextualKeyword("type") && previewToken().value === "{") {
+      // Type-only re-exports have the same module-resolution shape as named exports.
+      // The AST does not model the type-only modifier, so consume it and preserve
+      // the specifiers and source as a regular ExportNamedDeclaration.
+      this.nextToken()
+    }
     var exportDeclaration: Node.ExportDeclaration = null
     if (this.matchKeyword("default")) {
       // export default ...

@@ -80,6 +80,22 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
+  it should "Parse type-only named re-exports" in {
+    val input = """
+      export type { WebGLAttributes } from "./renderers/webgl/WebGLAttributes.js";
+    """
+    val tree = parse(input, DTSOptions)
+    tree.errors shouldBe empty
+    tree.body should have size 1
+
+    val exportDecl = tree.body.head.asInstanceOf[ExportNamedDeclaration]
+    exportDecl.declaration shouldBe null
+    exportDecl.specifiers should matchPattern {
+      case Seq(ExportSpecifier(Identifier("WebGLAttributes"), Identifier("WebGLAttributes"))) =>
+    }
+    exportDecl.source.value.get[String] shouldBe "./renderers/webgl/WebGLAttributes.js"
+  }
+
   it should "Parse exported namespace" in {
     val input = """
         export namespace A {
