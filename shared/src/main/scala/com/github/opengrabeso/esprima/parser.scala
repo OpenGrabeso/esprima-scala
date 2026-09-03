@@ -127,27 +127,28 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       "," -> 0,
       "=" -> 0,
       "]" -> 0,
-      "||" -> 1,
-      "&&" -> 2,
-      "|" -> 3,
-      "^" -> 4,
-      "&" -> 5,
-      "==" -> 6,
-      "!=" -> 6,
-      "===" -> 6,
-      "!==" -> 6,
-      "<" -> 7,
-      ">" -> 7,
-      "<=" -> 7,
-      ">=" -> 7,
-      "<<" -> 8,
-      ">>" -> 8,
-      ">>>" -> 8,
-      "+" -> 9,
-      "-" -> 9,
-      "*" -> 11,
-      "/" -> 11,
-      "%" -> 11
+      "??" -> 5,
+      "||" -> 6,
+      "&&" -> 7,
+      "|" -> 8,
+      "^" -> 9,
+      "&" -> 10,
+      "==" -> 11,
+      "!=" -> 11,
+      "===" -> 11,
+      "!==" -> 11,
+      "<" -> 12,
+      ">" -> 12,
+      "<=" -> 12,
+      ">=" -> 12,
+      "<<" -> 13,
+      ">>" -> 13,
+      ">>>" -> 13,
+      "+" -> 14,
+      "-" -> 14,
+      "*" -> 15,
+      "/" -> 15,
+      "%" -> 15
     )
     def apply(op: String): Int = map.getOrElse(op, 0)
   }
@@ -993,13 +994,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         new Node.ArrayPattern(elementsResult)
       case expr: Node.ObjectExpression =>
         val elementsResult = for (property <- expr.properties) yield {
-          this.reinterpretExpressionAsPattern {
-            property match {
-              case property: Node.SpreadElement =>
-                property
-              case property: Node.Property =>
-                property.value
-            }
+          property match {
+            case property: Node.SpreadElement =>
+              this.reinterpretExpressionAsPattern(property)
+            case property: Node.Property =>
+              property.value = this.reinterpretExpressionAsPattern(property.value).asInstanceOf[Node.PropertyValue]
+              property
           }
         }
         new Node.ObjectPattern(elementsResult)
@@ -3569,9 +3569,16 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   }
 
   // https://tc39.github.io/ecma262/#sec-class-definitions
-  def parseClassElement(hasConstructor: ByRef[Boolean]): Node.MethodDefinition = {
+  def parseClassElement(hasConstructor: ByRef[Boolean]): Node.ClassBodyElement = {
     var token = this.lookahead
     val node = this.createNode()
+
+    if (this.matchContextualKeyword("static") && this.previewToken().value === "{") {
+      this.nextToken()
+      val block = this.parseBlock()
+      return this.finalize(node, new Node.StaticBlock(block.body))
+    }
+
     var kind: String = null
     var typePars: Node.TypeParameterList = null
     var key: Node.PropertyKey = null
@@ -3752,8 +3759,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.finalize(node, new Node.MethodDefinitionEx(key, typePars, `type`, computed, value, kind, isStatic, optional, readOnly))
   }
 
-  def parseClassElementList(): Array[Node.MethodDefinition] = {
-    val body = ArrayBuffer.empty[Node.MethodDefinition]
+  def parseClassElementList(): Array[Node.ClassBodyElement] = {
+    val body = ArrayBuffer.empty[Node.ClassBodyElement]
     object hasConstructor extends ByRef[Boolean](false)
     this.expect("{")
     while (!this.`match`("}") && this.lookahead.`type` != Token.EOF) {

@@ -58,6 +58,7 @@ object Syntax {
   val ReturnStatement = "ReturnStatement"
   val SequenceExpression = "SequenceExpression"
   val SpreadElement = "SpreadElement"
+  val StaticBlock = "StaticBlock"
   val Super = "Super"
   val SwitchCase = "SwitchCase"
   val SwitchStatement = "SwitchStatement"

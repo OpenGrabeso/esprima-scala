@@ -520,6 +520,16 @@ object Node {
     }
   }
 
+  /**
+    * An ECMAScript class static initialization block.
+    *
+    * ESTree models this as a class-body element whose body is a statement list,
+    * rather than as a method definition.
+    */
+  case class StaticBlock(var body: collection.Seq[StatementListItem]) extends Node with ClassBodyElement {
+    override def clone = copy().copyNode(this)
+  }
+
   abstract class Program(var body: collection.Seq[StatementListItem]) extends Node {
 
     override def toString = Node.outputSeq(sourceType, body)

@@ -89,6 +89,39 @@ class BasicTests extends AnyFlatSpec with TestInputs with TestOptions {
     """)
   }
 
+  it should "preserve aliased object properties with default values in arrow parameters" in {
+    val tree = parse("""
+      const f = ({ normalView: normalViewAlias = normalView }) => normalViewAlias;
+    """)
+
+    val declaration = tree.body.head.asInstanceOf[Node.VariableDeclaration]
+    val arrow = declaration.declarations.head.init.asInstanceOf[Node.ArrowFunctionExpression]
+    val pattern = arrow.params.head.asInstanceOf[Node.ObjectPattern]
+    val property = pattern.properties.head.asInstanceOf[Node.Property]
+    val assignment = property.value.asInstanceOf[Node.AssignmentPattern]
+
+    assert(property.key.asInstanceOf[Node.Identifier].name == "normalView")
+    assert(assignment.left.asInstanceOf[Node.Identifier].name == "normalViewAlias")
+    assert(assignment.right.asInstanceOf[Node.Identifier].name == "normalView")
+  }
+
+  it should "parse nullish coalescing expressions" in {
+    val tree = parse("const value = input ?? fallback;")
+    val declaration = tree.body.head.asInstanceOf[Node.VariableDeclaration]
+    val expression = declaration.declarations.head.init.asInstanceOf[Node.BinaryExpression]
+
+    assert(expression.operator == "??")
+  }
+
+  it should "parse class static initialization blocks" in {
+    val tree = parse("class Vector2 { static { Vector2.prototype.isVector2 = true; } }")
+    val declaration = tree.body.head.asInstanceOf[Node.ClassDeclaration]
+    val block = declaration.body.body.head.asInstanceOf[Node.StaticBlock]
+
+    assert(block.body.size == 1)
+    assert(block.body.head.isInstanceOf[Node.ExpressionStatement])
+  }
+
   it should "parse arrow function passed as an argument" in {
     parse("""
     f( 'G', () => {
