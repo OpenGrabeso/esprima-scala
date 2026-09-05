@@ -11,3 +11,6 @@ project/plugins/project/
 .idea/
 /ScalaFromJS.jar
 /.bsp/
+/.coursier-cache/
+/.ivy2/
+/.sbt-boot/
