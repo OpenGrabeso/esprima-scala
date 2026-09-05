@@ -1930,6 +1930,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
             this.lookahead.value.get[String] match {
               case "class" =>
                 statement = this.parseClassDeclaration()
+              case "abstract" if options.typescript =>
+                this.nextToken()
+                statement = this.parseClassDeclaration()
               case "function" =>
                 statement = this.parseFunctionDeclaration()
               case "const" | "let" =>
@@ -3280,6 +3283,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       if (optional) {
         this.nextToken()
       }
+      if (this.`match`("(")) {
+        parseFormalParameters()
+        this.expect(":")
+        val t = parseTypeAnnotation()
+        this.finalize(node, Node.TypeMember(ident, optional, readOnly, t))
+      } else {
       if (ident.name == "new") {
         // a construct signature
         this.nextToken()
@@ -3295,6 +3304,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       this.expect(":")
       val t = parseTypeAnnotation()
       this.finalize(node, Node.TypeMember(ident, optional, readOnly, t))
+      }
     }
   }
 
@@ -3350,10 +3360,14 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val node = this.startNode(token)
     var pars = mutable.ArrayBuffer.empty[(Node.Identifier, Node.TypeAnnotation)]
     if (!token.`match`(")")) {
-      assert(token.`type` == Token.Identifier || token.`type` == Token.Keyword && token.value === "this")
+      val parameterToken = if (token.`match`("...")) {
+        this.nextToken()
+        this.lookahead
+      } else token
+      assert(this.isIdentifierName(parameterToken))
 
       // TODO: maybe we could use parseFormalParameters or other existing method?
-      val name = this.parseIdentifierName(token)
+      val name = this.parseIdentifierName(parameterToken)
       val tpe = if (options.typescript && this.`match`(":")) {
         this.nextToken()
         this.parseTypeAnnotation()
@@ -3925,6 +3939,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       types += parseTypeParameterListItem()
       if (!this.`match`(">")) {
         this.expect(",")
+        // A trailing comma before `>` is valid TypeScript syntax.
       }
     }
     this.expect(">")
