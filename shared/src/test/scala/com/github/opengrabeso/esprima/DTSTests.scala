@@ -96,6 +96,19 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
     exportDecl.source.value.get[String] shouldBe "./renderers/webgl/WebGLAttributes.js"
   }
 
+  it should "Parse type-only import specifiers and mapped types" in {
+    val input = """
+      import { type Vector3Like } from "./Vector3.js";
+      export class Material {
+        static?: boolean;
+        values: { [P in keyof Vector3Like]: Vector3Like[P] };
+      }
+    """
+    val tree = parse(input, DTSOptions)
+    tree.errors shouldBe empty
+    tree.body should have size 2
+  }
+
   it should "Parse exported namespace" in {
     val input = """
         export namespace A {

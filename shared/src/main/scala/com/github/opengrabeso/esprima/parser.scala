@@ -827,7 +827,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       this.nextToken()
       readOnly = true
     }
-    if (token.`type` == Token.Identifier) {
+    if (token.`type` == Token.Identifier || options.typescript && token.`type` == Token.Keyword) {
       val id: String = token.value
       this.nextToken()
       computed = this.`match`("[")
@@ -3262,8 +3262,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     if (this.`match`("[")) { // IndexSignature, like { [key: string]: any }
       this.nextToken()
       val ident = parseIdentifierName()
-      this.expect(":")
-      val t = parseIdentifierName()
+      if (options.typescript && this.matchContextualKeyword("in")) {
+        this.nextToken()
+        parseTypeAnnotation()
+      } else {
+        this.expect(":")
+        parseIdentifierName()
+      }
       this.expect("]")
       this.expect(":")
       // TODO: store ident and t property
@@ -3676,7 +3681,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       }
     }
     val lookaheadPropertyKey = this.qualifiedPropertyName(this.lookahead)
-    if (token.`type` == Token.Identifier) {
+    if (token.`type` == Token.Identifier || options.typescript && token.`type` == Token.Keyword) {
       if (token.value === "get" && lookaheadPropertyKey) {
         kind = "get"
         computed = this.`match`("[")
@@ -3988,6 +3993,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val node = this.createNode()
     var imported: Node.Identifier = null
     var local: Node.Identifier = null
+    if (options.typescript && this.matchContextualKeyword("type") && !previewToken().value.===
+      ("as")) {
+      this.nextToken()
+    }
     if (this.lookahead.`type` == Token.Identifier) {
       imported = this.parseVariableIdentifier()
       local = imported
@@ -4049,6 +4058,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.expectKeyword("import")
     var src: Node.Literal = null
     var specifiers = ArrayBuffer.empty[Node.ImportDeclarationSpecifier]
+    if (options.typescript && this.matchContextualKeyword("type") && previewToken().value === "{") {
+      this.nextToken()
+    }
     if (this.lookahead.`type` == Token.StringLiteral) {
       // import 'foo';
       src = this.parseModuleSpecifier()
@@ -4091,6 +4103,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
   // https://tc39.github.io/ecma262/#sec-exports
   def parseExportSpecifier(): Node.ExportSpecifier = {
     val node = this.createNode()
+    if (options.typescript && this.matchContextualKeyword("type")) {
+      this.nextToken()
+    }
     val local = this.parseIdentifierName()
     var exported = local
     if (this.matchContextualKeyword("as")) {
