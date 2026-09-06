@@ -3336,8 +3336,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       }
       var token = this.nextToken()
       // if this is token followed by :, it is a named tuple, like [n: Number, s: String]
-      if (token.`type` == Token.Identifier && this.lookahead.`match`(":")) {
+      if (token.`type` == Token.Identifier && (this.lookahead.`match`(":") || this.lookahead.`match`("?"))) {
         // TODO: store into the AST
+        if (this.`match`("?")) {
+          this.nextToken()
+        }
         this.expect(":")
         token = this.nextToken()
       }
@@ -3368,6 +3371,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
 
       // TODO: maybe we could use parseFormalParameters or other existing method?
       val name = this.parseIdentifierName(parameterToken)
+      if (options.typescript && this.`match`("?")) {
+        this.nextToken()
+      }
       val tpe = if (options.typescript && this.`match`(":")) {
         this.nextToken()
         this.parseTypeAnnotation()
@@ -3376,7 +3382,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       while (this.`match`(",")) {
         this.nextToken()
         if (!this.`match`(")")) {
-          val name = this.parseIdentifierName()
+          val name = if (this.`match`("...")) {
+            this.nextToken()
+            this.parseIdentifierName()
+          } else this.parseIdentifierName()
           if (options.typescript && this.`match`("?")) {
             // accept optional paramters like in ( x: number, s?: string ) => void
             this.nextToken()
@@ -3403,7 +3412,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val node = this.startNode(parenToken)
     val types = ArrayBuffer.empty[Node.TypeAnnotation]
     val token = this.nextToken()
-    val tpe = if ((token.`type` == Token.Identifier || token.`type` == Token.Keyword && token.value === "this") && this.`match`(":") || token.`match`(")")) {
+    val tpe = if ((token.`type` == Token.Identifier || token.`type` == Token.Keyword && token.value === "this") && (this.`match`(":") || this.`match`("?")) || token.`match`(")") || token.`match`("...")) {
       parseFunctionType(token)
     } else {
       val t = parseTypeAnnotation(token)
@@ -3463,6 +3472,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       // TODO: AST for keyof
       val ofType = parseTypeAnnotation()
       ofType
+    } else if (options.typescript && token.`type` == Token.Keyword && token.value === "new" && this.`match`("(")) {
+      this.nextToken()
+      parseFunctionType(this.nextToken())
     } else if (options.typescript && token.`type` == Token.Keyword && token.value === "typeof") {
       // TODO: AST for typeof
       val ofType = parseTypeAnnotation()

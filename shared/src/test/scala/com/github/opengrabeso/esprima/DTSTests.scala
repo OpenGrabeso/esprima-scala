@@ -109,6 +109,27 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
     tree.body should have size 2
   }
 
+  it should "Parse remaining modern Three.js declaration constructs" in {
+    val input = """
+      declare abstract class Controls<T = ControlsEventMap,> {}
+      declare const Cache: {
+        add(key: string, file: any): void;
+      };
+      declare class LoadingManager {
+        setURLModifier: (callback?: (url: string) => string) => this;
+      }
+      declare class MaterialLoader {
+        static registerMaterial(type: string, materialClass: new() => Material): void;
+      }
+      declare function setConsoleFunction(
+        fn: (type: "log" | "warn" | "error", message: string, ...params: unknown[]) => void,
+      ): void;
+      export type EulerTuple = [x: number, y: number, z: number, order?: string];
+    """
+    val tree = parse(input, DTSOptions)
+    tree.errors shouldBe empty
+  }
+
   it should "Parse exported namespace" in {
     val input = """
         export namespace A {
