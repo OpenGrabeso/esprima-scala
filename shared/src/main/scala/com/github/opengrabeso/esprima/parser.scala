@@ -3283,13 +3283,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       if (optional) {
         this.nextToken()
       }
-      if (this.`match`("(")) {
-        parseFormalParameters()
-        this.expect(":")
-        val t = parseTypeAnnotation()
-        this.finalize(node, Node.TypeMember(ident, optional, readOnly, t))
-      } else {
-      if (ident.name == "new") {
+      if (ident.name == "new" && options.typescript && this.`match`("(")) {
         // a construct signature
         this.nextToken()
         // skip a section enclosed in (), handle nesting
@@ -3302,11 +3296,26 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
           else if (this.`match`(")")) level -= 1
           this.nextToken()
         }
-        this.expect(")")
-      }
-      this.expect(":")
-      val t = parseTypeAnnotation()
-      this.finalize(node, Node.TypeMember(ident, optional, readOnly, t))
+        // Tolerate a truncated construct signature at EOF. There is no useful
+        // return type to parse in this case, but the surrounding declaration
+        // can still be represented in the tolerant AST.
+        if (options.tolerant && this.lookahead.`type` == Token.EOF) {
+          this.finalize(node, Node.TypeMember(ident, optional, readOnly, Node.TypeName(null)))
+        } else {
+          this.expect(")")
+          this.expect(":")
+          val t = parseTypeAnnotation()
+          this.finalize(node, Node.TypeMember(ident, optional, readOnly, t))
+        }
+      } else if (this.`match`("(")) {
+        parseFormalParameters()
+        this.expect(":")
+        val t = parseTypeAnnotation()
+        this.finalize(node, Node.TypeMember(ident, optional, readOnly, t))
+      } else {
+        this.expect(":")
+        val t = parseTypeAnnotation()
+        this.finalize(node, Node.TypeMember(ident, optional, readOnly, t))
       }
     }
   }
@@ -3324,7 +3333,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         this.consumeSemicolon()
       }
     }
-    this.expect("}")
+    // A declaration may be truncated at EOF (for example while editing a
+    // construct signature). In tolerant mode, preserve the partial object
+    // type instead of requiring its closing brace.
+    if (!options.tolerant || this.lookahead.`type` != Token.EOF) {
+      this.expect("}")
+    }
 
     this.finalize(node, Node.ObjectType(body))
   }
