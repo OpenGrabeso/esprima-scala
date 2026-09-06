@@ -51,4 +51,8 @@ class SelfParseTest extends AnyFlatSpec with TestInputs with Matchers {
     }
   }
 
+  it should "stop incomplete construct signatures at EOF" in {
+    parse("type Incomplete = { new (", TSOptions)
+  }
+
 }

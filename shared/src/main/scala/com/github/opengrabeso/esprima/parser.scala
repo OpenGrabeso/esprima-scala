@@ -3294,7 +3294,10 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         this.nextToken()
         // skip a section enclosed in (), handle nesting
         var level = 0
-        while (!this.`match`(")") || level > 0) {
+        // A malformed/incomplete construct signature must not keep asking the
+        // scanner for tokens after it has reached EOF. At EOF nextToken()
+        // returns the same EOF sentinel, so the old condition never changed.
+        while (this.lookahead.`type` != Token.EOF && (!this.`match`(")") || level > 0)) {
           if (this.`match`("(")) level += 1
           else if (this.`match`(")")) level -= 1
           this.nextToken()
