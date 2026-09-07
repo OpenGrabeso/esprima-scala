@@ -686,7 +686,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val node = this.createNode()
     val elements = ArrayBuffer.empty[Node.ArrayExpressionElement]
     this.expect("[")
-    while (!this.`match`("]")) {
+    while (this.lookahead.`type` != Token.EOF && !this.`match`("]")) {
       if (this.`match`(",")) {
         this.nextToken()
         elements.push(null)
@@ -1179,7 +1179,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val args = ArrayBuffer.empty[Node.ArgumentListElement]
     if (!this.`match`(")")) {
       breakable {
-        while (true) {
+        while (this.lookahead.`type` != Token.EOF) {
           val expr = if (this.`match`("...")) this.parseSpreadElement() else this.isolateCoverGrammar(this.parseAssignmentExpression)
           args.push(expr)
           if (this.`match`(")")) {
@@ -1257,7 +1257,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val args = ArrayBuffer.empty[Node.ArgumentListElement]
     if (!this.`match`(")")) {
       breakable {
-        while (true) {
+        while (this.lookahead.`type` != Token.EOF) {
           val expr = if (this.`match`("...")) this.parseSpreadElement() else this.isolateCoverGrammar(this.parseAsyncArgument)
           args.push(expr)
           if (this.`match`(")")) {
@@ -1347,7 +1347,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     }
     var hasOptional = false
     breakable {
-      while (true) {
+      while (this.lookahead.`type` != Token.EOF) {
         var optional = false
         if (this.`match`("?.")) {
           optional = true
@@ -1425,7 +1425,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     var expr = if (this.matchKeyword("super") && this.context.inFunctionBody) this.parseSuper() else this.inheritCoverGrammar(if (this.matchKeyword("new")) this.parseNewExpression else this.parsePrimaryExpression)
     var hasOptional = false
     breakable {
-      while (true) {
+      while (this.lookahead.`type` != Token.EOF) {
         var optional = false
         if (this.`match`("?.")) {
           optional = true
@@ -1941,6 +1941,8 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
                 })
               case "interface" if options.typescript && this.isLexicalDeclaration() =>
                 statement = this.parseClassDeclaration(keyword = "interface")
+              case "module" if options.typescript =>
+                statement = this.parseAmbientModuleDeclaration()
               case "type" if options.typescript && this.isLexicalDeclaration() => // may be normal identifier when not in ts
                 statement = this.parseTypeAliasDeclaration()
               case _ =>
@@ -1975,7 +1977,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.expect("{")
     val block = ArrayBuffer.empty[Node.StatementListItem]
     breakable {
-      while (true) {
+      while (this.lookahead.`type` != Token.EOF) {
         if (this.`match`("}")) {
           break()
         }
@@ -2058,7 +2060,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.expect("[")
     val elements = ArrayBuffer.empty[Node.ArrayPatternElement]
     breakable {
-      while (!this.`match`("]")) {
+      while (this.lookahead.`type` != Token.EOF && !this.`match`("]")) {
         if (this.`match`(",")) {
           this.nextToken()
           elements.push(null)
@@ -2172,7 +2174,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       this.context.allowYield = previousAllowYield
       this.finalize(this.startNode(startToken), new Node.AssignmentPattern(pattern, right))
     } else {
-      pattern.asInstanceOf[Node.BindingIdentifier]
+      // Destructuring parameters are valid here as well as identifiers.
+      // ObjectPattern implements BindingPattern, which is both an
+      // ArrayPatternElement and a PropertyValue; casting specifically to
+      // BindingIdentifier rejected valid `{ ... }` parameters at runtime.
+      pattern.asInstanceOf[Node.ArrayPatternElement with Node.PropertyValue]
     }
   }
 
@@ -2610,7 +2616,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.expect(":")
     val consequent = ArrayBuffer.empty[Node.Statement]
     breakable {
-      while (true) {
+      while (this.lookahead.`type` != Token.EOF) {
         if (this.`match`("}") || this.matchKeyword("default") || this.matchKeyword("case")) {
           break()
         }
@@ -2632,7 +2638,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     var defaultFound = false
     this.expect("{")
     breakable {
-      while (true) {
+      while (this.lookahead.`type` != Token.EOF) {
         if (this.`match`("}")) {
           break()
         }
@@ -3241,7 +3247,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       if (options.typescript && this.`match`("<")) {
         this.nextToken()
         val typeArgs = mutable.ArrayBuffer.empty[Node.TypeAnnotation]
-        while (!this.`match`(">")) {
+        while (this.lookahead.`type` != Token.EOF && !this.`match`(">")) {
           typeArgs += parseTypeAnnotation()
           if (!this.`match`(">")) this.expect(",")
         }
@@ -3262,7 +3268,13 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       this.nextToken()
       readOnly = true
     }
-    if (this.`match`("[")) { // IndexSignature, like { [key: string]: any }
+    if (this.`match`("(")) {
+      // Call signature, e.g. `interface Fn { (x: number): string }`.
+      parseFormalParameters()
+      this.expect(":")
+      val t = parseTypeAnnotation()
+      this.finalize(node, Node.TypeMember(null, false, readOnly, t))
+    } else if (this.`match`("[")) { // IndexSignature, like { [key: string]: any }
       this.nextToken()
       val ident = parseIdentifierName()
       if (options.typescript && this.matchContextualKeyword("in")) {
@@ -3282,6 +3294,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       val optional = this.`match`("?")
       if (optional) {
         this.nextToken()
+      }
+      if (ident.name == "new" && options.typescript && this.`match`("<")) {
+        this.parseTypeParameterList()
       }
       if (ident.name == "new" && options.typescript && this.`match`("(")) {
         // a construct signature
@@ -3347,7 +3362,7 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     assert(token.`match`("["))
     val node = this.startNode(token)
     val types = mutable.ArrayBuffer.empty[Node.TypeAnnotation]
-    while (!this.`match`("]")) {
+    while (this.lookahead.`type` != Token.EOF && !this.`match`("]")) {
       if (this.`match`("...")) {
         this.nextToken()
       }
@@ -3384,7 +3399,21 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         this.nextToken()
         this.lookahead
       } else token
-      assert(this.isIdentifierName(parameterToken))
+      if (!this.isIdentifierName(parameterToken)) {
+        // Some declaration files use a parameter form that this small AST
+        // does not model (for example an inferred or destructured rest
+        // parameter). Consume it safely; most consumers only need the return
+        // type and must never get stuck at the same EOF token.
+        while (this.lookahead.`type` != Token.EOF && !this.`match`(")")) {
+          this.nextToken()
+        }
+        if (this.lookahead.`type` == Token.EOF) {
+          return this.finalize(node, Node.FunctionType(Seq(), Node.TypeName(null)))
+        }
+        this.expect(")")
+        this.expect("=>")
+        return this.finalize(node, Node.FunctionType(Seq(), parseTypeAnnotation()))
+      }
 
       // TODO: maybe we could use parseFormalParameters or other existing method?
       val name = this.parseIdentifierName(parameterToken)
@@ -3468,11 +3497,34 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     this.finalize(node, Node.NamespaceDeclaration(name, this.finalize(bodyNode, Node.NamespaceBody(exports))))
   }
 
+  // Ambient module augmentations may contain declarations that are not part
+  // of the executable AST. Consume the complete balanced body so a string
+  // module name (for example "../../scenes/Scene.js") does not get treated
+  // as an identifier and, importantly, stop at EOF if the input is partial.
+  def parseAmbientModuleDeclaration(): Node.EmptyStatement = {
+    this.nextToken() // module
+    if (this.lookahead.`type` != Token.EOF) {
+      this.nextToken() // string or identifier module name
+    }
+    if (this.`match`("{")) {
+      this.nextToken()
+      var level = 1
+      while (this.lookahead.`type` != Token.EOF && level > 0) {
+        if (this.`match`("{")) level += 1
+        else if (this.`match`("}")) level -= 1
+        this.nextToken()
+      }
+    }
+    Node.EmptyStatement()
+  }
+
   def parsePrimaryType(token: RawToken): Node.TypeAnnotation = {
     val node = this.startNode(token)
 
-    if (this.`matchContextualKeyword`("readonly")) {
-      this.nextToken() // skip readonly in parameter lists
+    if (options.typescript && (token.`type` == Token.Identifier || token.`type` == Token.Keyword) && token.value.get[String] == "readonly") {
+      // `readonly` is a modifier, not the element type. This matters for
+      // tuple types such as `readonly [...unknown[]]`.
+      return parsePrimaryType(this.nextToken())
     }
 
     val tpe = if (token.`match`("{")) {
@@ -3481,6 +3533,21 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       parseTypeStartingWithParen(token)
     } else if (token.`match`("[")) {
       parseTupleType(token)
+    } else if (options.typescript && token.`type` == Token.Template) {
+      // Template-literal types use the template scanner tokens but are not
+      // expression template literals. Consume the complete type and model
+      // it conservatively as string; retaining the following declaration is
+      // more useful to the converter than rejecting the whole file.
+      while (this.lookahead.`type` != Token.EOF) {
+        val next = this.lookahead
+        this.nextToken()
+        if (next.`type` == Token.Template && !next.head) {
+          // A middle/tail token ends the template type when it is not a
+          // template head; nested substitutions have already been scanned.
+          if (next.tail) return Node.TypeName(Seq(Node.Identifier("string")))
+        }
+      }
+      Node.TypeName(Seq(Node.Identifier("string")))
     } else if (token.`match`("<")) {
       // starting with generic - a function type?
       val pars = parseTypeParameterList(token) // TODO: store pars in AST
@@ -3489,6 +3556,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       // TODO: AST for keyof
       val ofType = parseTypeAnnotation()
       ofType
+    } else if (options.typescript && token.`type` == Token.Identifier && token.value === "infer") {
+      // Conditional types may bind an inferred type (`infer T`). The AST
+      // has no binding node for it; consume the bound name and retain an
+      // unknown type so the enclosing declaration remains parseable.
+      if (this.lookahead.`type` != Token.EOF) this.nextToken()
+      Node.TypeName(Seq(Node.Identifier("unknown")))
     } else if (options.typescript && token.`type` == Token.Keyword && token.value === "new" && this.`match`("(")) {
       this.nextToken()
       parseFunctionType(this.nextToken())
@@ -3524,11 +3597,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
     val mayBeConditional = if (this.matchContextualKeyword("extends")) {
       // conditional type?
       this.nextToken()
-      val tpeExtends = parseTypeReference(this.nextToken())
+      val tpeExtends = parseTypeAnnotation(this.nextToken())
       this.expect("?")
-      val condL = parsePrimaryType(this.nextToken())
+      val condL = parseTypeAnnotation(this.nextToken())
       this.expect(":")
-      val condR = parsePrimaryType(this.nextToken())
+      val condR = parseTypeAnnotation(this.nextToken())
       Node.ConditionalType(parsed, tpeExtends, condL, condR) // TODO: proper conditional type
     } else {
       parsed
@@ -3581,12 +3654,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       }
 
       def parseIntersectionType(token: RawToken = this.nextToken()): Node.TypeAnnotation = {
-        val tpe = parsePrimaryType(token)
+        val tpe = if (token.`match`("&")) parseIntersectionType(this.nextToken()) else parsePrimaryType(token)
         parseIntersection(token, tpe)
       }
 
       // silently skip leading | - this seems invalid, but some d.ts files contain it
-      val tpe = if (token.`match`("|")) {
+      val tpe = if (token.`match`("|") || token.`match`("&")) {
         parseIntersectionType(this.nextToken())
       } else {
         parseIntersectionType(token)
@@ -3654,6 +3727,18 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         readOnly = true
         this.nextToken()
         token = this.lookahead
+      }
+    }
+
+    // Interface call signatures have no property name, for example
+    // `interface Fn { <const T>(value: T): T }`.
+    if (options.typescript && (this.`match`("(") || this.`match`("<"))) {
+      val signatureTypePars = if (this.`match`("<")) Some(parseTypeParameterList()) else None
+      if (this.`match`("(")) {
+        parseFormalParameters()
+        this.expect(":")
+        `type` = parseTypeAnnotation()
+        return this.finalize(node, new Node.MethodDefinitionEx(null, signatureTypePars.orNull, `type`, false, null, "method", false, false, readOnly))
       }
     }
 
@@ -3779,6 +3864,12 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         kind = "value"
         // parse the initialization expression
         value = this.parseExpression()
+      }
+      // A declaration file may omit the type annotation for a private
+      // member, e.g. `private _currentSourceMaterial;`.
+      if (!kind && options.typescript && this.`match`(";")) {
+        kind = "value"
+        `type` = Node.TypeName(null)
       }
     }
     if (!kind) {
@@ -3944,6 +4035,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
 
   def parseTypeParameterListItem(): Node.TypeParameterListItem = {
     val node = this.createNode()
+    // `const` type parameters are a TypeScript 5 feature. The AST has no
+    // modifier slot, so consume the modifier and retain the name.
+    if (options.typescript && this.matchContextualKeyword("const")) {
+      this.nextToken()
+    }
     val name = this.parseIdentifierName()
     var constraint: Node.TypeAnnotation = null
     var defaultValue: Node.TypeAnnotation = null
@@ -4194,6 +4290,11 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
         // export default async function () {}
         // export default async x => x
         val declaration = if (this.matchAsyncFunction()) this.parseFunctionDeclaration(true) else this.parseAssignmentExpression()
+        exportDeclaration = this.finalize(node, new Node.ExportDefaultDeclaration(declaration))
+      } else if (options.typescript && this.matchContextualKeyword("abstract") && previewToken().value === "class") {
+        // TypeScript permits `export default abstract class ...`.
+        this.nextToken()
+        val declaration = this.parseClassDeclaration(true, keyword = "class")
         exportDeclaration = this.finalize(node, new Node.ExportDefaultDeclaration(declaration))
       } else {
         if (this.matchContextualKeyword("from")) {

@@ -453,7 +453,7 @@ object Node {
   }
 
 
-  case class Import() extends Node with ExpressionOrImport {
+  case class Import() extends Node with ExpressionOrImport with Expression {
 
     override def clone = Import().copyNode(this)
   }

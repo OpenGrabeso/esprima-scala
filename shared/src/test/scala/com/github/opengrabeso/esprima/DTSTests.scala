@@ -130,6 +130,31 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
     tree.errors shouldBe empty
   }
 
+  it should "Parse conditional intersection types and ambient modules" in {
+    val input = """
+      type Node<T = unknown> = NodeClass & (unknown extends T ? {} : NodeExtensions<T>);
+      declare module "../../scenes/Scene.js" {
+        interface Scene { environmentNode?: Node; }
+      }
+    """
+    val tree = parse(input, DTSOptions)
+    tree.errors shouldBe empty
+  }
+
+  it should "Parse Three.js node aliases and untyped private members" in {
+    val input = """
+      type Node<TNodeType = unknown> =
+        & NodeClass
+        & NodeElements
+        & (unknown extends TNodeType ? {} : NodeExtensions<TNodeType>);
+      declare class Renderer {
+        private _currentSourceMaterial;
+      }
+    """
+    val tree = parse(input, DTSOptions)
+    tree.errors shouldBe empty
+  }
+
   it should "Parse exported namespace" in {
     val input = """
         export namespace A {
@@ -776,6 +801,54 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
     parse("""
     var x = c ? (true) : false;
     """, DTSOptions)
+  }
+
+  it should "parse TypeScript 5 declaration signatures" in {
+    val input = """
+      export default abstract class Backend {}
+      interface Callable {
+        (): void;
+        <const T>(value: T): T;
+      }
+      const fn: <const T>(value: T) => T;
+    """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
+  it should "parse readonly tuple and template literal types" in {
+    val input = """
+      type T = readonly [...unknown[]];
+      type EventName<T extends string> = `on${T}`;
+    """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
+  it should "parse conditional intersections and rest function types" in {
+    val input = """
+      type N<T> = T extends "float"
+        ? A<"float"> & B & C<"float">
+        : T extends (...args: never) => unknown ? unknown : T;
+      type P<T extends readonly [...unknown[]]> = [...{ [K in keyof T]: T[K] }];
+    """
+    val tree = parse(input, DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
+  it should "parse inferred conditional type parameters" in {
+    val tree = parse("type P<T> = T extends Node<infer U> ? U : never;", DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
+  it should "parse destructuring parameters and dynamic imports" in {
+    val tree = parse("const f = ({ value }) => value; const p = import(\"module\");", DTSOptions)
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
   }
 
   behavior of "Parsing Three.js d.ts"
