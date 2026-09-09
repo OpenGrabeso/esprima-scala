@@ -105,6 +105,22 @@ class BasicTests extends AnyFlatSpec with TestInputs with TestOptions {
     assert(assignment.right.asInstanceOf[Node.Identifier].name == "normalView")
   }
 
+  it should "preserve a defaulted object pattern in an arrow parameter" in {
+    val tree = parse("""
+      const f = (texcoord, { color = vec3(1, 1, 1), scale = 0 } = {}) => color;
+    """)
+
+    val declaration = tree.body.head.asInstanceOf[Node.VariableDeclaration]
+    val arrow = declaration.declarations.head.init.asInstanceOf[Node.ArrowFunctionExpression]
+    val assignment = arrow.params(1).asInstanceOf[Node.AssignmentPattern]
+    val pattern = assignment.left.asInstanceOf[Node.ObjectPattern]
+    val outerDefault = assignment.right.asInstanceOf[Node.ObjectExpression]
+
+    assert(pattern.properties.size == 2)
+    assert(pattern.properties.forall(_.asInstanceOf[Node.Property].value.isInstanceOf[Node.AssignmentPattern]))
+    assert(outerDefault.properties.isEmpty)
+  }
+
   it should "parse nullish coalescing expressions" in {
     val tree = parse("const value = input ?? fallback;")
     val declaration = tree.body.head.asInstanceOf[Node.VariableDeclaration]
