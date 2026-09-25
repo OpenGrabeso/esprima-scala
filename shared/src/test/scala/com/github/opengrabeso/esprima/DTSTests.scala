@@ -817,6 +817,33 @@ class DTSTests extends AnyFlatSpec with TestInputs with Matchers {
     assert(tree.errors.isEmpty)
   }
 
+  it should "parse string-named members in declaration interfaces" in {
+    val tree = parse(
+      """
+        interface NodeElements {
+          "float": NumExtensions<"float">;
+        }
+      """,
+      DTSOptions
+    )
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
+  it should "parse generic call signatures in object types" in {
+    val tree = parse(
+      """
+        export const texture: {
+          (): TextureNode;
+          <TNodeType>(): TextureNode<TNodeType>;
+        };
+      """,
+      DTSOptions
+    )
+    assert(tree.body.nonEmpty)
+    assert(tree.errors.isEmpty)
+  }
+
   it should "parse readonly tuple and template literal types" in {
     val input = """
       type T = readonly [...unknown[]];

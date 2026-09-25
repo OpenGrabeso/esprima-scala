@@ -3268,7 +3268,15 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
       this.nextToken()
       readOnly = true
     }
-    if (this.`match`("(")) {
+    if (options.typescript && this.`match`("<")) {
+      // Generic call signature in an object type, e.g.
+      // `{ <T>(value: T): Result<T> }`.
+      parseTypeParameterList()
+      parseFormalParameters()
+      this.expect(":")
+      val t = parseTypeAnnotation()
+      this.finalize(node, Node.TypeMember(null, false, readOnly, t))
+    } else if (this.`match`("(")) {
       // Call signature, e.g. `interface Fn { (x: number): string }`.
       parseFormalParameters()
       this.expect(":")
@@ -3772,6 +3780,9 @@ class Parser(code: String, options: Options, var delegate: (Node.Node, Scanner.S
           ident
         case Node.StaticMemberExpression(obj, member: Node.Identifier, _) =>
           member
+        case _ =>
+          // Literal property names are ordinary members, never modifiers.
+          null
       }
       if (id != null && id.name == "static" && (this.qualifiedPropertyName(this.lookahead) || this.`match`("*"))) {
         if (options.typescript && this.matchContextualKeyword("readonly")) {
